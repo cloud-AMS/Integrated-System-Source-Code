@@ -1,3 +1,8 @@
+if (typeof (globalThis as any).__dirname !== 'undefined') {
+  delete (globalThis as any).__dirname;
+}
+
+import http from 'http';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
@@ -53,6 +58,7 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: '10mb' }));
@@ -194,7 +200,10 @@ alkes.perusahaan-anda.co.id {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        ws: { server: httpServer },
+      },
       appType: 'spa',
     });
     app.get('/web', async (req, res, next) => {
@@ -209,7 +218,7 @@ alkes.perusahaan-anda.co.id {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`AMS Integrated System Backend aktif di port ${PORT}`);
   });
 }

@@ -1,3 +1,8 @@
+// Fix vite-plugin-pwa context resolution in tsx / ESM environment
+if (typeof (globalThis as any).__dirname !== 'undefined') {
+  delete (globalThis as any).__dirname;
+}
+
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
