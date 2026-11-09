@@ -14,19 +14,7 @@ import {
   ArrowRight,
   MapPinned
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  BarCapaian,
-  formatRupiah,
-  formatTanggal,
-  formatPersen,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, BarCapaian, formatRupiah, formatTanggal, formatPersen, inputClass, labelClass, tombolPrimer, type Tone } from '../../../ui';
 
 const NAMA_BULAN = [
   'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
@@ -203,34 +191,34 @@ export default function AnalitikSalesModule() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div>
-            <h4 className="text-[11px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
               Tren nilai penjualan per bulan
             </h4>
             <div className="space-y-1.5">
               {perBulan.map((b) => (
                 <div key={b.bulan} className="flex items-center gap-2">
-                  <span className="w-14 text-[10px] font-mono text-slate-500 shrink-0">{labelBulan(b.bulan)}</span>
+                  <span className="w-14 text-2xs font-mono text-slate-500 shrink-0">{labelBulan(b.bulan)}</span>
                   <div className="flex-1 h-5 rounded bg-slate-100 overflow-hidden">
                     <div
                       className="h-full rounded bg-emerald-600/85"
                       style={{ width: `${Math.max((b.nilai / bulanMax) * 100, 2)}%` }}
                     />
                   </div>
-                  <span className="w-28 text-right text-[10px] font-mono font-semibold text-slate-700 shrink-0">
+                  <span className="w-28 text-right text-2xs font-mono font-semibold text-slate-700 shrink-0">
                     {formatRupiah(b.nilai)}
                   </span>
-                  <span className="w-14 text-right text-[10px] font-mono text-slate-500 shrink-0">{b.unit} unit</span>
+                  <span className="w-14 text-right text-2xs font-mono text-slate-500 shrink-0">{b.unit} unit</span>
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+            <p className="text-2xs text-slate-500 mt-2 leading-relaxed">
               Batang memakai skala nilai penjualan relatif terhadap bulan tertinggi pada periode yang sama.
             </p>
           </div>
 
           <div>
-            <h4 className="text-[11px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
               <ChartColumn className="w-3.5 h-3.5 text-emerald-600" />
               Kontribusi produk terhadap pendapatan
             </h4>
@@ -238,13 +226,13 @@ export default function AnalitikSalesModule() {
               {perProduk.map((p) => (
                 <div key={p.namaAlkes} className="rounded-lg border border-slate-200 p-2.5">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-[11px] font-semibold text-slate-800">{p.namaAlkes}</span>
-                    <span className="text-[10px] font-mono text-slate-500">{formatPersen((p.nilai / produkMax) * 100, 0)}</span>
+                    <span className="text-xs font-semibold text-slate-800">{p.namaAlkes}</span>
+                    <span className="text-2xs font-mono text-slate-500">{formatPersen((p.nilai / produkMax) * 100, 0)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-100 overflow-hidden mb-1">
                     <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max((p.nilai / produkMax) * 100, 2)}%` }} />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <div className="flex items-center justify-between text-2xs text-slate-500">
                     <span>{p.kategori}</span>
                     <span className="font-mono">
                       {p.unit} unit • {formatRupiah(p.nilai)}
@@ -256,7 +244,7 @@ export default function AnalitikSalesModule() {
           </div>
 
           <div>
-            <h4 className="text-[11px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
               <MapPinned className="w-3.5 h-3.5 text-emerald-600" />
               Capaian target tahunan per rayon
             </h4>
@@ -277,7 +265,7 @@ export default function AnalitikSalesModule() {
           </div>
 
           <div>
-            <h4 className="text-[11px] font-bold text-slate-800 mb-2 flex items-center gap-1.5">
+            <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5 text-emerald-600" />
               Peringkat med rep
             </h4>
@@ -305,14 +293,14 @@ export default function AnalitikSalesModule() {
             </div>
 
             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                 Funnel Sales Order berdasarkan status pengiriman
               </div>
               {(['Verifikasi Pesanan', 'Menunggu Alokasi FEFO', 'Terkirim', 'Diterima Fasyankes', 'Dibatalkan'] as const).map((status) => {
                 const jumlah = pesanan.filter((s) => s.statusKirim === status).length;
                 const persen = pesanan.length > 0 ? (jumlah / pesanan.length) * 100 : 0;
                 return (
-                  <div key={status} className="flex items-center justify-between text-[10px] py-1">
+                  <div key={status} className="flex items-center justify-between text-2xs py-1">
                     <span className="text-slate-600">{status}</span>
                     <span className="font-mono font-semibold text-slate-800">
                       {jumlah} <span className="text-slate-400">({formatPersen(persen, 0)})</span>
@@ -325,7 +313,7 @@ export default function AnalitikSalesModule() {
         </div>
 
         {terbitPO.length > 0 && (
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] text-emerald-900 flex items-start gap-2">
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 flex items-start gap-2">
             <ShoppingCart className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               Purchase Order berhasil diajukan dari peramalan: {terbitPO.join(', ')}. Status tercatat Diajukan dan
@@ -385,7 +373,7 @@ export default function AnalitikSalesModule() {
                   <td className="py-3 px-4 font-semibold text-slate-900">{h.namaAlkes}</td>
                   <td className="py-3 px-4 font-mono text-slate-700">{h.rataRataBulanan.toFixed(1)} unit</td>
                   <td className="py-3 px-4">
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${h.trenPersen >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    <span className={`inline-flex items-center gap-1 text-2xs font-bold ${h.trenPersen >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {h.trenPersen >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                       {formatPersen(h.trenPersen, 1)}
                     </span>
@@ -398,7 +386,7 @@ export default function AnalitikSalesModule() {
                       <Gauge className="w-3 h-3" />
                       {h.status}
                     </Badge>
-                    <div className="text-[10px] text-slate-500 mt-1 max-w-xs leading-relaxed">{h.keterangan}</div>
+                    <div className="text-2xs text-slate-500 mt-1 max-w-xs leading-relaxed">{h.keterangan}</div>
                   </td>
                   <td className="py-3 px-4 text-right">
                     {h.status === 'Risiko Stockout' ? (
@@ -408,7 +396,7 @@ export default function AnalitikSalesModule() {
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-2xs text-slate-400">
                         {h.status === 'Risiko Overstock' ? 'tekankan penyaluran FEFO' : 'stok seimbang'}
                       </span>
                     )}
@@ -419,14 +407,14 @@ export default function AnalitikSalesModule() {
           </table>
         </div>
 
-        <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+        <p className="mt-3 text-2xs text-slate-500 leading-relaxed">
           Titik pesan ulang = permintaan harian × (lead time + safety stock). Permintaan harian memakai asumsi 26 hari
           kerja per bulan. Stok aktif hanya menghitung batch yang belum kedaluwarsa agar sesuai prinsip FEFO CDAKB.
           Data peramalan per bulan juga tersedia untuk partisi waktu pada skema PostgreSQL produksi.
         </p>
       </Panel>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-[11px] text-slate-600 leading-relaxed">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600 leading-relaxed">
         <span className="font-bold text-slate-800">Catatan analitik:</span> Dashboard membaca riwayat penjualan bulanan
         {` (${perBulan.map((b) => labelBulan(b.bulan)).join(', ')}`}) dan Sales Order berjalan{' '}
         {pesanan.length > 0 ? `terakhir ${formatTanggal(pesanan[0].tanggalPesanan)}` : 'belum ada'} — seluruh perubahan

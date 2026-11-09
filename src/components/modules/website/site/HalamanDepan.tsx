@@ -110,12 +110,12 @@ export function KartuMasuk({ onTerima, onBatal }: { onTerima: (sesi: SesiLogin) 
     onTerima(sesi);
   };
 
-  const gayaBidang = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none';
+  const gayaBidang = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none';
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl">
       <div className="flex items-start gap-3">
-        <span className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
+        <span className="w-10 h-10 rounded-xl bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] text-[var(--brand)] flex items-center justify-center shrink-0">
           <ShieldCheck className="w-5 h-5" />
         </span>
         <div>
@@ -169,14 +169,14 @@ export function KartuMasuk({ onTerima, onBatal }: { onTerima: (sesi: SesiLogin) 
         </label>
 
         {galat && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
             {galat}
           </p>
         )}
 
         <button
           type="submit"
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60"
           disabled={!namaPengguna || !kataSandi}
         >
           <LogIn className="w-4 h-4" />

@@ -174,7 +174,7 @@ export default function PublicWebsiteApp() {
         <p className="text-sm text-slate-600 mt-2 leading-relaxed">{pesan}</p>
         <a
           href="/"
-          className="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
+          className="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-sm font-semibold"
         >
           <ExternalLink className="w-4 h-4" />
           Buka Dashboard Website

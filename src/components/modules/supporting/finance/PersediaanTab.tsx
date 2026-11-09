@@ -9,25 +9,8 @@ import {
   rekonsiliasiPersediaan,
   type SebabWriteOff
 } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  type IdentitasFinance,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  kepalaTabelKelas,
-  labelClass,
-  nomorJurnalBerikutnya,
-  pesanClass,
-  selKelas,
-  tabelKelas,
-  tombolPrimer,
-  tombolSekunder
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder } from '../../../ui';
+import { type IdentitasFinance, kepalaTabelKelas, nomorJurnalBerikutnya, pesanClass, selKelas, tabelKelas } from './ui';
 import { Boxes, PackageX, ReceiptText } from 'lucide-react';
 
 const SEBAB_WRITE_OFF: SebabWriteOff[] = ['Kedaluwarsa', 'Rusak', 'Karantina', 'Recall'];
@@ -250,7 +233,7 @@ export default function PersediaanTab({
                         <td className={`${selKelas} text-right font-mono`}>{formatRupiah(b.nilaiKartuStok)}</td>
                         <td className={`${selKelas} text-right font-mono`}>{formatRupiah(b.hargaPokokBukuBesar)}</td>
                         <td className={`${selKelas} text-right font-mono font-bold ${b.selisih > 0 ? 'text-rose-700' : 'text-amber-700'}`}>{tandai(b.selisih)}</td>
-                        <td className={`${selKelas} text-[10px] text-slate-500 leading-relaxed`}>{b.sebab}</td>
+                        <td className={`${selKelas} text-2xs text-slate-500 leading-relaxed`}>{b.sebab}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -296,7 +279,7 @@ export default function PersediaanTab({
                     <td className={`${selKelas} font-mono font-bold text-blue-800 whitespace-nowrap`}>{b.nomorBatch}</td>
                     <td className={`${selKelas} font-semibold text-slate-900`}>
                       <div>{b.namaAlkes}</div>
-                      <div className="text-[10px] text-slate-500 font-normal">{b.kodeSKU}</div>
+                      <div className="text-2xs text-slate-500 font-normal">{b.kodeSKU}</div>
                     </td>
                     <td className={`${selKelas} text-right`}>{b.qtyFisik}</td>
                     <td className={selKelas}>
@@ -306,7 +289,7 @@ export default function PersediaanTab({
                       {b.nilaiPerUnit === null ? 'BELUM ADA' : formatRupiah(b.nilaiPerUnit)}
                     </td>
                     <td className={`${selKelas} text-right font-bold`}>{b.nilaiPerUnit === null ? '-' : formatRupiah(b.nilaiTotal)}</td>
-                    <td className={`${selKelas} text-[10px] text-slate-500 leading-relaxed`}>
+                    <td className={`${selKelas} text-2xs text-slate-500 leading-relaxed`}>
                       <div>{b.catatan}</div>
                       {b.sebab && <div className="text-rose-700 font-semibold mt-0.5">Perlu write-off: {b.sebab}</div>}
                     </td>
@@ -403,7 +386,7 @@ export default function PersediaanTab({
                       <Badge tone={s.status === 'Terkirim' || s.status === 'Diterima Penerima' ? 'emerald' : 'amber'}>{s.status}</Badge>
                     </td>
                     <td className={`${selKelas} text-right`}>{s.qtyTotal}</td>
-                    <td className={`${selKelas} font-mono text-[10px] text-slate-500`}>{bets.join(', ') || '-'}</td>
+                    <td className={`${selKelas} font-mono text-2xs text-slate-500`}>{bets.join(', ') || '-'}</td>
                     <td className={selKelas}>
                       {sudahDibukukan ? (
                         <Badge tone="blue">HPP Terbukukan</Badge>
@@ -442,7 +425,7 @@ export default function PersediaanTab({
           <div className="space-y-3 text-xs">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="font-mono font-bold text-slate-900">{writeOff.nomorBatch}</div>
-              <div className="text-[11px] text-slate-600">Maksimal {writeOff.qtyMaks} unit sesuai kartu stok dan dasar biaya yang tercatat.</div>
+              <div className="text-xs text-slate-600">Maksimal {writeOff.qtyMaks} unit sesuai kartu stok dan dasar biaya yang tercatat.</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

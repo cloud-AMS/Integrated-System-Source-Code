@@ -102,7 +102,7 @@ export default function TraceabilityModal({
                 key={b}
                 type="button"
                 onClick={() => handleQuickPick(b)}
-                className="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-blue-700 rounded-lg font-mono text-[11px] font-semibold transition-colors cursor-pointer"
+                className="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:bg-blue-50 text-blue-700 rounded-lg font-mono text-xs font-semibold transition-colors cursor-pointer"
               >
                 {b}
               </button>
@@ -159,7 +159,7 @@ export default function TraceabilityModal({
                         <span>Produsen & Asal Batch</span>
                       </div>
                       <p className="text-xs text-slate-700 mt-1 font-medium">{result.produsen}</p>
-                      <p className="text-[10.5px] text-slate-500 mt-0.5">Sertifikasi CPAKB / ISO 13485 diverifikasi PJT</p>
+                      <p className="text-2xs text-slate-500 mt-0.5">Sertifikasi CPAKB / ISO 13485 diverifikasi PJT</p>
                     </div>
                   </div>
 
@@ -172,7 +172,7 @@ export default function TraceabilityModal({
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Penerimaan & Pengujian QC Mutu</span>
                         </div>
-                        <span className="text-[11px] font-mono text-slate-500">{result.tanggalPenerimaan}</span>
+                        <span className="text-xs font-mono text-slate-500">{result.tanggalPenerimaan}</span>
                       </div>
                       <p className="text-xs text-slate-700 mt-1">Hasil: <span className="font-bold text-emerald-700">{result.hasilInspeksiQC}</span></p>
                     </div>
@@ -187,7 +187,7 @@ export default function TraceabilityModal({
                         <span>Penyimpanan Gudang & Pemantauan Suhu CDAKB</span>
                       </div>
                       <p className="text-xs text-slate-700 mt-1">Lokasi: <span className="font-semibold">{result.lokasiGudang}</span></p>
-                      <div className="flex items-center gap-2 text-[11px] text-blue-800 font-semibold mt-1">
+                      <div className="flex items-center gap-2 text-xs text-blue-800 font-semibold mt-1">
                         <Thermometer className="w-3.5 h-3.5 text-blue-600" />
                         <span>Kondisi Suhu: {result.logSuhuStatus}</span>
                       </div>
@@ -209,11 +209,11 @@ export default function TraceabilityModal({
                             <div key={i} className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs flex items-center justify-between">
                               <div>
                                 <span className="font-bold text-slate-900 block">{f.nama}</span>
-                                <span className="text-[11px] text-slate-500 font-mono">Surat Jalan: {f.nomorSuratJalan}</span>
+                                <span className="text-xs text-slate-500 font-mono">Surat Jalan: {f.nomorSuratJalan}</span>
                               </div>
                               <div className="text-right">
                                 <span className="text-xs font-bold text-blue-700">{f.jumlah} Unit/Box</span>
-                                <span className="text-[10px] text-slate-500 block">{f.tanggalKirim}</span>
+                                <span className="text-2xs text-slate-500 block">{f.tanggalKirim}</span>
                               </div>
                             </div>
                           ))}

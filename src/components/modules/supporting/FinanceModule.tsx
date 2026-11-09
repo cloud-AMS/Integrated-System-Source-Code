@@ -41,7 +41,7 @@ export default function FinanceModule({ currentRole }: { currentRole?: UserRole 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
               Keuangan & Anggaran Mutu
             </span>
             <span className="text-xs text-slate-500">Perpajakan PPN Alkes & Biaya Audit Kepatuhan</span>
@@ -52,7 +52,7 @@ export default function FinanceModule({ currentRole }: { currentRole?: UserRole 
           <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
             Pencatatan faktur komersial fasyankes, kepatuhan pajak PPN 11% alkes, serta pemantauan anggaran jaminan mutu (biaya kalibrasi BPFK, audit ISO 13485, dan retur).
           </p>
-          <p className="text-[10px] text-slate-500 mt-2">
+          <p className="text-2xs text-slate-500 mt-2">
             Aktif sebagai <strong className="text-slate-700">{identitas.pengguna}</strong> ({identitas.peran}) — {identitas.bolehPosting ? 'berhak mem-posting jurnal dan tutup buku' : 'berhak mengajukan draf; posting dilakukan PJT / QA Manager'} · tanggal acuan pembukuan {TANGGAL_ACUAN_BENIH}
           </p>
         </div>

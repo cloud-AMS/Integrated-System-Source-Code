@@ -1359,6 +1359,44 @@ export interface KonfigurasiSurat {
 // dan versi terbit, setiap item punya id + isActive, dan seluruh perubahan tercatat
 // pada audit trail (Old Value / New Value).
 
+// ==================== TAMPILAN SITUS PUBLIK (CMS Template) ====================
+// Ditambahkan 2026-11: admin mengatur template, warna merek, font, dan urutan seksi
+// Beranda dari menu Website. Semua opsional pada tipe data — konfigurasi lama tanpa
+// field ini tetap sah (dinormalkan oleh tampilanEfektif di src/utils/tampilan.ts).
+
+export type TemplateSitus = 'remedi-klasik' | 'remedi-gelap' | 'remedi-minimal';
+export type FontSitus = 'quicksand' | 'open-sans' | 'jetbrains-mono' | 'system';
+
+/** Seksi beranda yang bisa disusun ulang dari CMS (bagian dari PETA_HALAMAN.beranda). */
+export type KunciSeksiSitus =
+  | 'hero'
+  | 'slide'
+  | 'kepercayaan'
+  | 'solusi'
+  | 'konsultasi'
+  | 'statistik'
+  | 'produk'
+  | 'merek'
+  | 'perjalanan'
+  | 'institusi'
+  | 'kegiatan'
+  | 'promo'
+  | 'artikel'
+  | 'testimoni'
+  | 'faq';
+export interface TampilanSitus {
+  /** id template dasar — menentukan gaya header/hero/footer & kepadatan */
+  templateId: TemplateSitus;
+  /** warna merek utama (tombol, aksen, tautan) — hex #RRGGBB */
+  warnaUtama: string;
+  /** warna merek sekunder (hover / aksen lemah) — hex #RRGGBB */
+  warnaAksen: string;
+  /** id font antarmuka situs */
+  fontId: FontSitus;
+  /** urutan seksi Beranda; seksi yang tidak dicantumkan dibuang dari beranda */
+  berandaUrutan: KunciSeksiSitus[];
+}
+
 export type HalamanWebsite =
   | 'beranda'
   | 'produk'
@@ -1677,4 +1715,7 @@ export interface KonfigurasiSitus {
   sosial: SeksiDaftar<SosialWebsite>;
   footerKolom: KolomFooterWebsite[];
   footerCatatan: string;
+  /** Pengaturan visual: template, warna merek, font, urutan seksi Beranda (opsional;
+   *  konfigurasi lama tanpa field ini dinormalkan ke default REMEDI Klasik). */
+  tampilan?: TampilanSitus;
 }

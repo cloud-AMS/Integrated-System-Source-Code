@@ -12,18 +12,7 @@ import {
   ClipboardList,
   CalendarClock
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const toneRisiko = (tingkat: InsidenK3['tingkatRisiko']): Tone =>
   tingkat === 'Tinggi' ? 'rose' : tingkat === 'Sedang' ? 'amber' : 'slate';
@@ -179,7 +168,7 @@ export default function HSEModule() {
                     <h4 className="text-xs font-bold text-slate-900">{i.nomorLaporan} — {i.jenis}</h4>
                     <Badge tone={toneRisiko(i.tingkatRisiko)}>Risiko {i.tingkatRisiko}</Badge>
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-1">
+                  <div className="text-xs text-slate-600 mt-1">
                     {i.area} • {formatTanggal(i.tanggal)} •{' '}
                     {i.hariKehilangan > 0 ? `${i.hariKehilangan} hari kehilangan kerja` : 'tanpa hari kehilangan'}
                   </div>
@@ -187,7 +176,7 @@ export default function HSEModule() {
                 <div className="flex items-center gap-2">
                   <Badge tone={toneStatusInsiden(i.status)}>{i.status}</Badge>
                   <select
-                    className="text-[10px] border border-slate-300 rounded px-1.5 py-1 bg-white cursor-pointer"
+                    className="text-2xs border border-slate-300 rounded px-1.5 py-1 bg-white cursor-pointer"
                     value={i.status}
                     onChange={(e) => ubahStatusInsiden(i.id, e.target.value as InsidenK3['status'])}
                   >
@@ -197,12 +186,12 @@ export default function HSEModule() {
                   </select>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-700 leading-relaxed mt-2">{i.kronologi}</p>
+              <p className="text-xs text-slate-700 leading-relaxed mt-2">{i.kronologi}</p>
               <div className="mt-2 rounded-lg bg-slate-50 border border-slate-200 p-2.5">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+                <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
                   Tindakan korektif / preventif
                 </div>
-                <p className="text-[11px] text-slate-700 leading-relaxed">{i.tindakanKorektif}</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{i.tindakanKorektif}</p>
               </div>
             </div>
           ))}
@@ -236,7 +225,7 @@ export default function HSEModule() {
                       {m.jenisPemeriksaan}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-[11px] text-slate-600">{m.paparan}</td>
+                  <td className="py-3 px-4 text-xs text-slate-600">{m.paparan}</td>
                   <td className="py-3 px-4 font-mono text-slate-700">{formatTanggal(m.tanggalMcu)}</td>
                   <td className="py-3 px-4">
                     <Badge tone={toneHasilMcu(m.hasil)}>{m.hasil}</Badge>
@@ -247,7 +236,7 @@ export default function HSEModule() {
                       <CalendarClock className="w-3.5 h-3.5 text-slate-500" />
                       {formatTanggal(m.jadwalBerikutnya)}
                     </span>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
+                    <div className="text-2xs text-slate-500 mt-0.5">
                       sisa {hitungSisaHari(m.jadwalBerikutnya)} hari
                     </div>
                   </td>
@@ -277,13 +266,13 @@ export default function HSEModule() {
                     <Shield className="w-3.5 h-3.5 text-slate-500" />
                     {a.jenisApd}
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-0.5">{a.nama}</div>
+                  <div className="text-xs text-slate-600 mt-0.5">{a.nama}</div>
                 </div>
                 <Badge tone={a.tandaTerima ? 'emerald' : 'amber'}>
                   {a.tandaTerima ? 'Tanda Tangan Diterima' : 'Menunggu Tanda Tangan'}
                 </Badge>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-600">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-2xs text-slate-600">
                 <div>Standar: <strong className="text-slate-800">{a.standar}</strong></div>
                 <div>Jumlah: <strong className="text-slate-800">{a.jumlah} unit</strong></div>
                 <div>Tanggal: <strong className="font-mono text-slate-800">{formatTanggal(a.tanggalDistribusi)}</strong></div>
@@ -358,7 +347,7 @@ export default function HSEModule() {
                 />
               </div>
               <div className="flex items-end">
-                <p className="text-[10px] text-slate-500 leading-snug">
+                <p className="text-2xs text-slate-500 leading-snug">
                   0 untuk near miss tanpa korban; dihitung untuk komponen LTIFR.
                 </p>
               </div>

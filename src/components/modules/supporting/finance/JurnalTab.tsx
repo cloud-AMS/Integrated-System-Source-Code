@@ -2,26 +2,8 @@ import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
 import type { JurnalKeuangan } from '../../../../types';
 import { KODE_AKUN, balikanJurnal, bukuBesar, verifikasiRantaiJurnal } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  type IdentitasFinance,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatRupiah,
-  formatTanggal,
-  kepalaTabelKelas,
-  nomorJurnalBerikutnya,
-  pesanClass,
-  selKelas,
-  tabelKelas,
-  tombolBahaya,
-  tombolPrimer,
-  tombolSekunder,
-  toneStatusJurnal,
-  totalSisi
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, formatRupiah, formatTanggal, tombolBahaya, tombolPrimer, tombolSekunder } from '../../../ui';
+import { type IdentitasFinance, kepalaTabelKelas, nomorJurnalBerikutnya, pesanClass, selKelas, tabelKelas, toneStatusJurnal, totalSisi } from './ui';
 import { Link2, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 const FILTER_STATUS = ['Semua', 'Posted', 'Draft', 'Void'] as const;
@@ -210,13 +192,13 @@ export default function JurnalTab({
                     <td className={selKelas}>{formatTanggal(j.tanggalTransaksi)}</td>
                     <td className={`${selKelas} font-semibold text-slate-900`}>{j.uraian}</td>
                     <td className={`${selKelas} text-slate-600 whitespace-nowrap`}>{j.sumberRujukan}</td>
-                    <td className={`${selKelas} font-mono text-[10px] text-slate-600`}>{j.idRujukan}</td>
+                    <td className={`${selKelas} font-mono text-2xs text-slate-600`}>{j.idRujukan}</td>
                     <td className={`${selKelas} text-right font-bold`}>{formatRupiah(totalSisi(j, 'debit'))}</td>
                     <td className={selKelas}>
                       <Badge tone={toneStatusJurnal(j.status)}>{j.status}</Badge>
                     </td>
                     <td className={selKelas}>
-                      <span className={`inline-flex items-center gap-1 font-mono text-[10px] ${rusak ? 'text-rose-700' : 'text-slate-500'}`}>
+                      <span className={`inline-flex items-center gap-1 font-mono text-2xs ${rusak ? 'text-rose-700' : 'text-slate-500'}`}>
                         {rusak ? <ShieldAlert className="w-3.5 h-3.5" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                         {j.hash.slice(0, 10)}…
                       </span>
@@ -271,8 +253,8 @@ export default function JurnalTab({
                     <td className={`${selKelas} font-mono font-bold text-slate-800`}>
                       {b.akunKode} · {a?.nama ?? 'AKUN TIDAK DIKENAL'}
                     </td>
-                    <td className={`${selKelas} font-mono text-[10px]`}>{b.nomorBatch ?? '-'}</td>
-                    <td className={`${selKelas} text-[10px]`}>{b.pusatBiayaId ?? '-'}</td>
+                    <td className={`${selKelas} font-mono text-2xs`}>{b.nomorBatch ?? '-'}</td>
+                    <td className={`${selKelas} text-2xs`}>{b.pusatBiayaId ?? '-'}</td>
                     <td className={`${selKelas} text-right font-bold ${b.debit ? 'text-slate-900' : 'text-slate-300'}`}>{b.debit ? formatRupiah(b.debit) : '-'}</td>
                     <td className={`${selKelas} text-right font-bold ${b.kredit ? 'text-slate-900' : 'text-slate-300'}`}>{b.kredit ? formatRupiah(b.kredit) : '-'}</td>
                     <td className={`${selKelas} text-slate-600`}>{b.keterangan ?? '-'}</td>
@@ -290,7 +272,7 @@ export default function JurnalTab({
                 </td>
                 <td className={`${selKelas} text-right font-bold`}>{formatRupiah(totalSisi(detail, 'debit'))}</td>
                 <td className={`${selKelas} text-right font-bold`}>{formatRupiah(totalSisi(detail, 'kredit'))}</td>
-                <td className={`${selKelas} font-mono text-[10px] text-slate-500`}>{detail.hash.slice(0, 24)}…</td>
+                <td className={`${selKelas} font-mono text-2xs text-slate-500`}>{detail.hash.slice(0, 24)}…</td>
               </tr>
             </tfoot>
           </table>
@@ -318,19 +300,19 @@ export default function JurnalTab({
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 text-xs">
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Total Debet</div>
+            <div className="text-2xs text-slate-500">Total Debet</div>
             <div className="font-bold">{formatRupiah(besar.totalDebit)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Total Kredit</div>
+            <div className="text-2xs text-slate-500">Total Kredit</div>
             <div className="font-bold">{formatRupiah(besar.totalKredit)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Saldo ({besar.saldoNormal})</div>
+            <div className="text-2xs text-slate-500">Saldo ({besar.saldoNormal})</div>
             <div className="font-bold">{formatRupiah(besar.saldo)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Entri</div>
+            <div className="text-2xs text-slate-500">Entri</div>
             <div className="font-bold">{besar.entri.length}</div>
           </div>
         </div>
@@ -353,7 +335,7 @@ export default function JurnalTab({
                   <td className={selKelas}>{formatTanggal(e.tanggal)}</td>
                   <td className={`${selKelas} font-mono font-bold text-blue-800 whitespace-nowrap`}>{e.nomorJournal}</td>
                   <td className={`${selKelas} text-slate-700`}>{e.uraian}</td>
-                  <td className={`${selKelas} font-mono text-[10px]`}>{e.nomorBatch ?? '-'}</td>
+                  <td className={`${selKelas} font-mono text-2xs`}>{e.nomorBatch ?? '-'}</td>
                   <td className={`${selKelas} text-right`}>{e.debit ? formatRupiah(e.debit) : '-'}</td>
                   <td className={`${selKelas} text-right`}>{e.kredit ? formatRupiah(e.kredit) : '-'}</td>
                   <td className={`${selKelas} text-right font-bold`}>{formatRupiah(e.saldo)}</td>
@@ -380,7 +362,7 @@ export default function JurnalTab({
           <div className="space-y-3 text-xs">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="font-bold text-slate-900">{modalBalik.uraian}</div>
-              <div className="text-[11px] text-slate-600 mt-0.5">
+              <div className="text-xs text-slate-600 mt-0.5">
                 {modalBalik.baris.length} baris · {formatRupiah(totalSisi(modalBalik, 'debit'))} · posted {formatTanggal(modalBalik.tanggalPosting ?? '-')}
               </div>
             </div>

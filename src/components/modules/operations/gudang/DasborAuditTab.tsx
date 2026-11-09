@@ -10,22 +10,8 @@ import {
   Settings,
   ShieldAlert
 } from 'lucide-react';
-import {
-  Badge,
-  BarCapaian,
-  GudangTabId,
-  Modal,
-  Panel,
-  Stat,
-  TAB_NOMOR_KE_ID,
-  chipFilter,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  toneStatusStok,
-  type Tone
-} from './ui';
+import { Badge, BarCapaian, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { GudangTabId, TAB_NOMOR_KE_ID, toneStatusStok } from './ui';
 
 interface Props {
   dariAcuan: Date;

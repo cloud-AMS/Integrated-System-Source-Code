@@ -75,7 +75,7 @@ export default function QCModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-800">
               Pengawasan Mutu
             </span>
             <span className="text-xs text-slate-500">Klausul 8.2.6 ISO 13485 & Bab IV CDAKB</span>
@@ -180,18 +180,18 @@ export default function QCModule() {
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="py-3 px-4 font-medium text-slate-900">
                     <div className="font-mono text-emerald-800">{item.nomorLaporan}</div>
-                    <div className="text-[10px] text-slate-500">{item.tanggalInspeksi} • {item.jenisInspeksi}</div>
+                    <div className="text-2xs text-slate-500">{item.tanggalInspeksi} • {item.jenisInspeksi}</div>
                   </td>
                   <td className="py-3 px-4 font-semibold text-slate-800">{item.namaBarang}</td>
                   <td className="py-3 px-4 font-mono font-bold text-slate-700">{item.nomorBatch}</td>
                   <td className="py-3 px-4 font-medium">{item.jumlahDiperiksa} Sampel</td>
                   <td className="py-3 px-4 text-slate-600">
                     <div>{item.kondisiFisik}</div>
-                    <div className="text-[10px] text-slate-500">{item.kebersihan}</div>
+                    <div className="text-2xs text-slate-500">{item.kebersihan}</div>
                   </td>
                   <td className="py-3 px-4 font-mono text-slate-700">{item.tanggalKedaluwarsa}</td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                       item.hasilPemeriksaan.includes('Lolos')
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : item.hasilPemeriksaan.includes('Karantina')
@@ -200,7 +200,7 @@ export default function QCModule() {
                     }`}>
                       {item.hasilPemeriksaan}
                     </span>
-                    <div className="text-[10px] text-slate-500 mt-1">Oleh: {item.inspektur}</div>
+                    <div className="text-2xs text-slate-500 mt-1">Oleh: {item.inspektur}</div>
                   </td>
                 </tr>
               ))}

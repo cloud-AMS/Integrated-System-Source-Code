@@ -45,22 +45,7 @@ import {
   Upload,
   Users
 } from 'lucide-react';
-import {
-  Badge,
-  BarCapaian,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatPersen,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolBahaya,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, BarCapaian, Modal, Panel, Stat, chipFilter, formatPersen, formatTanggal, inputClass, labelClass, tombolBahaya, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 type Tampilan = 'dashboard' | 'subscribers' | 'lists' | 'campaigns' | 'templates' | 'media' | 'tx' | 'settings';
 

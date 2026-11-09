@@ -12,22 +12,7 @@ import {
   ShieldCheck,
   TrendingDown
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  BarCapaian,
-  formatRupiah,
-  formatTanggal,
-  formatPersen,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  chipFilter,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, BarCapaian, formatRupiah, formatTanggal, formatPersen, inputClass, labelClass, tombolPrimer, tombolSekunder, chipFilter, type Tone } from '../../../ui';
 
 const SUMBER: TenderAlkes['sumber'][] = ['LPSE', 'e-Katalog LKPP', 'E-Purchasing', 'Tender Mandiri RS'];
 
@@ -130,13 +115,13 @@ export default function TenderKontrakModule() {
           <div>
             <span className="font-bold block">Alert Sistem Lelang (LPSE Scraper)</span>
             {hampirTutup.map((t) => (
-              <div key={t.id} className="text-[11px] leading-relaxed">
+              <div key={t.id} className="text-xs leading-relaxed">
                 {t.nomorPengumuman} — {t.namaPengadaan} ({t.instansiPembuat}) tutup{' '}
                 {formatTanggal(t.batasAkhirPengajuan)} • sisa {selisihHari(t.batasAkhirPengajuan)} hari •{' '}
                 {t.sumber}
               </div>
             ))}
-            <div className="text-[11px] mt-1 leading-relaxed">
+            <div className="text-xs mt-1 leading-relaxed">
               Pastikan SDAK, ISO 13485, dan Nomor Izin Edar produk dilampirkan sebelum batas akhir; penawaran di bawah
               ambang margin wajar berisiko dinyatakan tidak memenuhi prinsip harga wajar LKPP.
             </div>
@@ -159,7 +144,7 @@ export default function TenderKontrakModule() {
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
             />
           </div>
-          <div className="flex items-center gap-1 text-[11px] flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap">
             {(['Semua', ...SUMBER] as const).map((s) => (
               <button key={s} type="button" onClick={() => setFilterSumber(s)} className={chipFilter(filterSumber === s)}>
                 {s}
@@ -190,17 +175,17 @@ export default function TenderKontrakModule() {
                     <td className="py-3 px-4 font-mono font-bold text-emerald-800">{t.nomorPengumuman}</td>
                     <td className="py-3 px-4">
                       <div className="font-semibold text-slate-900">{t.namaPengadaan}</div>
-                      <div className="text-[10px] text-slate-500">{t.produkDitawarkan}</div>
+                      <div className="text-2xs text-slate-500">{t.produkDitawarkan}</div>
                     </td>
                     <td className="py-3 px-4">
                       <Badge tone="slate">{t.sumber}</Badge>
-                      <div className="text-[10px] text-slate-600 mt-1">{t.instansiPembuat}</div>
-                      <div className="text-[10px] text-slate-500">{t.provinsi}</div>
+                      <div className="text-2xs text-slate-600 mt-1">{t.instansiPembuat}</div>
+                      <div className="text-2xs text-slate-500">{t.provinsi}</div>
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-slate-900">{formatRupiah(t.nilaiHps)}</td>
                     <td className="py-3 px-4">
-                      <div className="font-mono text-[11px] text-slate-700">{formatTanggal(t.batasAkhirPengajuan)}</div>
-                      <div className={`text-[10px] font-semibold ${sisa < 0 ? 'text-slate-500' : sisa <= 7 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                      <div className="font-mono text-xs text-slate-700">{formatTanggal(t.batasAkhirPengajuan)}</div>
+                      <div className={`text-2xs font-semibold ${sisa < 0 ? 'text-slate-500' : sisa <= 7 ? 'text-rose-700' : 'text-emerald-700'}`}>
                         {sisa < 0 ? `lewat ${Math.abs(sisa)} hari` : `sisa ${sisa} hari`}
                       </div>
                     </td>
@@ -244,14 +229,14 @@ export default function TenderKontrakModule() {
                   </div>
                   <Badge tone={toneKontrak(k.statusKontrak)}>{k.statusKontrak}</Badge>
                 </div>
-                <p className="text-[11px] text-slate-700 font-semibold">{namaPelanggan(k.pelangganId)}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-700 font-semibold">{namaPelanggan(k.pelangganId)}</p>
+                <p className="text-2xs text-slate-500 mt-0.5">
                   Periode {formatTanggal(k.periodeMulai)} — {formatTanggal(k.periodeSelesai)}
                   {k.statusKontrak === 'Aktif' && ` • sisa ${sisaSelesai} hari`}
                 </p>
                 <div className="mt-2 space-y-1">
                   {k.daftarHargaTerkunci.map((h) => (
-                    <div key={h.namaAlkes} className="flex items-center justify-between text-[10px] bg-white rounded-lg border border-slate-200 px-2.5 py-1.5">
+                    <div key={h.namaAlkes} className="flex items-center justify-between text-2xs bg-white rounded-lg border border-slate-200 px-2.5 py-1.5">
                       <span className="text-slate-700">{h.namaAlkes}</span>
                       <span className="font-mono font-semibold text-emerald-800">
                         {formatRupiah(h.hargaTerkunci)} / {h.satuan}
@@ -260,12 +245,12 @@ export default function TenderKontrakModule() {
                   ))}
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-slate-500">Ditandatangani {k.ditandatanganiOleh}</span>
+                  <span className="text-2xs text-slate-500">Ditandatangani {k.ditandatanganiOleh}</span>
                   <button type="button" onClick={() => setDetailKontrak(k)} className={tombolSekunder}>
                     Detail Kontrak
                   </button>
                 </div>
-                <div className={`mt-2 text-[10px] rounded-lg p-2 border ${k.verifikasiEtikaPromosiPjt === 'Memenuhi Etika Promosi' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+                <div className={`mt-2 text-2xs rounded-lg p-2 border ${k.verifikasiEtikaPromosiPjt === 'Memenuhi Etika Promosi' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
                   Verifikasi etika promosi PJT: {k.verifikasiEtikaPromosiPjt}
                 </div>
               </div>
@@ -295,7 +280,7 @@ export default function TenderKontrakModule() {
                 ))}
               </select>
               {tenderTerpilih && (
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-2xs text-slate-500 mt-1">
                   HPS {formatRupiah(tenderTerpilih.nilaiHps)} • {tenderTerpilih.instansiPembuat} • tutup{' '}
                   {formatTanggal(tenderTerpilih.batasAkhirPengajuan)}
                 </p>
@@ -390,21 +375,21 @@ export default function TenderKontrakModule() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Harga Penawaran</div>
+                    <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">Harga Penawaran</div>
                     <div className="text-sm font-bold text-slate-900 font-mono mt-1">{formatRupiah(hasilMargin.hargaPenawaran)}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Termasuk PPN: {formatRupiah(hasilMargin.hargaSetelahPpn)}</div>
+                    <div className="text-2xs text-slate-500 mt-0.5">Termasuk PPN: {formatRupiah(hasilMargin.hargaSetelahPpn)}</div>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Margin Kotor</div>
+                    <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">Margin Kotor</div>
                     <div className="text-sm font-bold text-blue-700 font-mono mt-1">{formatRupiah(hasilMargin.marginKotor)}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">{formatPersen(hasilMargin.marginKotorPersen, 1)} dari penawaran</div>
+                    <div className="text-2xs text-slate-500 mt-0.5">{formatPersen(hasilMargin.marginKotorPersen, 1)} dari penawaran</div>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Margin Bersih</div>
+                    <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">Margin Bersih</div>
                     <div className={`text-sm font-bold font-mono mt-1 ${hasilMargin.marginBersihPersen >= 15 ? 'text-emerald-700' : hasilMargin.marginBersihPersen >= 8 ? 'text-amber-700' : 'text-rose-700'}`}>
                       {formatRupiah(hasilMargin.marginBersih)}
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">{formatPersen(hasilMargin.marginBersihPersen, 1)} dari penawaran</div>
+                    <div className="text-2xs text-slate-500 mt-0.5">{formatPersen(hasilMargin.marginBersihPersen, 1)} dari penawaran</div>
                   </div>
                 </div>
 
@@ -441,7 +426,7 @@ export default function TenderKontrakModule() {
                   />
                 </div>
 
-                <div className={`text-[11px] leading-relaxed rounded-xl p-3 border flex items-start gap-2 ${hasilMargin.marginBersihPersen >= 15 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : hasilMargin.marginBersihPersen >= 8 ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-rose-50 border-rose-200 text-rose-900'}`}>
+                <div className={`text-xs leading-relaxed rounded-xl p-3 border flex items-start gap-2 ${hasilMargin.marginBersihPersen >= 15 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : hasilMargin.marginBersihPersen >= 8 ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-rose-50 border-rose-200 text-rose-900'}`}>
                   <TrendingDown className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{hasilMargin.rekomendasi}</span>
                 </div>
@@ -464,20 +449,20 @@ export default function TenderKontrakModule() {
                 ['NIE Dipersyaratkan', detail.nomorIzinEdarDipersyaratkan]
               ].map(([label, nilai]) => (
                 <div key={label}>
-                  <dt className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
+                  <dt className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
                   <dd className="text-slate-800 font-semibold mt-0.5">{nilai}</dd>
                 </div>
               ))}
             </div>
 
             <div>
-              <h4 className="text-[11px] font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
                 <Gavel className="w-3.5 h-3.5" />
                 Persyaratan kunci dokumen
               </h4>
               <ul className="space-y-1">
                 {detail.persyaratanKunci.map((s) => (
-                  <li key={s} className="text-[11px] text-slate-700 flex items-start gap-2">
+                  <li key={s} className="text-xs text-slate-700 flex items-start gap-2">
                     <Badge tone="slate">Wajib</Badge>
                     {s}
                   </li>
@@ -486,19 +471,19 @@ export default function TenderKontrakModule() {
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Hasil pengecekan Nomor Izin Edar</div>
+              <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Hasil pengecekan Nomor Izin Edar</div>
               {(() => {
                 const nie = validasiNomorIzinEdar(detail.nomorIzinEdarDipersyaratkan, izinEdar);
                 return (
                   <div className="flex items-start gap-2">
                     <Badge tone={nie.status === 'Lolos' ? 'emerald' : 'rose'}>{nie.status}</Badge>
-                    <p className="text-[11px] text-slate-700 leading-relaxed">{nie.keterangan}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{nie.keterangan}</p>
                   </div>
                 );
               })()}
             </div>
 
-            <div className="text-[11px] text-slate-600 flex items-center gap-2">
+            <div className="text-xs text-slate-600 flex items-center gap-2">
               <Link2 className="w-3.5 h-3.5" />
               Berkas pengumuman: <span className="font-mono">{detail.tautanPengumuman}</span>
             </div>
@@ -550,7 +535,7 @@ export default function TenderKontrakModule() {
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-slate-500 mt-3 leading-relaxed">
+          <p className="text-2xs text-slate-500 mt-3 leading-relaxed">
             Ditandatangani oleh {detailKontrak.ditandatanganiOleh}. Verifikasi etika promosi PJT:{' '}
             {detailKontrak.verifikasiEtikaPromosiPjt}.
           </p>

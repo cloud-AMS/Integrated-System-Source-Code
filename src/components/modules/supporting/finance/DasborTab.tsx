@@ -8,21 +8,8 @@ import {
   susunNeraca,
   verifikasiRantaiJurnal
 } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  BarCapaian,
-  type FinanceTabId,
-  type IdentitasFinance,
-  Panel,
-  Stat,
-  formatRupiah,
-  formatTanggal,
-  kepalaTabelKelas,
-  selKelas,
-  tabelKelas,
-  toneStatusJurnal,
-  totalSisi
-} from './ui';
+import { Badge, BarCapaian, Panel, Stat, formatRupiah, formatTanggal } from '../../../ui';
+import { type FinanceTabId, type IdentitasFinance, kepalaTabelKelas, selKelas, tabelKelas, toneStatusJurnal, totalSisi } from './ui';
 import { AlertTriangle, Link2, Scale, ShieldCheck } from 'lucide-react';
 
 interface Penyimpangan {
@@ -245,13 +232,13 @@ export default function DasborTab({
                       <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${p.tingkat === 'galat' ? 'text-rose-700' : 'text-amber-700'}`} />
                       <div className="flex-1">
                         <div className="text-xs font-bold text-slate-900">{p.judul}</div>
-                        <p className="text-[11px] text-slate-700 mt-0.5 leading-relaxed">{p.keterangan}</p>
+                        <p className="text-xs text-slate-700 mt-0.5 leading-relaxed">{p.keterangan}</p>
                       </div>
                       {p.tab && (
                         <button
                           type="button"
                           onClick={() => onPilihTab(p.tab as FinanceTabId)}
-                          className="text-[11px] font-bold text-blue-700 hover:text-blue-900 cursor-pointer whitespace-nowrap"
+                          className="text-xs font-bold text-blue-700 hover:text-blue-900 cursor-pointer whitespace-nowrap"
                         >
                           Tangani →
                         </button>
@@ -314,7 +301,7 @@ export default function DasborTab({
               </tr>
             </tbody>
           </table>
-          <div className="flex items-center gap-2 mt-3 text-[10px] text-slate-500">
+          <div className="flex items-center gap-2 mt-3 text-2xs text-slate-500">
             <Link2 className="w-3.5 h-3.5" />
             <span>Rantai: {data.rantai.sejakGenesis ? 'berakar pada genesis' : 'berakar pada titik cui'} · </span>
             <Scale className="w-3.5 h-3.5" />
@@ -350,7 +337,7 @@ export default function DasborTab({
                   <td className={selKelas}>
                     <Badge tone={toneStatusJurnal(j.status)}>{j.status}</Badge>
                   </td>
-                  <td className={`${selKelas} font-mono text-[10px] text-slate-500`}>{j.hash.slice(0, 12)}…</td>
+                  <td className={`${selKelas} font-mono text-2xs text-slate-500`}>{j.hash.slice(0, 12)}…</td>
                 </tr>
               ))}
           </tbody>

@@ -93,7 +93,7 @@ export default function ProcurementModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300">
               Rantai Pasok Legal
             </span>
             <span className="text-xs text-slate-500">Klausul 7.4 ISO 13485:2016 (Pengendalian Pemasok)</span>
@@ -166,10 +166,10 @@ export default function ProcurementModule() {
             <div key={p.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                  <span className="text-2xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
                     {p.kategori}
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="text-2xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
                     {p.statusAuditMutu}
                   </span>
                 </div>
@@ -182,22 +182,22 @@ export default function ProcurementModule() {
 
                 <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5 text-xs text-slate-700">
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Izin Penyalur / SDAK / LOA:</span>
-                    <span className="font-mono font-medium text-[11px] text-blue-800">{p.nomorIzinPenyalur}</span>
+                    <span className="text-2xs text-slate-500 block">Izin Penyalur / SDAK / LOA:</span>
+                    <span className="font-mono font-medium text-xs text-blue-800">{p.nomorIzinPenyalur}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">Kontak Resmi:</span>
-                    <span className="text-[11px] font-mono text-slate-600">{p.kontak}</span>
+                    <span className="text-2xs text-slate-500 block">Kontak Resmi:</span>
+                    <span className="text-xs font-mono text-slate-600">{p.kontak}</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Skor Evaluasi:</span>
+                  <span className="text-2xs text-slate-500 block">Skor Evaluasi:</span>
                   <span className="font-extrabold text-blue-700 text-sm">{p.skorEvaluasi}/100</span>
                 </div>
-                <div className="text-right text-[10px] text-slate-500">
+                <div className="text-right text-2xs text-slate-500">
                   Audit: {p.tanggalEvaluasiTerakhir}
                 </div>
               </div>
@@ -231,14 +231,14 @@ export default function ProcurementModule() {
                     Rp {po.totalNilai.toLocaleString('id-ID')}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                       po.status === 'Tiba di Gudang'
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : 'bg-blue-100 text-blue-800 border border-blue-300'
                     }`}>
                       {po.status}
                     </span>
-                    <div className="text-[10px] text-slate-500 mt-1">{po.catatanPJT}</div>
+                    <div className="text-2xs text-slate-500 mt-1">{po.catatanPJT}</div>
                   </td>
                 </tr>
               ))}

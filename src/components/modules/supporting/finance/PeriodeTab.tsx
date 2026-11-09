@@ -2,25 +2,8 @@ import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
 import type { PeriodeBuku } from '../../../../types';
 import { alokasiBiayaMutu, periodeDari } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  type IdentitasFinance,
-  Panel,
-  Stat,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  kepalaTabelKelas,
-  labelClass,
-  pesanClass,
-  selKelas,
-  tabelKelas,
-  tombolBahaya,
-  tombolPrimer,
-  tombolSekunder,
-  toneStatusPeriode,
-  totalSisi
-} from './ui';
+import { Badge, Panel, Stat, formatRupiah, formatTanggal, inputClass, labelClass, tombolBahaya, tombolPrimer, tombolSekunder } from '../../../ui';
+import { type IdentitasFinance, kepalaTabelKelas, pesanClass, selKelas, tabelKelas, toneStatusPeriode, totalSisi } from './ui';
 import { Lock, Unlock } from 'lucide-react';
 
 const STATUS_BERIKUTNYA: Record<PeriodeBuku['status'], PeriodeBuku['status'][]> = {
@@ -135,7 +118,7 @@ export default function PeriodeTab({
                     <td className={`${selKelas} font-mono font-bold text-blue-800 whitespace-nowrap`}>
                       {p.label}
                       {p.id === periodeDari(isoAcuan) && (
-                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">MASA ACUAN</span>
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-3xs font-bold bg-blue-100 text-blue-800">MASA ACUAN</span>
                       )}
                     </td>
                     <td className={selKelas}>
@@ -146,10 +129,10 @@ export default function PeriodeTab({
                     </td>
                     <td className={`${selKelas} text-right ${r.draft ? 'text-amber-700 font-bold' : 'text-slate-400'}`}>{r.draft}</td>
                     <td className={`${selKelas} text-right font-bold`}>{formatRupiah(r.nilai)}</td>
-                    <td className={`${selKelas} text-[10px] text-slate-600`}>
+                    <td className={`${selKelas} text-2xs text-slate-600`}>
                       {p.ditutupPada ? `${formatTanggal(p.ditutupPada)} · ${p.ditutupOleh}` : '-'}
                     </td>
-                    <td className={`${selKelas} text-[10px] text-slate-500`}>{p.alasan || '-'}</td>
+                    <td className={`${selKelas} text-2xs text-slate-500`}>{p.alasan || '-'}</td>
                     <td className={selKelas}>
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         {STATUS_BERIKUTNYA[p.status].map((s) => (
@@ -191,7 +174,7 @@ export default function PeriodeTab({
               <label className={labelClass}>Nomor BMR Terkait (opsional)</label>
               <input type="text" value={nomorBmr} onChange={(e) => setNomorBmr(e.target.value)} placeholder="BMR-2024-0142" className={`${inputClass} font-mono`} />
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600 leading-relaxed">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 leading-relaxed">
               {alokasi.alasan}
             </div>
           </div>
@@ -199,11 +182,11 @@ export default function PeriodeTab({
           <div className="lg:col-span-2">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">Masuk COGM / HPP</div>
+                <div className="text-2xs text-slate-500">Masuk COGM / HPP</div>
                 <div className={`font-bold ${alokasi.keHpp ? 'text-emerald-700' : 'text-slate-400'}`}>{formatRupiah(alokasi.keHpp)}</div>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">Masuk Beban Operasional</div>
+                <div className="text-2xs text-slate-500">Masuk Beban Operasional</div>
                 <div className={`font-bold ${alokasi.keBebanOperasional ? 'text-blue-700' : 'text-slate-400'}`}>{formatRupiah(alokasi.keBebanOperasional)}</div>
               </div>
             </div>
@@ -242,7 +225,7 @@ export default function PeriodeTab({
               >
                 Telusuri BMR ke Batch Produksi
               </button>
-              <span className="text-[10px] text-slate-500">Penelusuran ini membaca modul Warehouse; tanpa BMR yang sah, alokasi ke HPP akan salah harga pokok.</span>
+              <span className="text-2xs text-slate-500">Penelusuran ini membaca modul Warehouse; tanpa BMR yang sah, alokasi ke HPP akan salah harga pokok.</span>
             </div>
           </div>
         </div>

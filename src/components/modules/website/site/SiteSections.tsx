@@ -73,7 +73,7 @@ function KepalaSeksiTampil({
     <div className={`flex flex-col gap-3 ${rata === 'tengah' ? 'items-center text-center' : 'sm:flex-row sm:items-end sm:justify-between'}`}>
       <div className="max-w-2xl">
         {kepala.eyebrow && (
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">{kepala.eyebrow}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand)]">{kepala.eyebrow}</p>
         )}
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 leading-tight">{kepala.judul}</h2>
         {kepala.subjudul && <p className="text-sm text-slate-600 mt-2 leading-relaxed">{kepala.subjudul}</p>}
@@ -102,7 +102,7 @@ export function TombolSitus({
 }) {
   const label = teks || tautan?.nilai || 'Selengkapnya';
   const kelas = {
-    isi: 'bg-teal-600 text-white hover:bg-teal-700 border border-teal-600',
+    isi: 'bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] border border-[var(--brand)]',
     garis: 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-300',
     terang: 'bg-white text-slate-900 hover:bg-slate-100 border border-white'
   }[varian];
@@ -169,11 +169,11 @@ export function SeksiHero({ cfg, ke }: PropsSeksi) {
   const hero = cfg.hero;
   if (!hero.isActive) return null;
   return (
-    <section className="bg-white border-b border-slate-200">
+    <section className="situs-hero bg-white border-b border-slate-200">
       <div className={`${WADAH} py-10 sm:py-14 grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center`}>
         <div>
           {hero.badge && (
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-800 bg-teal-50 border border-teal-200 rounded-full px-3 py-1">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] rounded-full px-3 py-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               {hero.badge}
             </p>
@@ -225,7 +225,7 @@ export function SeksiSlide({ cfg, ke }: PropsSeksi) {
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-900/45 to-transparent flex items-center">
             <div className="p-6 sm:p-10 max-w-xl">
               {slide.eyebrow && (
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-200">{slide.eyebrow}</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--brand)_55%,white)]">{slide.eyebrow}</p>
               )}
               <h3 className="text-xl sm:text-2xl font-bold text-white mt-2 whitespace-pre-line">{slide.judul}</h3>
               {slide.subjudul && <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed">{slide.subjudul}</p>}
@@ -245,7 +245,7 @@ export function SeksiSlide({ cfg, ke }: PropsSeksi) {
                 type="button"
                 aria-label={`Tampilkan banner ${i + 1}`}
                 onClick={() => setIndeks(i)}
-                className={`h-2 rounded-full transition-all cursor-pointer ${i === indeks ? 'w-6 bg-teal-600' : 'w-2 bg-slate-300'}`}
+                className={`h-2 rounded-full transition-all cursor-pointer ${i === indeks ? 'w-6 bg-[var(--brand)]' : 'w-2 bg-slate-300'}`}
               />
             ))}
           </div>
@@ -267,7 +267,7 @@ export function SeksiKepercayaan({ cfg }: { cfg: KonfigurasiSitus }) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
           {daftar.map((l) => (
             <div key={l.id} className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <BadgeCheck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+              <BadgeCheck className="w-5 h-5 text-[var(--brand)] shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-bold text-slate-800">{l.teks}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{l.keterangan}</p>
@@ -300,19 +300,19 @@ export function SeksiSolusi({ cfg, ke }: PropsSeksi) {
                 key={s.id}
                 type="button"
                 onClick={() => ke('produk', kunciFilter)}
-                className="group text-left bg-white border border-slate-200 rounded-2xl p-5 hover:border-teal-300 hover:shadow-sm transition-all cursor-pointer flex flex-col"
+                className="group text-left bg-white border border-slate-200 rounded-2xl p-5 hover:border-[color-mix(in_srgb,var(--brand)_45%,white)] hover:shadow-sm transition-all cursor-pointer flex flex-col"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <Sparkles className="w-5 h-5 text-teal-600 shrink-0" />
+                  <Sparkles className="w-5 h-5 text-[var(--brand)] shrink-0" />
                   <span className="text-2xs font-semibold tabular-nums text-slate-500">
                     {hitunganProduk} produk
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-700 transition-colors mt-3">
+                <h3 className="text-base font-bold text-slate-900 group-hover:text-[var(--brand)] transition-colors mt-3">
                   {s.judul}
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed flex-1">{s.deskripsi}</p>
-                <span className="mt-4 pt-3 border-t border-slate-100 inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700">
+                <span className="mt-4 pt-3 border-t border-slate-100 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand)]">
                   Telusuri grup ini
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
@@ -354,7 +354,7 @@ export function SeksiStatistik({ cfg }: { cfg: KonfigurasiSitus }) {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-7">
           {daftar.map((s) => (
             <div key={s.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-              <p className="text-3xl font-bold text-teal-700">{s.nilai}</p>
+              <p className="text-3xl font-bold text-[var(--brand)]">{s.nilai}</p>
               <p className="text-xs font-bold text-slate-800 mt-1">{s.label}</p>
               <p className="text-2xs text-slate-500 mt-1 leading-snug">{s.keterangan}</p>
             </div>
@@ -409,7 +409,7 @@ export function SeksiPerjalanan({ cfg }: { cfg: KonfigurasiSitus }) {
         <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-7">
           {daftar.map((p, i) => (
             <li key={p.id} className="bg-white border border-slate-200 rounded-2xl p-5">
-              <span className="inline-flex w-8 h-8 rounded-full bg-teal-600 text-white text-xs font-bold items-center justify-center">
+              <span className="inline-flex w-8 h-8 rounded-full bg-[var(--brand)] text-white text-xs font-bold items-center justify-center">
                 {i + 1}
               </span>
               <p className="text-2xs font-bold uppercase tracking-wider text-slate-400 mt-3">{p.tahap}</p>
@@ -433,7 +433,7 @@ export function SeksiInstitusi({ cfg, ke }: PropsSeksi) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
           {daftar.map((i) => (
             <div key={i.id} className="border border-slate-200 rounded-2xl p-5">
-              <Building2 className="w-5 h-5 text-teal-600" />
+              <Building2 className="w-5 h-5 text-[var(--brand)]" />
               <h3 className="text-base font-bold text-slate-900 mt-3">{i.nama}</h3>
               {typeof i.jumlahPelanggan === 'number' && (
                 <p className="text-xs font-semibold text-emerald-700 mt-1">
@@ -471,9 +471,9 @@ export function SeksiKegiatan({ cfg, ke }: PropsSeksi) {
             return (
               <article key={k.id} className="bg-white border border-slate-200 rounded-2xl p-5">
                 <div className="flex items-start gap-3">
-                  <div className="shrink-0 w-14 rounded-xl bg-teal-50 border border-teal-200 text-center py-1.5">
-                    <p className="text-base font-bold text-teal-800 leading-none">{tgl.hari}</p>
-                    <p className="text-2xs font-semibold text-teal-700 mt-0.5">{tgl.bulan}</p>
+                  <div className="shrink-0 w-14 rounded-xl bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] text-center py-1.5">
+                    <p className="text-base font-bold text-[var(--brand)] leading-none">{tgl.hari}</p>
+                    <p className="text-2xs font-semibold text-[var(--brand)] mt-0.5">{tgl.bulan}</p>
                     <p className="text-2xs text-slate-500">{tgl.tahun}</p>
                   </div>
                   <div>
@@ -513,7 +513,7 @@ export function SeksiPromo({ cfg, ke }: PropsSeksi) {
           {daftar.map((p) => (
             <article key={p.id} className="border border-slate-200 rounded-2xl p-5 bg-slate-50">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-2xs font-bold uppercase tracking-wider text-white bg-teal-600 rounded-full px-2.5 py-0.5">
+                <span className="text-2xs font-bold uppercase tracking-wider text-white bg-[var(--brand)] rounded-full px-2.5 py-0.5">
                   {p.badge || 'Penawaran'}
                 </span>
                 {p.periode && <span className="text-2xs text-slate-500">{p.periode}</span>}
@@ -544,7 +544,7 @@ export function SeksiArtikel({ cfg }: { cfg: KonfigurasiSitus }) {
             <article key={a.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
               <GambarSitus rujukan={a.imageUrl} alt={a.judul} kelas="w-full h-40" />
               <div className="p-5">
-                <p className="text-2xs font-bold uppercase tracking-wider text-teal-700">
+                <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">
                   {a.kategori} · {a.tanggal}
                 </p>
                 <h3 className="text-base font-bold text-slate-900 mt-2 leading-snug">{a.judul}</h3>
@@ -596,7 +596,7 @@ export function SeksiTestimoni({ cfg }: { cfg: KonfigurasiSitus }) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
           {daftar.map((t) => (
             <blockquote key={t.id} className="bg-white border border-slate-200 rounded-2xl p-5">
-              <Quote className="w-5 h-5 text-teal-200" />
+              <Quote className="w-5 h-5 text-[color-mix(in_srgb,var(--brand)_55%,white)]" />
               <p className="text-xs text-slate-700 mt-3 leading-relaxed">{t.kutipan}</p>
               <footer className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-xs font-bold text-slate-900">{t.penulis}</p>
@@ -630,7 +630,7 @@ export function SeksiFaq({ cfg }: { cfg: KonfigurasiSitus }) {
                   onClick={() => setTerbuka(aktif ? null : f.id)}
                   className="w-full text-left px-5 py-4 flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
                 >
-                  <CircleHelp className={`w-4 h-4 shrink-0 ${aktif ? 'text-teal-600' : 'text-slate-400'}`} />
+                  <CircleHelp className={`w-4 h-4 shrink-0 ${aktif ? 'text-[var(--brand)]' : 'text-slate-400'}`} />
                   <span className="text-sm font-semibold text-slate-800 flex-1">{f.pertanyaan}</span>
                   <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${aktif ? 'rotate-180' : ''}`} />
                 </button>
@@ -668,7 +668,7 @@ export function SeksiTentang({ cfg }: { cfg: KonfigurasiSitus }) {
             <div className="grid grid-cols-2 gap-3 mt-4">
               {seksi.capaian.map((c, i) => (
                 <div key={`${c.label}-${i}`} className="bg-white border border-slate-200 rounded-xl p-3">
-                  <p className="text-xl font-bold text-teal-700">{c.nilai}</p>
+                  <p className="text-xl font-bold text-[var(--brand)]">{c.nilai}</p>
                   <p className="text-xs font-semibold text-slate-700">{c.label}</p>
                 </div>
               ))}
@@ -862,13 +862,13 @@ export function SeksiKontak({
   };
 
   const kelasBidang =
-    'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white';
+    'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none bg-white';
 
   return (
     <section className="bg-slate-50 border-b border-slate-200" id="formulir-rfq-publik">
       <div className={`${WADAH} py-12 grid lg:grid-cols-[0.88fr_1.12fr] gap-8 items-start`}>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">HUBUNGI KAMI</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand)]">HUBUNGI KAMI</p>
           <h2 className="text-2xl font-bold text-slate-900 mt-1">Mari Bahas Kebutuhan Instansi Anda</h2>
           <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
             Tim komersial bersama Penanggung Jawab Teknis (PJT) siap menyiapkan penawaran resmi, kelengkapan nomor izin edar Kemenkes RI, serta dukungan pengadaan e-Katalog LKPP maupun LPSE.
@@ -886,7 +886,7 @@ export function SeksiKontak({
                 href={kontak.tautanPeta}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-semibold text-teal-700 hover:text-teal-800 inline-block"
+                className="text-xs font-semibold text-[var(--brand)] hover:text-[var(--brand)] inline-block"
               >
                 Buka lokasi di peta
               </a>
@@ -1125,7 +1125,7 @@ export function SeksiKontak({
               <button
                 type="button"
                 onClick={catatPermintaanKeSistem}
-                className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 Kirim Permintaan Penawaran
@@ -1167,7 +1167,7 @@ export function SeksiKontak({
 function BarisKontak({ ikon, label, nilai }: { ikon: ReactNode; label: string; nilai: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="w-8 h-8 rounded-full bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
+      <span className="w-8 h-8 rounded-full bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] text-[var(--brand)] flex items-center justify-center shrink-0">
         {ikon}
       </span>
       <div>

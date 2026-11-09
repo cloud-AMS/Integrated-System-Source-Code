@@ -300,11 +300,11 @@ export default function Navbar({
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 leading-tight truncate whitespace-nowrap">
               AMS Integrated System
             </h1>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider truncate whitespace-nowrap hidden sm:block">
+            <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider truncate whitespace-nowrap hidden sm:block">
               Perusahaan Alat Kesehatan • CDAKB & ISO 13485
             </p>
             {/* Judul tab aktif pada mobile */}
-            <p className="text-[10.5px] font-semibold text-blue-600 truncate whitespace-nowrap sm:hidden">
+            <p className="text-2xs font-semibold text-blue-600 truncate whitespace-nowrap sm:hidden">
               {activeTabDef?.label || 'Ikhtisar'}
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function Navbar({
           }`}
         >
           <CloudCheck className={`w-3.5 h-3.5 ${connStatus.isPocketBaseConnected ? 'text-blue-600' : 'text-amber-600'}`} />
-          <span className="text-[11px]">{connStatus.isPocketBaseConnected ? 'PocketBase Realtime' : 'Mode Cache Lokal'}</span>
+          <span className="text-xs">{connStatus.isPocketBaseConnected ? 'PocketBase Realtime' : 'Mode Cache Lokal'}</span>
         </div>
 
         {/* PWA Install Button */}
@@ -341,7 +341,7 @@ export default function Navbar({
               <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[150px]">
                 {namaPengguna(currentRole).split('-')[0].trim()}
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <div className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
                 {currentRole.replace('_', ' ')}
               </div>
             </div>
@@ -355,11 +355,11 @@ export default function Navbar({
                 <div className="px-3.5 py-2">
                   <div className="text-xs font-bold text-slate-900 truncate">{namaPengguna(currentRole)}</div>
                   <div className="mt-1">
-                    <span className="text-[10px] bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded inline-block border border-slate-200">
+                    <span className="text-2xs bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded inline-block border border-slate-200">
                       {peranPengguna(currentRole)}
                     </span>
                   </div>
-                  <p className="text-[10.5px] text-slate-500 mt-1">Pilih peran aktif untuk simulasi otorisasi divisi:</p>
+                  <p className="text-2xs text-slate-500 mt-1">Pilih peran aktif untuk simulasi otorisasi divisi:</p>
                 </div>
 
                 <div className="py-1 max-h-60 overflow-y-auto">
@@ -402,7 +402,7 @@ export default function Navbar({
                   </button>
                 </div>
 
-                <div className="border-t border-slate-100 px-3.5 py-2 text-[10px] font-semibold text-slate-400">
+                <div className="border-t border-slate-100 px-3.5 py-2 text-2xs font-semibold text-slate-400">
                   Sistem Standar CDAKB & ISO 13485:2016
                 </div>
               </div>
@@ -432,7 +432,7 @@ export default function Navbar({
                 type="button"
                 onClick={() => go(tab.id)}
                 title={tab.label}
-                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   isActive ? `${TONE_ACTIVE} shadow-xs` : `text-slate-600 ${TONE_HOVER}`
                 }`}
               >
@@ -440,7 +440,7 @@ export default function Navbar({
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`text-[8px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    className={`text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
                       isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
                     }`}
                   >
@@ -461,7 +461,7 @@ export default function Navbar({
                 type="button"
                 onClick={() => setOpenMenu(isOpen ? null : key)}
                 aria-expanded={isOpen}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   containsActive || isOpen ? `${TONE_ACTIVE} shadow-xs` : `text-slate-600 ${TONE_HOVER}`
                 }`}
               >
@@ -471,7 +471,7 @@ export default function Navbar({
 
               {isOpen && (
                 <div className="absolute left-0 top-full mt-1.5 w-[340px] max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50">
-                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="px-3 pt-1 pb-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-slate-400">
                     {key}
                   </p>
                   {items.map((tab) => {
@@ -489,7 +489,7 @@ export default function Navbar({
                         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${TONE_ICON}`} />
                         <span className="flex-1 leading-snug">{tab.label}</span>
                         {tab.badge && (
-                          <span className="shrink-0 text-[8px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 text-slate-600">
+                          <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 text-slate-600">
                             {tab.badge}
                           </span>
                         )}
@@ -516,10 +516,10 @@ export default function Navbar({
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-bold text-slate-900 leading-tight truncate">
+                  <p className="text-base font-bold text-slate-900 leading-tight truncate">
                     AMS Integrated System
                   </p>
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider truncate">
+                  <p className="text-2xs font-semibold text-slate-500 uppercase tracking-wider truncate">
                     CDAKB & ISO 13485
                   </p>
                 </div>
@@ -551,10 +551,10 @@ export default function Navbar({
                       }`}
                     >
                       <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-white' : TONE_ICON}`} />
-                      <span className="flex-1 text-[13px] font-semibold truncate">{tab.label}</span>
+                      <span className="flex-1 text-base font-semibold truncate">{tab.label}</span>
                       {tab.badge && (
                         <span
-                          className={`shrink-0 text-[8px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                          className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
                             isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
                           }`}
                         >
@@ -581,10 +581,10 @@ export default function Navbar({
                       }`}
                     >
                       <span className={`w-2 h-2 shrink-0 rounded-full ${TONE_DOT[tone]}`} />
-                      <span className="flex-1 text-[13px] font-semibold truncate text-slate-700">
+                      <span className="flex-1 text-base font-semibold truncate text-slate-700">
                         {key}
                       </span>
-                      <span className="shrink-0 text-[10px] font-mono text-slate-400">{items.length}</span>
+                      <span className="shrink-0 text-2xs font-mono text-slate-400">{items.length}</span>
                       <ChevronRight className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                     </button>
 
@@ -603,10 +603,10 @@ export default function Navbar({
                               }`}
                             >
                               <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isActive ? 'text-white' : TONE_ICON}`} />
-                              <span className="flex-1 text-[12px] font-semibold leading-snug">{tab.label}</span>
+                              <span className="flex-1 text-sm font-semibold leading-snug">{tab.label}</span>
                               {tab.badge && (
                                 <span
-                                  className={`shrink-0 text-[8px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                                  className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
                                     isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
                                   }`}
                                 >
@@ -636,7 +636,7 @@ export default function Navbar({
                 <QrCode className="w-4 h-4 text-blue-600 shrink-0" />
                 <span>Ketelusuran Nomor Batch</span>
               </button>
-              <p className="text-center text-[10px] font-semibold text-slate-400">
+              <p className="text-center text-2xs font-semibold text-slate-400">
                 AMS Integrated System v2.4.0
               </p>
             </div>
@@ -662,7 +662,7 @@ export default function Navbar({
               <div className={`p-1 rounded-lg ${isActive ? 'bg-blue-50 text-blue-600' : ''}`}>
                 <Icon className="w-4 h-4" />
               </div>
-              <span className="text-[10px] truncate max-w-full">{tab.short}</span>
+              <span className="text-2xs truncate max-w-full">{tab.short}</span>
             </button>
           );
         })}
@@ -675,7 +675,7 @@ export default function Navbar({
           <div className="p-1 rounded-lg">
             <LayoutGrid className="w-4 h-4" />
           </div>
-          <span className="text-[10px] font-semibold truncate">Lainnya</span>
+          <span className="text-2xs font-semibold truncate">Lainnya</span>
         </button>
       </nav>
 

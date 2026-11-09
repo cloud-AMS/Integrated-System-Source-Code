@@ -606,9 +606,10 @@ export function ambilPolos(kunci: string): PolosDefinisi | undefined {
   return POLOS_WEBSITE.find((b) => b.kunci === kunci);
 }
 
-export type KunciEditorSitus = KunciDaftar | KunciObjek | KunciPolos | 'footerCatatan';
+export type KunciEditorSitus = KunciDaftar | KunciObjek | KunciPolos | 'footerCatatan' | 'tampilan' | 'tataLetak';
 
 export function jumlahButir(cfg: KonfigurasiSitus, kunci: KunciEditorSitus): number {
+  if (kunci === 'tampilan' || kunci === 'tataLetak') return 0;
   const nilai = (cfg as unknown as Record<string, unknown>)[kunci];
   if (!nilai) return 0;
   if (Array.isArray(nilai)) return nilai.length;

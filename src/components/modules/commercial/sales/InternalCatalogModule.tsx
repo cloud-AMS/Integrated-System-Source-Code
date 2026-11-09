@@ -26,7 +26,7 @@ import {
 import { db } from '../../../../services/pocketbase';
 import { gabungkanKatalogProduk, selesaikanGambar } from '../../../../utils/website';
 import { ProdukWebsite } from '../../../../types';
-import { Panel } from './ui';
+import { Panel } from '../../../ui';
 
 /** Lebar 210mm dalam piksel CSS (96dpi) — dipakai untuk menghitung skala pratinjau. */
 const A4_LEBAR_PX = (210 * 96) / 25.4;
@@ -191,38 +191,38 @@ export default function InternalCatalogModule() {
             <div className="flex items-center gap-2">
               <Building2 className="w-6 h-6 text-emerald-600" />
               <div>
-                <p className="text-[11px] font-bold">PT ANUGRAH MITRA SELARAS</p>
-                <p className="text-[9px] opacity-80">Kemenkes RI • CDAKB &amp; ISO 13485:2016</p>
+                <p className="text-xs font-bold">PT ANUGRAH MITRA SELARAS</p>
+                <p className="text-3xs opacity-80">Kemenkes RI • CDAKB &amp; ISO 13485:2016</p>
               </div>
             </div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
               {badgeCover}
             </span>
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col justify-center text-center gap-[5mm] py-[6mm]">
-            <span className="self-center px-3 py-1 rounded bg-slate-900 text-white text-[10px] font-bold tracking-widest uppercase">
+            <span className="self-center px-3 py-1 rounded bg-slate-900 text-white text-2xs font-bold tracking-widest uppercase">
               e-KATALOG INTERNAL E-PURCHASING
             </span>
-            <h1 className="text-[26px] font-extrabold tracking-tight leading-[1.2]">
+            <h1 className="text-4xl font-extrabold tracking-tight leading-[1.2]">
               {judulCover}
             </h1>
-            <p className="text-[13px] font-medium text-emerald-700 max-w-[130mm] mx-auto leading-[1.4]">
+            <p className="text-base font-medium text-emerald-700 max-w-[130mm] mx-auto leading-[1.4]">
               {subjudulCover}
             </p>
-            <p className="text-[10px] opacity-80 max-w-[120mm] mx-auto leading-[1.6] pt-2">
+            <p className="text-2xs opacity-80 max-w-[120mm] mx-auto leading-[1.6] pt-2">
               {subjudulKatalog}
             </p>
           </div>
 
-          <div className="shrink-0 pt-[5mm] border-t border-current/20 flex items-center justify-between text-[10px] opacity-90">
+          <div className="shrink-0 pt-[5mm] border-t border-current/20 flex items-center justify-between text-2xs opacity-90">
             <div>
               <p className="font-semibold">{penulisCover}</p>
-              <p className="text-[9px]">Pusat Distribusi &amp; Logistik Alkes Nasional</p>
+              <p className="text-3xs">Pusat Distribusi &amp; Logistik Alkes Nasional</p>
             </div>
             <div className="text-right">
               <p className="font-semibold">www.anugrahmitraselaras.co.id</p>
-              <p className="text-[9px]">Hotline: (021) 555-AMS</p>
+              <p className="text-3xs">Hotline: (021) 555-AMS</p>
             </div>
           </div>
         </div>
@@ -239,9 +239,9 @@ export default function InternalCatalogModule() {
             <div className="shrink-0 flex items-center justify-between gap-[6mm] border-b border-slate-200 pb-[3mm]">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                <span className="text-[11px] font-bold text-slate-800 leading-[1.3]">{judulKatalog}</span>
+                <span className="text-xs font-bold text-slate-800 leading-[1.3]">{judulKatalog}</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium shrink-0">Halaman {nomorHalamanIni} dari {totalHalamanEst}</span>
+              <span className="text-2xs text-slate-400 font-medium shrink-0">Halaman {nomorHalamanIni} dari {totalHalamanEst}</span>
             </div>
 
             {/* Grid Produk per Halaman (Maks 2 produk per halaman portrait A4) */}
@@ -249,20 +249,20 @@ export default function InternalCatalogModule() {
               {grupProduk.map((p) => {
                 const fotoUrl = selesaikanGambar(p.imageUrl);
                 return (
-                  <div key={p.id} className="flex-1 min-h-0 overflow-hidden flex flex-col border border-slate-200 rounded-[3mm] bg-white p-[4mm] text-[10px]">
+                  <div key={p.id} className="flex-1 min-h-0 overflow-hidden flex flex-col border border-slate-200 rounded-[3mm] bg-white p-[4mm] text-2xs">
 
                     {/* Header Kartu Produk */}
                     <div className="shrink-0 flex items-center justify-between gap-[3mm]">
-                      <span className="text-[9px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 uppercase tracking-wide">
+                      <span className="text-3xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 uppercase tracking-wide">
                         {p.kategoriRegulasi || p.kategori} · {p.kelasRisiko || 'Kelas C'}
                       </span>
-                      <span className="text-[9px] font-semibold text-slate-500 shrink-0">{p.nomorIzinEdar || 'NIE Aktif'}</span>
+                      <span className="text-3xs font-semibold text-slate-500 shrink-0">{p.nomorIzinEdar || 'NIE Aktif'}</span>
                     </div>
 
-                    <h3 className="shrink-0 mt-[1.5mm] font-bold text-slate-900 text-[12px] leading-[1.25]">
+                    <h3 className="shrink-0 mt-[1.5mm] font-bold text-slate-900 text-sm leading-[1.25]">
                       {p.nama}
                     </h3>
-                    <p className="shrink-0 text-[9.5px] text-slate-500 mt-[0.5mm]">Model / Tipe: {p.tipeModel || 'Standar Unit Alkes'}</p>
+                    <p className="shrink-0 text-3xs text-slate-500 mt-[0.5mm]">Model / Tipe: {p.tipeModel || 'Standar Unit Alkes'}</p>
 
                     {/* Detail Dua Kolom: tinggi kolom mengikuti sisa ruang kartu */}
                     <div className="flex-1 min-h-0 grid grid-cols-2 gap-[3mm] mt-[3mm] pt-[3mm] border-t border-slate-100">
@@ -275,12 +275,12 @@ export default function InternalCatalogModule() {
                           ) : (
                             <div className="flex flex-col items-center justify-center text-slate-400">
                               <ImageOff className="w-7 h-7 mb-1" />
-                              <span className="text-[9px]">PT Anugrah Mitra Selaras</span>
+                              <span className="text-3xs">PT Anugrah Mitra Selaras</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="shrink-0 bg-slate-50 rounded-[2mm] p-[2.5mm] border border-slate-200 text-[9px] space-y-[1mm]">
+                        <div className="shrink-0 bg-slate-50 rounded-[2mm] p-[2.5mm] border border-slate-200 text-3xs space-y-[1mm]">
                           <p className="font-bold text-slate-700 border-b border-slate-200 pb-[1mm]">Informasi Kepatuhan &amp; Distribusi</p>
                           <div className="flex justify-between gap-[3mm]">
                             <span className="text-slate-500 shrink-0">No. Izin Edar</span>
@@ -300,22 +300,22 @@ export default function InternalCatalogModule() {
                       {/* Kolom Kanan: Harga Referensi & Spesifikasi */}
                       <div className="min-h-0 flex flex-col gap-[2.5mm]">
                         <div className="shrink-0 bg-teal-50/70 border border-teal-200 rounded-[2mm] p-[2.5mm]">
-                          <span className="text-[9px] font-bold text-teal-800 block uppercase tracking-wider">Referensi Harga &amp; Pengadaan</span>
-                          <p className="font-bold text-teal-900 text-[10px] mt-[1mm]">Sesuai Kontrak / e-Katalog LKPP</p>
-                          <p className="text-[9px] text-slate-600 mt-[1mm] leading-[1.5]">Melayani pengadaan RS Pemerintah &amp; Swasta melalui e-Katalog LKPP.</p>
+                          <span className="text-3xs font-bold text-teal-800 block uppercase tracking-wider">Referensi Harga &amp; Pengadaan</span>
+                          <p className="font-bold text-teal-900 text-2xs mt-[1mm]">Sesuai Kontrak / e-Katalog LKPP</p>
+                          <p className="text-3xs text-slate-600 mt-[1mm] leading-[1.5]">Melayani pengadaan RS Pemerintah &amp; Swasta melalui e-Katalog LKPP.</p>
                         </div>
 
                         <div className="flex-1 min-h-0 overflow-hidden">
-                          <span className="font-bold text-slate-700 text-[9px] block uppercase tracking-wide mb-[1mm]">Spesifikasi Teknis</span>
-                          <p className={`text-slate-600 text-[9.5px] leading-[1.5] ${budgetSpesifikasi === 8 ? 'line-clamp-8' : 'line-clamp-5'}`}>
+                          <span className="font-bold text-slate-700 text-3xs block uppercase tracking-wide mb-[1mm]">Spesifikasi Teknis</span>
+                          <p className={`text-slate-600 text-3xs leading-[1.5] ${budgetSpesifikasi === 8 ? 'line-clamp-8' : 'line-clamp-5'}`}>
                             {p.spesifikasi || 'Spesifikasi standar medis rumah sakit, terdaftar di Kemenkes RI dengan jaminan purna jual & kalibrasi berkala.'}
                           </p>
                         </div>
 
                         {p.poinJual && p.poinJual.length > 0 && (
                           <div className="shrink-0">
-                            <span className="font-bold text-slate-700 text-[9px] block uppercase tracking-wide mb-[1mm]">Keunggulan Utama</span>
-                            <ul className="space-y-[1mm] text-[9.5px] text-slate-600">
+                            <span className="font-bold text-slate-700 text-3xs block uppercase tracking-wide mb-[1mm]">Keunggulan Utama</span>
+                            <ul className="space-y-[1mm] text-3xs text-slate-600">
                               {p.poinJual.slice(0, budgetKeunggulan).map((poin, i) => (
                                 <li key={i} className="flex items-start gap-1">
                                   <Check className="w-2.5 h-2.5 text-emerald-600 shrink-0 mt-[0.5mm]" />
@@ -335,7 +335,7 @@ export default function InternalCatalogModule() {
             </div>
 
             {/* Footer Halaman */}
-            <div className="shrink-0 flex items-center justify-between gap-[6mm] border-t border-slate-200 pt-[3mm] text-[9px] text-slate-500">
+            <div className="shrink-0 flex items-center justify-between gap-[6mm] border-t border-slate-200 pt-[3mm] text-3xs text-slate-500">
               <span>PT Anugrah Mitra Selaras • Dokumen Kendali Mutu e-Katalog LKPP</span>
               <span className="shrink-0">Validasi PJT &amp; Tim Komersial</span>
             </div>
@@ -359,24 +359,24 @@ export default function InternalCatalogModule() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-6 h-6 text-emerald-400" />
               <div>
-                <p className="text-[11px] font-bold">PT ANUGRAH MITRA SELARAS</p>
-                <p className="text-[9px] opacity-80">Pusat Distribusi Alat Kesehatan &amp; Bahan Medis Habis Pakai</p>
+                <p className="text-xs font-bold">PT ANUGRAH MITRA SELARAS</p>
+                <p className="text-3xs opacity-80">Pusat Distribusi Alat Kesehatan &amp; Bahan Medis Habis Pakai</p>
               </div>
             </div>
-            <span className="px-3 py-1 rounded bg-emerald-950 text-emerald-300 text-[11px] font-bold border border-emerald-800">
+            <span className="px-3 py-1 rounded bg-emerald-950 text-emerald-300 text-xs font-bold border border-emerald-800">
               KAPABILITAS NASIONAL
             </span>
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col justify-center gap-[6mm] py-[6mm] max-w-[150mm]">
-            <h2 className="text-[22px] font-extrabold tracking-tight leading-[1.25]">
+            <h2 className="text-3xl font-extrabold tracking-tight leading-[1.25]">
               {judulBackCover}
             </h2>
-            <p className="text-[11px] opacity-90 leading-[1.7]">
+            <p className="text-xs opacity-90 leading-[1.7]">
               {catatanBackCover}
             </p>
 
-            <div className="grid grid-cols-2 gap-[6mm] pt-[4mm] border-t border-current/20 text-[10px]">
+            <div className="grid grid-cols-2 gap-[6mm] pt-[4mm] border-t border-current/20 text-2xs">
               <div>
                 <p className="font-bold text-emerald-400 mb-[1.5mm]">Kantor Pusat &amp; Gudang Utama</p>
                 <p className="opacity-90 leading-[1.7]">{alamatBackCover}</p>
@@ -388,7 +388,7 @@ export default function InternalCatalogModule() {
             </div>
           </div>
 
-          <div className="shrink-0 pt-[4mm] border-t border-current/20 flex items-center justify-between text-[10px] opacity-80">
+          <div className="shrink-0 pt-[4mm] border-t border-current/20 flex items-center justify-between text-2xs opacity-80">
             <span>© 2026 PT Anugrah Mitra Selaras. All Rights Reserved.</span>
             <span className="text-emerald-400 font-semibold">Standar Mutu CDAKB &amp; ISO 13485:2016</span>
           </div>
@@ -663,7 +663,7 @@ export default function InternalCatalogModule() {
 
               {/* Urutan Produk Terpilih */}
               <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 rounded-lg p-2 bg-slate-50">
-                <p className="text-[11px] font-bold text-slate-500 uppercase px-1">Urutan Produk dalam Katalog</p>
+                <p className="text-xs font-bold text-slate-500 uppercase px-1">Urutan Produk dalam Katalog</p>
                 {produkTerpilihList.length === 0 ? (
                   <p className="text-xs text-slate-400 p-3 text-center">Belum ada produk dipilih</p>
                 ) : (
@@ -671,7 +671,7 @@ export default function InternalCatalogModule() {
                     <div key={p.id} className="flex items-center justify-between bg-white border border-slate-200 rounded px-2.5 py-1.5 text-xs">
                       <div className="min-w-0 flex-1 pr-2">
                         <span className="font-semibold text-slate-800 truncate block">{idx + 1}. {p.nama}</span>
-                        <span className="text-[10px] text-slate-400">{p.kategori} • {p.nomorIzinEdar || 'NIE Pending'}</span>
+                        <span className="text-2xs text-slate-400">{p.kategori} • {p.nomorIzinEdar || 'NIE Pending'}</span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -705,7 +705,7 @@ export default function InternalCatalogModule() {
 
               {/* Master Produk */}
               <div className="max-h-60 overflow-y-auto space-y-1 border border-slate-200 rounded-lg p-2 bg-white">
-                <p className="text-[11px] font-bold text-slate-500 uppercase px-1">Tambah dari Master Katalog</p>
+                <p className="text-xs font-bold text-slate-500 uppercase px-1">Tambah dari Master Katalog</p>
                 {produkTersaring.map(p => {
                   const terpilih = pilihanId.includes(p.id);
                   return (
@@ -718,7 +718,7 @@ export default function InternalCatalogModule() {
                     >
                       <div className="min-w-0 flex-1 pr-2">
                         <p className="font-semibold text-slate-900 truncate">{p.nama}</p>
-                        <p className="text-[10px] text-slate-500">{p.kategori} • {p.produsen || 'AMS'}</p>
+                        <p className="text-2xs text-slate-500">{p.kategori} • {p.produsen || 'AMS'}</p>
                       </div>
                       {terpilih ? <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" /> : <Square className="w-4 h-4 text-slate-300 shrink-0" />}
                     </div>
@@ -768,7 +768,7 @@ export default function InternalCatalogModule() {
           {/* Salinan halaman yang sama, khusus untuk lembar cetak / PDF */}
           {createPortal(<div className="katalog-cetak-root">{susunHalaman()}</div>, document.body)}
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1.5 no-print">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1.5 no-print">
             <p className="flex items-center gap-1.5 font-bold text-slate-800">
               <Info className="w-3.5 h-3.5 text-emerald-600" /> Supaya berkas PDF tersimpan rapi
             </p>

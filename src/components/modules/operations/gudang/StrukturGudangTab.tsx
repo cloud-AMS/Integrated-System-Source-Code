@@ -10,19 +10,7 @@ import {
 } from '../../../../types';
 import { kodeBinDariLokasi, tentukanTempatSimpan } from '../../../../utils/gudang';
 import { Compass, Plus, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import {
-  Badge,
-  BarCapaian,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, BarCapaian, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
 
 interface Props {
   onPerubahanData: () => void;

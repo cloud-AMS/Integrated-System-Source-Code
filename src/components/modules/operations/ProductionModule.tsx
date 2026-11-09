@@ -70,7 +70,7 @@ export default function ProductionModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-800">
               Manufaktur CPAKB
             </span>
             <span className="text-xs text-slate-500">Permenkes RI No. 20/2017 & ISO 13485:2016</span>
@@ -97,29 +97,29 @@ export default function ProductionModule() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
         <div className="bg-white p-4 rounded-xl border border-slate-200">
           <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Cleanroom Kelas C</span>
+            <span className="font-semibold uppercase tracking-wider text-2xs">Cleanroom Kelas C</span>
             <Wind className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-lg font-bold text-slate-900">+15.4 Pa (Tekanan Positif)</div>
-          <p className="text-[10px] text-slate-500 mt-1">Mencegah infiltrasi partikel debu dari koridor luar</p>
+          <p className="text-2xs text-slate-500 mt-1">Mencegah infiltrasi partikel debu dari koridor luar</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200">
           <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Partikel Udara 0.5 µm</span>
+            <span className="font-semibold uppercase tracking-wider text-2xs">Partikel Udara 0.5 µm</span>
             <Sparkles className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-lg font-bold text-emerald-700">12,400 partikel/m³</div>
-          <p className="text-[10px] text-slate-500 mt-1">Batas aman ISO Class 7 / Kelas C (maks 352,000)</p>
+          <p className="text-2xs text-slate-500 mt-1">Batas aman ISO Class 7 / Kelas C (maks 352,000)</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200">
           <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Sanitasi Ruang Bersih</span>
+            <span className="font-semibold uppercase tracking-wider text-2xs">Sanitasi Ruang Bersih</span>
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-lg font-bold text-slate-900">Alkohol 70% & UV 254nm</div>
-          <p className="text-[10px] text-slate-500 mt-1">Siklus sterilisasi terjadwal setiap pergantian shift</p>
+          <p className="text-2xs text-slate-500 mt-1">Siklus sterilisasi terjadwal setiap pergantian shift</p>
         </div>
       </div>
 
@@ -156,11 +156,11 @@ export default function ProductionModule() {
                   {item.jumlahRealisasi} / {item.jumlahRencana} {item.satuan}
                 </td>
                 <td className="py-3 px-4 text-slate-600">{item.ruangBersih}</td>
-                <td className="py-3 px-4 font-mono text-[11px] text-slate-600">
+                <td className="py-3 px-4 font-mono text-xs text-slate-600">
                   {item.tanggalMulai} s.d {item.tanggalTarget}
                 </td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                     item.status === 'Rilis QC'
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : item.status === 'Sterilisasi'
@@ -169,7 +169,7 @@ export default function ProductionModule() {
                   }`}>
                     {item.status}
                   </span>
-                  <div className="text-[10px] text-slate-500 mt-1">PJ: {item.penanggungJawab}</div>
+                  <div className="text-2xs text-slate-500 mt-1">PJ: {item.penanggungJawab}</div>
                 </td>
               </tr>
             ))}

@@ -116,10 +116,10 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
               <h2 className="text-base font-extrabold tracking-wide uppercase text-slate-900">
                 PT ANUGRAH MITRA SELARAS
               </h2>
-              <p className="text-[11px] text-slate-700">
+              <p className="text-xs text-slate-700">
                 Sertifikat Distribusi Alat Kesehatan (SDAK) No: SDAK-91203049201940001 • Sertifikat CPAKB Kemenkes RI
               </p>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-2xs text-slate-500">
                 Kawasan Industri Medis Cikarang Blok B-12, Bekasi, Jawa Barat | Telepon: (021) 8990-2134 | Email: pjt@anugrahmitraselaras.co.id
               </p>
             </div>
@@ -130,7 +130,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 <div className="text-center font-bold text-sm underline uppercase">
                   BERITA ACARA INSTALASI, UJI FUNGSI & PELATIHAN PENGGUNA
                 </div>
-                <div className="text-center text-[11px] text-slate-600 -mt-3">
+                <div className="text-center text-xs text-slate-600 -mt-3">
                   Nomor: BAI/AMS/2024/05/041
                 </div>
 
@@ -138,7 +138,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   Pada hari ini, <strong>Jumat</strong>, tanggal <strong>24 Mei 2024</strong>, telah dilakukan pemasangan, pengujian fungsi teknis, dan pelatihan operasional alat kesehatan di:
                 </p>
 
-                <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <tbody>
                     <tr className="border-b border-slate-200">
                       <td className="w-44 p-2 bg-slate-50 font-semibold">Nama Fasilitas Pelayanan (Fasyankes)</td>
@@ -169,24 +169,24 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </tbody>
                 </table>
 
-                <p className="text-[11px]">
+                <p className="text-xs">
                   Peralatan diserahkan dalam kondisi baru, lengkap dengan manual operasional berbahasa Indonesia, kartu garansi resmi, dan sertifikat pengujian.
                 </p>
 
-                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-[11px]">
+                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-xs">
                   <div>
                     <p className="font-semibold text-slate-700">Pihak Fasyankes (Penerima):</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-8">
                       dr. Rahmat Hidayat, Sp.An
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">Kepala Instalasi ICU</p>
+                    <p className="text-2xs text-slate-500 mt-1">Kepala Instalasi ICU</p>
                   </div>
                   <div>
                     <p className="font-semibold text-slate-700">Teknisi Elektromedis Resmi:</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-8">
                       Dian Nugraha, A.Md.TEM
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">STR-TEM: 140261118-294021</p>
+                    <p className="text-2xs text-slate-500 mt-1">STR-TEM: 140261118-294021</p>
                   </div>
                 </div>
               </div>
@@ -197,11 +197,11 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 <div className="text-center font-bold text-sm underline uppercase text-rose-900">
                   FORMULIR LAPORAN KEJADIAN TIDAK DIINGINKAN (KTD) ALKES
                 </div>
-                <div className="text-center text-[11px] text-slate-600 -mt-3">
+                <div className="text-center text-xs text-slate-600 -mt-3">
                   Format Baku Sistem Surveilans Pasca Pemasaran (e-Watch Alkes Kemenkes RI)
                 </div>
 
-                <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <tbody>
                     <tr className="border-b border-slate-200">
                       <td className="w-44 p-2 bg-slate-50 font-semibold">Nomor Referensi AMS</td>
@@ -238,20 +238,20 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </tbody>
                 </table>
 
-                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-[11px]">
+                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-xs">
                   <div>
                     <p className="font-semibold text-slate-700">Penanggung Jawab Teknis (PJT):</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-8">
                       apt. Dewi Kartika, S.Si
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">STRA Terdaftar Kemenkes</p>
+                    <p className="text-2xs text-slate-500 mt-1">STRA Terdaftar Kemenkes</p>
                   </div>
                   <div>
                     <p className="font-semibold text-slate-700">Manajer Pemastian Mutu (QA):</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-8">
                       Budi Utomo, S.T
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">SMM ISO 13485:2016</p>
+                    <p className="text-2xs text-slate-500 mt-1">SMM ISO 13485:2016</p>
                   </div>
                 </div>
               </div>
@@ -262,7 +262,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 <div className="text-center font-bold text-sm underline uppercase text-amber-900">
                   SURAT PEMBERITAHUAN PENARIKAN PRODUK (PRODUCT RECALL NOTICE)
                 </div>
-                <div className="text-center text-[11px] text-slate-600 -mt-3">
+                <div className="text-center text-xs text-slate-600 -mt-3">
                   Nomor: REC/CDAKB/2024/001 • Lampiran e-Watch Alkes Kemenkes
                 </div>
 
@@ -270,7 +270,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   Kepada Yth. <strong>Direktur / Kepala Instalasi Farmasi & Sarana RS</strong> mitra distribusi, dengan ini kami sampaikan penarikan sukarela (Voluntary Recall) untuk batch alat kesehatan:
                 </p>
 
-                <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <tbody>
                     <tr className="border-b border-slate-200">
                       <td className="w-44 p-2 bg-slate-50 font-semibold">Nama Produk Alkes</td>
@@ -299,12 +299,12 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </tbody>
                 </table>
 
-                <div className="pt-8 text-center text-[11px] max-w-xs mx-auto">
+                <div className="pt-8 text-center text-xs max-w-xs mx-auto">
                   <p className="font-semibold text-slate-700">Ditetapkan oleh Penanggung Jawab Teknis:</p>
                   <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400">
                     apt. Dewi Kartika, S.Si
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">PJT Alkes PT Anugrah Mitra Selaras</p>
+                  <p className="text-2xs text-slate-500 mt-1">PJT Alkes PT Anugrah Mitra Selaras</p>
                 </div>
               </div>
             )}
@@ -314,11 +314,11 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 <div className="text-center font-bold text-sm underline uppercase">
                   SURAT JALAN DISTRIBUSI ALAT KESEHATAN (CDAKB COMPLIANT)
                 </div>
-                <div className="text-center text-[11px] text-slate-600 -mt-3">
+                <div className="text-center text-xs text-slate-600 -mt-3">
                   Nomor: SJ/CDAKB/2024/05/118 • Sistem Alokasi FEFO
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-[11px] pb-2">
+                <div className="grid grid-cols-2 gap-4 text-xs pb-2">
                   <div>
                     <span className="text-slate-500 block">Tujuan Pengiriman:</span>
                     <strong className="block text-slate-800">RSUD Pasar Minggu</strong>
@@ -331,7 +331,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </div>
                 </div>
 
-                <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <thead>
                     <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold">
                       <th className="p-2 text-left">Nama Alkes</th>
@@ -352,7 +352,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </tbody>
                 </table>
 
-                <div className="grid grid-cols-3 gap-4 pt-8 text-center text-[11px]">
+                <div className="grid grid-cols-3 gap-4 pt-8 text-center text-xs">
                   <div>
                     <p className="font-semibold text-slate-700">Petugas Gudang:</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-4">
@@ -380,11 +380,11 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 <div className="text-center font-bold text-sm underline uppercase text-indigo-900">
                   LEMBAR TINDAKAN KOREKTIF & PENCEGAHAN (CAPA)
                 </div>
-                <div className="text-center text-[11px] text-slate-600 -mt-3">
+                <div className="text-center text-xs text-slate-600 -mt-3">
                   Klausul 8.5.2 & 8.5.3 ISO 13485:2016 • SMM Alat Kesehatan
                 </div>
 
-                <table className="w-full border-collapse border border-slate-300 text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-xs">
                   <tbody>
                     <tr className="border-b border-slate-200">
                       <td className="w-44 p-2 bg-slate-50 font-semibold">Nomor CAPA</td>
@@ -417,7 +417,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   </tbody>
                 </table>
 
-                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-[11px]">
+                <div className="grid grid-cols-2 gap-8 pt-8 text-center text-xs">
                   <div>
                     <p className="font-semibold text-slate-700">Disusun oleh QA Manager:</p>
                     <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400 mx-8">

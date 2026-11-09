@@ -254,11 +254,11 @@ alkes.perusahaan-anda.co.id {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
               Infrastruktur & Ketelusuran Digital
             </span>
             <span className="text-xs text-slate-500">Integritas Data FDA 21 CFR Part 11 & CDAKB</span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded text-2xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-700" />
               ISO 13485:2016 Clause 4.2.5
             </span>
@@ -301,9 +301,9 @@ alkes.perusahaan-anda.co.id {
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-slate-500 block text-[10px]">Basis Data & Kanal Realtime:</span>
+            <span className="text-slate-500 block text-2xs">Basis Data & Kanal Realtime:</span>
             <span className="font-bold text-slate-900">PocketBase 0.28.1</span>
-            <span className="text-[10px] text-indigo-700 block">Kanal SSE & SQLite Ringan</span>
+            <span className="text-2xs text-indigo-700 block">Kanal SSE & SQLite Ringan</span>
           </div>
         </div>
 
@@ -312,9 +312,9 @@ alkes.perusahaan-anda.co.id {
             <Server className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-slate-500 block text-[10px]">Web Server & HTTPS:</span>
+            <span className="text-slate-500 block text-2xs">Web Server & HTTPS:</span>
             <span className="font-bold text-slate-900">Caddy Reverse Proxy</span>
-            <span className="text-[10px] text-blue-700 block">Sertifikat SSL Otomatis Let's Encrypt</span>
+            <span className="text-2xs text-blue-700 block">Sertifikat SSL Otomatis Let's Encrypt</span>
           </div>
         </div>
 
@@ -323,9 +323,9 @@ alkes.perusahaan-anda.co.id {
             <Cpu className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-slate-500 block text-[10px]">Layanan Windows Server:</span>
+            <span className="text-slate-500 block text-2xs">Layanan Windows Server:</span>
             <span className="font-bold text-slate-900">NSSM (Service Manager)</span>
-            <span className="text-[10px] text-amber-700 block">Auto-Restart & Startup Otomatis</span>
+            <span className="text-2xs text-amber-700 block">Auto-Restart & Startup Otomatis</span>
           </div>
         </div>
       </div>
@@ -381,10 +381,10 @@ alkes.perusahaan-anda.co.id {
                   <span className="font-bold text-indigo-900">1. Offline-First Cache Layer (Browser Storage)</span>
                   <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                 </div>
-                <p className="text-slate-600 text-[11px] leading-relaxed">
+                <p className="text-slate-600 text-xs leading-relaxed">
                   Menyimpan seluruh data operasional di memori lokal terenkripsi sehingga sistem gudang dan penerimaan barang tetap dapat bekerja tanpa henti meski koneksi internet terputus.
                 </p>
-                <div className="text-[10px] text-indigo-800 font-mono">Status: Aktif & Siap Baca-Tulis</div>
+                <div className="text-2xs text-indigo-800 font-mono">Status: Aktif & Siap Baca-Tulis</div>
               </div>
 
               <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
@@ -392,10 +392,10 @@ alkes.perusahaan-anda.co.id {
                   <span className="font-bold text-blue-900">2. PocketBase 0.28.1 Realtime Connector</span>
                   <Server className="w-4 h-4 text-blue-600" />
                 </div>
-                <p className="text-slate-600 text-[11px] leading-relaxed">
+                <p className="text-slate-600 text-xs leading-relaxed">
                   Menghubungkan aplikasi ke server PocketBase pada <code>{connStatus.url}</code> untuk sinkronisasi multi-pengguna dan notifikasi instan perubahan batch.
                 </p>
-                <div className="text-[10px] text-blue-800 font-mono">Konektor: {connStatus.statusLabel}</div>
+                <div className="text-2xs text-blue-800 font-mono">Konektor: {connStatus.statusLabel}</div>
               </div>
             </div>
 
@@ -427,11 +427,11 @@ alkes.perusahaan-anda.co.id {
               <div className="space-y-0.5">
                 <div className="font-bold text-emerald-900 flex items-center gap-2">
                   <span>Standar Dokumentasi & Pengendalian Catatan ISO 13485:2016 Klausul 4.2.5</span>
-                  <span className="px-2 py-0.5 bg-emerald-200/80 text-emerald-900 text-[10px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-emerald-200/80 text-emerald-900 text-2xs font-bold rounded">
                     ALCOA+ Compliant
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                <p className="text-xs text-emerald-800 leading-relaxed">
                   Seluruh interaksi, modifikasi data, dan otorisasi batch alkes dicatat secara kronologis tanpa celah manipulasi. Dokumen wajib disimpan minimal 5 (lima) tahun sesuai masa retensi regulasi alat kesehatan Kemenkes RI.
                 </p>
               </div>
@@ -514,7 +514,7 @@ alkes.perusahaan-anda.co.id {
 
             {/* Status Info Filter */}
             {(selectedModuleFilter !== 'Semua' || selectedIntegrityFilter !== 'Semua' || searchQuery) && (
-              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
                 <span>
                   Menampilkan <strong className="text-slate-800">{auditListTerfilter.length}</strong> dari total <strong>{auditList.length}</strong> rekaman audit trail.
                 </span>
@@ -539,7 +539,7 @@ alkes.perusahaan-anda.co.id {
                 <FileText className="w-4 h-4 text-blue-600" />
                 Daftar Catatan Jejak Audit Resmi (Audit Trail Log Table):
               </span>
-              <span className="font-mono text-slate-500 text-[11px]">
+              <span className="font-mono text-slate-500 text-xs">
                 Total: {auditListTerfilter.length} Baris
               </span>
             </div>
@@ -571,15 +571,15 @@ alkes.perusahaan-anda.co.id {
                       const pemetaan = petakanKlausulIso13485(log.modul, log.aktivitas);
                       return (
                         <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-3 text-center text-slate-400 text-[11px]">
+                          <td className="py-3 px-3 text-center text-slate-400 text-xs">
                             {index + 1}
                           </td>
-                          <td className="py-3 px-4 text-slate-600 text-[11px] whitespace-nowrap">
+                          <td className="py-3 px-4 text-slate-600 text-xs whitespace-nowrap">
                             {log.waktu}
                           </td>
                           <td className="py-3 px-4 font-sans">
                             <div className="font-bold text-slate-900">{log.pengguna}</div>
-                            <div className="text-[10px] text-slate-500 font-medium">{log.peran}</div>
+                            <div className="text-2xs text-slate-500 font-medium">{log.peran}</div>
                           </td>
                           <td className="py-3 px-4 font-sans font-semibold text-blue-800">
                             {log.modul}
@@ -590,11 +590,11 @@ alkes.perusahaan-anda.co.id {
                           <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                             {log.nomorReferensi}
                           </td>
-                          <td className="py-3 px-4 font-sans text-[11px] text-slate-600 min-w-[180px]">
+                          <td className="py-3 px-4 font-sans text-xs text-slate-600 min-w-[180px]">
                             {log.perubahan && log.perubahan.length > 0 ? (
                               <div className="space-y-1">
                                 {log.perubahan.map((p, pIdx) => (
-                                  <div key={pIdx} className="bg-slate-100 p-1 rounded text-[10px] border border-slate-200">
+                                  <div key={pIdx} className="bg-slate-100 p-1 rounded text-2xs border border-slate-200">
                                     <span className="font-bold text-slate-800">{p.kolom}: </span>
                                     <span className="text-rose-600 line-through">{p.nilaiLama || '(kosong)'}</span>
                                     <span className="text-slate-400"> → </span>
@@ -603,16 +603,16 @@ alkes.perusahaan-anda.co.id {
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic text-[10px]">-</span>
+                              <span className="text-slate-400 italic text-2xs">-</span>
                             )}
                           </td>
                           <td className="py-3 px-4 font-sans min-w-[170px]">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 leading-tight">
+                            <span className="inline-block px-2 py-0.5 rounded text-2xs font-medium bg-slate-100 text-slate-700 border border-slate-200 leading-tight">
                               {pemetaan.clause}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-sans whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 w-fit ${
+                            <span className={`px-2 py-0.5 rounded text-2xs font-bold flex items-center gap-1 w-fit ${
                               log.statusIntegritas === 'Tervalidasi Digital'
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : 'bg-rose-100 text-rose-800'
@@ -692,10 +692,10 @@ alkes.perusahaan-anda.co.id {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-300">
+                    <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/30 text-emerald-300">
                       ISO 13485:2016 Clause 4.2.5
                     </span>
-                    <span className="text-[10px] text-slate-400">CDAKB & ALCOA+</span>
+                    <span className="text-2xs text-slate-400">CDAKB & ALCOA+</span>
                   </div>
                   <h3 className="text-base font-bold text-white mt-0.5">
                     Ekspor Catatan Audit Trail Digital (CSV)
@@ -720,7 +720,7 @@ alkes.perusahaan-anda.co.id {
                   Spesifikasi Dokumen Pengendalian Catatan (Control of Records):
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-slate-500 block">Nomor Kontrol Dokumen:</span>
                     <span className="font-mono font-bold text-slate-800">AMS-QMS-REC-425-IT</span>
@@ -754,7 +754,7 @@ alkes.perusahaan-anda.co.id {
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Integritas Data Sesuai Prinsip ALCOA+ Terpenuhi:
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-emerald-900">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-emerald-900">
                   <div className="flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span><strong>Attributable:</strong> Setiap log terikat pengguna & peran.</span>
@@ -784,11 +784,11 @@ alkes.perusahaan-anda.co.id {
                   <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900">1. Seluruh Log Audit</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                      <span className="px-2 py-0.5 rounded text-2xs font-bold bg-blue-100 text-blue-800">
                         {auditList.length} Rekaman
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed">
                       Ekspor dokumen komprehensif mencakup seluruh aktivitas dari seluruh divisi untuk arsip master audit inspeksi tahunan.
                     </p>
                     <button
@@ -805,11 +805,11 @@ alkes.perusahaan-anda.co.id {
                   <div className="p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900">2. Log Terfilter Saat Ini</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                      <span className="px-2 py-0.5 rounded text-2xs font-bold bg-indigo-100 text-indigo-800">
                         {auditListTerfilter.length} Rekaman
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed">
                       Hanya mengekspor baris audit yang cocok dengan filter modul ({selectedModuleFilter}), status integritas, dan kueri pencarian.
                     </p>
                     <button
@@ -827,7 +827,7 @@ alkes.perusahaan-anda.co.id {
               </div>
 
               {/* Audit trail disclosure notice */}
-              <div className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-start gap-2">
+              <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <span>
                   <strong>Catatan Otomatisasi Regulasi:</strong> Setiap tindakan ekspor berkas audit log akan secara otomatis dicatat ke dalam log audit sistem itu sendiri (nomor referensi <code>AMS-QMS-REC-425-EXP</code>) guna memenuhi prinsip Non-Repudiation pada US FDA 21 CFR Part 11 & ISO 13485.

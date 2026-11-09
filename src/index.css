@@ -1,6 +1,74 @@
 @import "tailwindcss";
 
 /* =========================================================================
+   VARIABEL MEREK BAWAAN — di-override inline oleh wrapper /web (PublicWebsite)
+   dari draf.tampilan. Halaman lain (/, /login) memakai bawaan ini.
+   ========================================================================= */
+:root {
+  --brand: #0d9488;
+  --brand-aksen: #0f766e;
+  --brand-font: 'Quicksand', 'Google Sans', system-ui, sans-serif;
+};
+
+/* =========================================================================
+   FONT LOKAL (self-hosted) — Quicksand 400–700, JetBrains Mono 400–700,
+   Open Sans 400–800. Berkas variable woff2 latin + latin-ext di public/fonts/.
+   Ketiganya berlisensi SIL Open Font License 1.1 (salinan OFL disertakan di
+   folder yang sama). Google Sans/Product Sans TIDAK dibundel (proprietary);
+   nama-namanya tetap di font stack hanya sebagai fallback bila terpasang di
+   sistem. Tidak ada permintaan ke CDN font dari halaman ini.
+   ========================================================================= */
+
+@font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/quicksand-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Quicksand';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/quicksand-latinext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/jetbrainsmono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/jetbrainsmono-latinext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/opensans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/opensans-latinext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+};
+
+/* =========================================================================
    TOKEN DESAIN GLOBAL — diselaraskan dengan bejo-pos
    Font  : Quicksand & Google Sans
    Aksen : #00AAFF (main) · #FF4400 (secondary)
@@ -12,6 +80,8 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* ---------- Skala tipografi (mengikuti bejo-pos) ---------- */
+  --text-3xs: 9px;
+  --text-3xs--line-height: 1.4;
   --text-2xs: 10px;
   --text-2xs--line-height: 1.4;
   --text-xs: 11px;
@@ -139,10 +209,102 @@
 @layer utilities {
   @media (max-width: 639px) {
     .text-2xs { font-size: 10.5px; }
+    .text-3xs { font-size: 9.5px; }
     .text-xs { font-size: 12px; }
     .text-sm { font-size: 13px; }
     .text-base { font-size: 14px; }
   }
+}
+
+/* =========================================================================
+   TEMPLATE SITUS (CMS) — diaktifkan lewat class template-* di wrapper utama
+   /web (dibangun dari draf.tampilan). Variabel --brand / --brand-aksen /
+   --brand-font disuntik inline oleh PublicWebsite. Hook: .situs-header /
+   .situs-hero / .situs-footer.
+   ========================================================================= */
+
+/* REMEDI Klasik: bawaan — tidak ada override. */
+
+/* REMEDI Premium Gelap: header/hero/footer gelap, aksen merek menyala. */
+.template-remedi-gelap .situs-header {
+  background: #0b1220;
+  border-bottom: 1px solid #1e293b;
+}
+.template-remedi-gelap .situs-header .text-slate-900,
+.template-remedi-gelap .situs-header .text-slate-800 {
+  color: #f8fafc;
+}
+.template-remedi-gelap .situs-header .text-slate-600,
+.template-remedi-gelap .situs-header .text-slate-700,
+.template-remedi-gelap .situs-header .text-slate-500 {
+  color: #cbd5e1;
+}
+.template-remedi-gelap .situs-header .bg-white {
+  background: #0b1220;
+}
+.template-remedi-gelap .situs-header .border-slate-200,
+.template-remedi-gelap .situs-header .border-slate-300 {
+  border-color: #1e293b;
+}
+.template-remedi-gelap .situs-header .hover\:bg-slate-100:hover {
+  background: #1e293b;
+}
+
+.template-remedi-gelap .situs-hero {
+  background:
+    radial-gradient(1100px 480px at 85% -10%, color-mix(in srgb, var(--brand) 35%, transparent), transparent 60%),
+    radial-gradient(900px 420px at 0% 110%, color-mix(in srgb, var(--brand) 18%, transparent), transparent 55%),
+    #0b1220;
+  border-bottom: 1px solid #1e293b;
+}
+.template-remedi-gelap .situs-hero h1,
+.template-remedi-gelap .situs-hero .text-slate-900 {
+  color: #f8fafc;
+}
+.template-remedi-gelap .situs-hero .text-slate-700,
+.template-remedi-gelap .situs-hero .text-slate-600,
+.template-remedi-gelap .situs-hero .text-slate-500 {
+  color: #cbd5e1;
+}
+.template-remedi-gelap .situs-hero .bg-slate-50 {
+  background: #111b2e;
+}
+.template-remedi-gelap .situs-hero .border-slate-200 {
+  border-color: #1e293b;
+}
+
+.template-remedi-gelap .situs-footer {
+  background: #020617;
+  border-top: 2px solid var(--brand);
+}
+
+/* REMEDI Minimal: header tanpa garis, hero ringkas, fokus ke katalog. */
+.template-remedi-minimal .situs-header {
+  border-bottom: none;
+  box-shadow: none;
+  position: relative;
+}
+.template-remedi-minimal .situs-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--brand) 45%, transparent), transparent);
+}
+.template-remedi-minimal .situs-hero {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+@media (min-width: 640px) {
+  .template-remedi-minimal .situs-hero {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
+.template-remedi-minimal .situs-hero h1 {
+  letter-spacing: -0.02em;
 }
 
 @layer base {
@@ -187,6 +349,8 @@
   border: 1px solid #d2d5d5;
   border-radius: 8px;
   box-shadow: 0 6px 18px rgba(17, 17, 17, 0.10);
+  /* Dokumen cetak A4: Open Sans (standar dokumen ISO) */
+  font-family: 'Open Sans', 'Quicksand', system-ui, sans-serif;
 }
 
 .a4-panggung {

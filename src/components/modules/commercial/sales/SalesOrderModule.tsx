@@ -26,21 +26,7 @@ import {
   ShoppingCart,
   Truck
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  tombolBahaya,
-  chipFilter,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, tombolBahaya, chipFilter, type Tone } from '../../../ui';
 
 const ALUR_STATUS: PenjualanAlkes['statusKirim'][] = [
   'Verifikasi Pesanan',

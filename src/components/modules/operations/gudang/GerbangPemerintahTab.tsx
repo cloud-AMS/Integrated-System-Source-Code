@@ -20,18 +20,7 @@ import {
   ShieldAlert,
   Wrench
 } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
 
 interface Props {
   dariAcuan: Date;

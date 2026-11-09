@@ -13,19 +13,7 @@ import {
   MapPin,
   Plus
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const LOKASI: LokasiKerja[] = ['Pabrik Manufaktur', 'Kantor Pusat', 'Gudang Distribusi'];
 
@@ -148,16 +136,16 @@ export default function CoreHRModule() {
                   <Ikon className="w-4 h-4 text-slate-500" />
                   <h4 className="text-xs font-bold text-slate-800">{lokasi}</h4>
                 </div>
-                <p className="text-[10px] text-slate-500 mb-3">{personil.length} personil • {divisi.length} divisi</p>
+                <p className="text-2xs text-slate-500 mb-3">{personil.length} personil • {divisi.length} divisi</p>
                 <div className="space-y-2">
                   {divisi.map((d) => (
                     <div key={d} className="bg-white rounded-lg border border-slate-200 p-2.5">
-                      <div className="text-[11px] font-bold text-blue-800">{d}</div>
+                      <div className="text-xs font-bold text-blue-800">{d}</div>
                       <ul className="mt-1 space-y-0.5">
                         {personil
                           .filter((p) => p.divisi === d)
                           .map((p) => (
-                            <li key={p.id} className="text-[10px] text-slate-600 leading-snug">
+                            <li key={p.id} className="text-2xs text-slate-600 leading-snug">
                               <button
                                 type="button"
                                 onClick={() => { setDetail(p); setTabDetail('induk'); }}
@@ -199,7 +187,7 @@ export default function CoreHRModule() {
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
             />
           </div>
-          <div className="flex items-center gap-1 text-[11px]">
+          <div className="flex items-center gap-1 text-xs">
             {(['Semua', ...LOKASI] as const).map((l) => (
               <button
                 key={l}
@@ -239,15 +227,15 @@ export default function CoreHRModule() {
                 >
                   <td className="py-3 px-4">
                     <div className="font-bold text-slate-900">{k.nama}</div>
-                    <div className="text-[10px] font-mono text-slate-500">{k.nik}</div>
+                    <div className="text-2xs font-mono text-slate-500">{k.nik}</div>
                   </td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{k.jabatan}</div>
-                    <div className="text-[10px] text-slate-500">{k.divisi}</div>
+                    <div className="text-2xs text-slate-500">{k.divisi}</div>
                   </td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{k.lokasi}</div>
-                    <div className="text-[10px] text-slate-500">Grade {k.grade}</div>
+                    <div className="text-2xs text-slate-500">Grade {k.grade}</div>
                   </td>
                   <td className="py-3 px-4">
                     <Badge tone={k.statusKaryawan === 'Tetap' ? 'blue' : 'slate'}>{k.statusKaryawan}</Badge>
@@ -285,11 +273,11 @@ export default function CoreHRModule() {
 
         {sertifikatSiaga.length > 0 && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <div className="text-[11px] font-bold text-amber-900 mb-1.5 flex items-center gap-1.5">
+            <div className="text-xs font-bold text-amber-900 mb-1.5 flex items-center gap-1.5">
               <Award className="w-3.5 h-3.5" />
               Peringatan masa berlaku sertifikasi (ambang H-90)
             </div>
-            <ul className="text-[11px] text-amber-900 space-y-0.5">
+            <ul className="text-xs text-amber-900 space-y-0.5">
               {sertifikatSiaga.map((s) => (
                 <li key={`${s.karyawan}-${s.nomor}`}>
                   <strong>{s.karyawan}</strong> — {s.nama} ({s.nomor}) berlaku sampai {formatTanggal(s.masaBerlaku)} •{' '}
@@ -312,15 +300,15 @@ export default function CoreHRModule() {
             <div key={g.id} className="rounded-xl border border-slate-200 p-4">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-[10px] font-bold">{g.kodeGrade}</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-2xs font-bold">{g.kodeGrade}</span>
                   <h4 className="text-xs font-bold text-slate-900">{g.namaGrade}</h4>
                 </div>
-                <span className="text-[10px] font-mono text-slate-600">
+                <span className="text-2xs font-mono text-slate-600">
                   {formatRupiah(g.rentangGajiMin)} – {formatRupiah(g.rentangGajiMax)}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed mb-2">{g.uraianTugasRingkas}</p>
-              <div className="text-[10px] text-slate-500">
+              <p className="text-xs text-slate-600 leading-relaxed mb-2">{g.uraianTugasRingkas}</p>
+              <div className="text-2xs text-slate-500">
                 Contoh jabatan: {g.contohJabatan.join(' • ')} — terisi {karyawan.filter((k) => k.grade === g.kodeGrade).length} personil
               </div>
             </div>
@@ -365,7 +353,7 @@ export default function CoreHRModule() {
                 ['Gaji Pokok', formatRupiah(detail.gajiPokok)]
               ].map(([label, nilai]) => (
                 <div key={label}>
-                  <dt className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
+                  <dt className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
                   <dd className="text-slate-800 font-semibold mt-0.5">{nilai}</dd>
                 </div>
               ))}
@@ -375,14 +363,14 @@ export default function CoreHRModule() {
           {tabDetail === 'medis' && (
             <div className="space-y-3 text-xs">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Status Rekam Medis Kerja</div>
+                <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">Status Rekam Medis Kerja</div>
                 <div className="mt-1">
                   <Badge tone={toneMedis(detail.statusRekamMedis)}>
                     <HeartPulse className="w-3 h-3" />
                     {detail.statusRekamMedis}
                   </Badge>
                 </div>
-                <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                   Rekam medis disimpan terpisah dari data personil umum dan hanya dapat diakses dokter perusahaan (modul HSE/K3),
                   sesuai prinsip kerahasiaan data kesehatan karyawan.
                 </p>
@@ -418,7 +406,7 @@ export default function CoreHRModule() {
 
           {tabDetail === 'mutasi' && (
             <div className="space-y-3">
-              <p className="text-[11px] text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 leading-relaxed">
                 Riwayat disimpan sebagai tabel temporal (system-versioned): setiap baris punya tanggal efektif dan tanggal berakhir,
                 baris aktif ditandai <code className="font-mono text-slate-700">tanggalBerakhir = null</code>.
               </p>
@@ -431,13 +419,13 @@ export default function CoreHRModule() {
                       }`}
                     />
                     <div className="text-xs font-bold text-slate-900">{m.jabatan}</div>
-                    <div className="text-[11px] text-slate-600">
+                    <div className="text-xs text-slate-600">
                       {m.divisi} • {m.lokasi} • Grade {m.grade}
                     </div>
-                    <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                    <div className="text-2xs font-mono text-slate-500 mt-0.5">
                       {formatTanggal(m.tanggalEfektif)} — {m.tanggalBerakhir === null ? 'sekarang (baris aktif)' : formatTanggal(m.tanggalBerakhir)}
                     </div>
-                    <div className="text-[11px] text-slate-700 mt-1">{m.alasanMutasi}</div>
+                    <div className="text-xs text-slate-700 mt-1">{m.alasanMutasi}</div>
                     {m.tanggalBerakhir === null && (
                       <div className="mt-1">
                         <Badge tone="blue">Baris Aktif</Badge>
@@ -536,7 +524,7 @@ export default function CoreHRModule() {
                 </select>
               </div>
               <div className="flex items-end">
-                <p className="text-[10px] text-slate-500 leading-snug">
+                <p className="text-2xs text-slate-500 leading-snug">
                   Grade menentukan rentang gaji &amp; upah sejam lembur.
                 </p>
               </div>

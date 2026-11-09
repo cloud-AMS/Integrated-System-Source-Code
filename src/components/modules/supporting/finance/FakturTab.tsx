@@ -2,17 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
 import type { TransaksiKeuangan } from '../../../../types';
 import { gerbangPenagihanCdakb, rancangJurnalFaktur } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  type IdentitasFinance,
-  Panel,
-  chipFilter,
-  formatRupiah,
-  kepalaTabelKelas,
-  pesanClass,
-  selKelas,
-  tabelKelas
-} from './ui';
+import { Badge, Panel, chipFilter, formatRupiah } from '../../../ui';
+import { type IdentitasFinance, kepalaTabelKelas, pesanClass, selKelas, tabelKelas } from './ui';
 import { Search, ShieldCheck } from 'lucide-react';
 
 const KATEGORI_FAKTUR: TransaksiKeuangan['kategori'][] = ['Pendapatan Alkes', 'Biaya Uji Kalibrasi', 'Biaya Audit ISO/CDAKB', 'Pengadaan Suku Cadang', 'Biaya Retur Mutu'];
@@ -155,13 +146,13 @@ export default function FakturTab({
         <div className="bg-white p-4 rounded-xl border border-slate-200">
           <span className="text-slate-500 block font-medium">Total Penerimaan Faktur Fasyankes</span>
           <div className="text-xl font-bold text-slate-900 mt-1">Rp {totalPendapatan.toLocaleString('id-ID')}</div>
-          <span className="text-[10px] text-emerald-700 font-semibold mt-1 block">Telah diverifikasi PPN 11%</span>
+          <span className="text-2xs text-emerald-700 font-semibold mt-1 block">Telah diverifikasi PPN 11%</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200">
           <span className="text-slate-500 block font-medium">Alokasi Biaya Mutu & Regulasi</span>
           <div className="text-xl font-bold text-blue-700 mt-1">Rp {totalBiayaMutu.toLocaleString('id-ID')}</div>
-          <span className="text-[10px] text-slate-500 mt-1 block">Audit ISO 13485 & Kalibrasi BPFK</span>
+          <span className="text-2xs text-slate-500 mt-1 block">Audit ISO 13485 & Kalibrasi BPFK</span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200">
@@ -169,7 +160,7 @@ export default function FakturTab({
           <div className={`text-xl font-bold mt-1 ${belumTerbukukan ? 'text-amber-700' : 'text-emerald-700'}`}>
             {transaksiList.length - belumTerbukukan}/{transaksiList.length} Terbukukan
           </div>
-          <span className="text-[10px] text-slate-500 mt-1 block">
+          <span className="text-2xs text-slate-500 mt-1 block">
             {belumTerbukukan
               ? `${belumTerbukukan} faktur belum punya jurnal; e-Faktur masih draf, belum dikirim ke DJP`
               : 'Seluruh faktur punya jurnal; e-Faktur tetap draf, belum dikirim ke DJP'}
@@ -224,17 +215,17 @@ export default function FakturTab({
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className={`${selKelas} font-mono font-bold text-blue-800`}>
                       <div>{item.nomorFaktur}</div>
-                      <div className="text-[10px] text-slate-500 font-normal">{item.tanggal}</div>
+                      <div className="text-2xs text-slate-500 font-normal">{item.tanggal}</div>
                     </td>
                     <td className={selKelas}>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">{item.kategori}</span>
+                      <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-slate-100 text-slate-800">{item.kategori}</span>
                     </td>
                     <td className={`${selKelas} font-semibold text-slate-900`}>{item.fasyankesAtauPemasok}</td>
                     <td className={`${selKelas} text-right font-bold text-slate-900`}>{formatRupiah(item.jumlah)}</td>
                     <td className={`${selKelas} text-slate-600`}>{item.ppnStatus}</td>
                     <td className={selKelas}>
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-2 py-0.5 rounded text-2xs font-bold ${
                           item.statusPembayaran === 'Lunas'
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                             : 'bg-amber-100 text-amber-800 border border-amber-300'
@@ -266,19 +257,19 @@ export default function FakturTab({
           <div className="bg-white p-4 rounded-xl border border-slate-200">
             <span className="text-slate-500 block font-medium">Faktur dengan Surat Jalan</span>
             <div className="text-xl font-bold text-slate-900 mt-1">{gerbangTerkait.filter((g) => g.terkait).length}</div>
-            <span className="text-[10px] text-slate-500 mt-1 block">dari {gerbangTerkait.length} faktur pendapatan</span>
+            <span className="text-2xs text-slate-500 mt-1 block">dari {gerbangTerkait.length} faktur pendapatan</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
             <span className="text-slate-500 block font-medium">Batch Lolos Gerbang</span>
             <div className="text-xl font-bold text-emerald-700 mt-1">
               {gerbangTerkait.reduce((a, g) => a + g.hasil.filter((h) => h.bolehDitagih).length, 0)}
             </div>
-            <span className="text-[10px] text-slate-500 mt-1 block">NIE sah, izin berlaku, tidak recall, stok layak kirim</span>
+            <span className="text-2xs text-slate-500 mt-1 block">NIE sah, izin berlaku, tidak recall, stok layak kirim</span>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200">
             <span className="text-slate-500 block font-medium">Batch Tertolak</span>
             <div className={`text-xl font-bold mt-1 ${gerbangGagal.length ? 'text-rose-700' : 'text-emerald-700'}`}>{gerbangGagal.length}</div>
-            <span className="text-[10px] text-slate-500 mt-1 block">Penagihan diblokir sampai tuntas</span>
+            <span className="text-2xs text-slate-500 mt-1 block">Penagihan diblokir sampai tuntas</span>
           </div>
         </div>
 
@@ -304,7 +295,7 @@ export default function FakturTab({
                           {h.bolehDitagih ? <><ShieldCheck className="w-3 h-3" />Boleh Tagih</> : 'DIBLOKIR'}
                         </Badge>
                       </td>
-                      <td className={`${selKelas} text-[10px] text-slate-600 leading-relaxed`}>{h.sebab.join(' · ') || 'Semua pemeriksaan lolos'}</td>
+                      <td className={`${selKelas} text-2xs text-slate-600 leading-relaxed`}>{h.sebab.join(' · ') || 'Semua pemeriksaan lolos'}</td>
                     </tr>
                   ))
                 ) : (
@@ -314,7 +305,7 @@ export default function FakturTab({
                     <td className={selKelas}>
                       <Badge tone="slate">TIDAK TERKAIT</Badge>
                     </td>
-                    <td className={`${selKelas} text-[10px] text-slate-500`}>Belum ada surat jalan dengan nomor faktur ini — gerbang tidak dapat diperiksa, bukan berarti lolos.</td>
+                    <td className={`${selKelas} text-2xs text-slate-500`}>Belum ada surat jalan dengan nomor faktur ini — gerbang tidak dapat diperiksa, bukan berarti lolos.</td>
                   </tr>
                 )
               )}

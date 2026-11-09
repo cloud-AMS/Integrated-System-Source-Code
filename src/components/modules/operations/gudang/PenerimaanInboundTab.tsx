@@ -16,20 +16,8 @@ import {
   ShieldAlert,
   Tag
 } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  identitasPeranGudang,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  waktuMutasiMonoton,
-  type Tone
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { identitasPeranGudang, waktuMutasiMonoton } from './ui';
 
 interface Props {
   currentRole: UserRole;

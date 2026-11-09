@@ -11,17 +11,7 @@ import {
   ShieldAlert,
   Thermometer
 } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  inputClass,
-  labelClass,
-  tombolBahaya,
-  tombolPrimerGudang,
-  tombolSekunder
-} from './ui';
+import { Badge, Modal, Panel, Stat, inputClass, labelClass, tombolBahaya, tombolPrimerGudang, tombolSekunder } from '../../../ui';
 
 interface Props {
   dariAcuan: Date;

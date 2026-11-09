@@ -12,21 +12,7 @@ import {
   ShieldCheck,
   Banknote
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  BarCapaian,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  chipFilter,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, BarCapaian, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, chipFilter, type Tone } from '../../../ui';
 
 const URUTAN_TAHAP: TahapProspek[] = [
   'Perkenalan Alat',
@@ -137,7 +123,7 @@ export default function CrmProspekModule() {
         judul="B2B Customer Profiling"
         keterangan="Profil fasyankes sebagai dasar Credit Limit & Term of Payment: akreditasi, izin operasional, penanggung jawab pengadaan, dokter penanggung jawab, pagu kredit, dan TOP."
         aksi={
-          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+          <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             Data profil diperbarui dengan jejak audit Old Value / New Value
           </div>
@@ -154,7 +140,7 @@ export default function CrmProspekModule() {
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
             />
           </div>
-          <div className="flex items-center gap-1 text-[11px] flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap">
             {['Semua', ...daftarRayon].map((rayon) => (
               <button
                 key={rayon}
@@ -195,7 +181,7 @@ export default function CrmProspekModule() {
                   >
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{p.namaInstalasi}</div>
-                      <div className="text-[10px] font-mono text-slate-500">{p.kodePelanggan}</div>
+                      <div className="text-2xs font-mono text-slate-500">{p.kodePelanggan}</div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="text-slate-700">{p.tipeFasyankes}</div>
@@ -205,10 +191,10 @@ export default function CrmProspekModule() {
                     </td>
                     <td className="py-3 px-4 text-slate-700">
                       <div>{p.rayonDistribusi}</div>
-                      <div className="text-[10px] text-slate-500">{p.provinsi}</div>
+                      <div className="text-2xs text-slate-500">{p.provinsi}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-mono text-[10px] text-slate-600">{p.nomorIzinOperasional}</div>
+                      <div className="font-mono text-2xs text-slate-600">{p.nomorIzinOperasional}</div>
                       <Badge tone={toneIzin(p.tanggalBerlakuIzin)}>
                         <ShieldCheck className="w-3 h-3" />
                         {formatTanggal(p.tanggalBerlakuIzin)}
@@ -216,13 +202,13 @@ export default function CrmProspekModule() {
                     </td>
                     <td className="py-3 px-4 text-slate-700">
                       <div>{p.namaDokterPenanggungJawab}</div>
-                      <div className="text-[10px] text-slate-500">{p.spesialisasiDokter}</div>
+                      <div className="text-2xs text-slate-500">{p.spesialisasiDokter}</div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-mono font-semibold text-slate-800">
                         {formatRupiah(p.piutangBerjalan)} / {formatRupiah(p.batasKredit)}
                       </div>
-                      <div className="text-[10px] text-slate-500">TOP {p.termsOfPaymentHari} hari • JT {formatTanggal(p.tanggalJatuhTempoPiutang)}</div>
+                      <div className="text-2xs text-slate-500">TOP {p.termsOfPaymentHari} hari • JT {formatTanggal(p.tanggalJatuhTempoPiutang)}</div>
                     </td>
                     <td className="py-3 px-4">
                       <Badge tone={toneLimit(kredit.status)}>{kredit.status}</Badge>
@@ -250,10 +236,10 @@ export default function CrmProspekModule() {
           {pipeline.perTahap.map((kolom) => (
             <div key={kolom.tahap} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between mb-1">
-                <h4 className="text-[11px] font-bold text-slate-800">{kolom.tahap}</h4>
+                <h4 className="text-xs font-bold text-slate-800">{kolom.tahap}</h4>
                 <Badge tone={toneTahap(kolom.tahap)}>{kolom.item.length}</Badge>
               </div>
-              <p className="text-[10px] text-slate-500 mb-2">
+              <p className="text-2xs text-slate-500 mb-2">
                 Bobot {formatRupiah(kolom.nilaiBobot)} dari {formatRupiah(kolom.nilaiKotor)}
               </p>
               <div className="space-y-2">
@@ -261,21 +247,21 @@ export default function CrmProspekModule() {
                   const lewat = p.tahap !== 'Pemenang' && p.tahap !== 'Gagal' && selisihHari(p.tanggalTindakLanjut) < 0;
                   return (
                     <div key={p.id} className="bg-white rounded-lg border border-slate-200 p-2.5">
-                      <div className="text-[11px] font-bold text-slate-900 leading-snug">{p.namaProspek}</div>
-                      <div className="text-[10px] font-mono text-emerald-800 mt-0.5">{p.nomorProspek}</div>
-                      <div className="text-[10px] text-slate-600 mt-1">{p.produkDiminati}</div>
-                      <div className="text-[10px] font-semibold text-slate-800 mt-1">{formatRupiah(p.nilaiEstimasi)}</div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-xs font-bold text-slate-900 leading-snug">{p.namaProspek}</div>
+                      <div className="text-2xs font-mono text-emerald-800 mt-0.5">{p.nomorProspek}</div>
+                      <div className="text-2xs text-slate-600 mt-1">{p.produkDiminati}</div>
+                      <div className="text-2xs font-semibold text-slate-800 mt-1">{formatRupiah(p.nilaiEstimasi)}</div>
+                      <div className="text-2xs text-slate-500">
                         {p.sumberLead} • {p.medRep} • {p.rayonDistribusi}
                       </div>
                       <div className="mt-1.5">
                         <BarCapaian label="Probabilitas" persen={p.probabilitasPersen} />
                       </div>
-                      <div className={`text-[10px] mt-1 ${lewat ? 'text-rose-700 font-semibold' : 'text-slate-500'}`}>
+                      <div className={`text-2xs mt-1 ${lewat ? 'text-rose-700 font-semibold' : 'text-slate-500'}`}>
                         Tindak lanjut {formatTanggal(p.tanggalTindakLanjut)}
                         {lewat && ` • terlambat ${Math.abs(selisihHari(p.tanggalTindakLanjut))} hari`}
                       </div>
-                      <div className="text-[10px] text-slate-600 mt-1 leading-relaxed">{p.catatan}</div>
+                      <div className="text-2xs text-slate-600 mt-1 leading-relaxed">{p.catatan}</div>
                       {p.tahap !== 'Pemenang' && p.tahap !== 'Gagal' && (
                         <button type="button" onClick={() => majukanTahap(p)} className={`${tombolSekunder} mt-2 w-full justify-center`}>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -286,14 +272,14 @@ export default function CrmProspekModule() {
                   );
                 })}
                 {kolom.item.length === 0 && (
-                  <p className="text-[10px] text-slate-400 italic">Belum ada prospek pada tahap ini.</p>
+                  <p className="text-2xs text-slate-400 italic">Belum ada prospek pada tahap ini.</p>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
           <Target className="w-3.5 h-3.5" />
           Konversi pipeline ke penjualan: prospek yang mencapai tahap Pemenang dilanjutkan sebagai Sales Order pada tab
           Manajemen Order &amp; Penjualan.
@@ -315,12 +301,12 @@ export default function CrmProspekModule() {
                     <MapPinned className="w-4 h-4 text-emerald-600" />
                     <h4 className="text-xs font-bold text-slate-900">{t.namaRayon}</h4>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-500">{t.kodeRayon}</span>
+                  <span className="text-2xs font-mono text-slate-500">{t.kodeRayon}</span>
                 </div>
-                <p className="text-[10px] text-slate-500 mb-2">
+                <p className="text-2xs text-slate-500 mb-2">
                   Med Rep {t.medRep} (NIK {t.nikMedRep})
                 </p>
-                <div className="text-[10px] text-slate-600 mb-2">
+                <div className="text-2xs text-slate-600 mb-2">
                   Provinsi dilayani: {t.provinsiDilayani.join(' • ')}
                 </div>
                 <div className="mb-2">
@@ -330,7 +316,7 @@ export default function CrmProspekModule() {
                     hint={`${formatRupiah(t.realisasiYtd)} dari target ${formatRupiah(t.targetTahunan)}`}
                   />
                 </div>
-                <div className="text-[10px] text-slate-500 mb-1">
+                <div className="text-2xs text-slate-500 mb-1">
                   {pelangganRayon.length} pelanggan terdaftar dari {t.daftarPelanggan.length} kode di kontrak wilayah
                 </div>
                 <div className="flex flex-wrap gap-1 mb-2">
@@ -342,7 +328,7 @@ export default function CrmProspekModule() {
                   ))}
                   {pelangganRayon.length > 4 && <Badge tone="slate">+{pelangganRayon.length - 4} lainnya</Badge>}
                 </div>
-                <div className={`text-[10px] leading-relaxed rounded-lg p-2 ${t.catatanTumpangTindih ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}`}>
+                <div className={`text-2xs leading-relaxed rounded-lg p-2 ${t.catatanTumpangTindih ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}`}>
                   {t.catatanTumpangTindih || 'Tidak ada tumpang tindih wilayah terdeteksi.'}
                 </div>
               </div>
@@ -386,7 +372,7 @@ export default function CrmProspekModule() {
                 ['Status Pelanggan', detail.statusPelanggan]
               ].map(([label, nilai]) => (
                 <div key={label}>
-                  <dt className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
+                  <dt className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
                   <dd className="text-slate-800 font-semibold mt-0.5">{nilai}</dd>
                 </div>
               ))}
@@ -400,10 +386,10 @@ export default function CrmProspekModule() {
                 return (
                   <div className={`rounded-xl border p-3 ${kredit.status === 'Diblokir' ? 'border-rose-200 bg-rose-50' : kredit.status === 'Perlu Persetujuan Manajemen' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-900">Hasil evaluasi pagu kredit</span>
+                      <span className="text-xs font-bold text-slate-900">Hasil evaluasi pagu kredit</span>
                       <Badge tone={toneLimit(kredit.status)}>{kredit.status}</Badge>
                     </div>
-                    <p className="text-[11px] text-slate-700 leading-relaxed">{kredit.keterangan}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{kredit.keterangan}</p>
                   </div>
                 );
               })()}
@@ -415,12 +401,12 @@ export default function CrmProspekModule() {
                   ['Term of Payment', `${detail.termsOfPaymentHari} hari`]
                 ].map(([label, nilai]) => (
                   <div key={label}>
-                    <dt className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
+                    <dt className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
                     <dd className="text-slate-800 font-semibold mt-0.5 font-mono">{nilai}</dd>
                   </div>
                 ))}
               </dl>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
+              <p className="text-2xs text-slate-500 leading-relaxed">
                 Sales Order baru untuk pelanggan ini diblokir otomatis apabila piutang melewati jatuh tempo atau paparan
                 melebihi 100% pagu; di atas 85% butuh persetujuan manajer penjualan.
               </p>
@@ -430,25 +416,25 @@ export default function CrmProspekModule() {
           {tabDetail === 'kunjungan' && (
             <div className="space-y-4 text-xs">
               <div>
-                <h4 className="text-[11px] font-bold text-slate-800 mb-2">Riwayat kunjungan med rep</h4>
+                <h4 className="text-xs font-bold text-slate-800 mb-2">Riwayat kunjungan med rep</h4>
                 <ol className="relative border-l border-slate-200 pl-4 space-y-3">
                   {kunjunganPelanggan(detail.id).map((k) => (
                     <li key={k.id} className="relative">
                       <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-600" />
                       <div className="text-xs font-bold text-slate-900">{k.tujuanKunjungan}</div>
-                      <div className="text-[10px] font-mono text-slate-500">
+                      <div className="text-2xs font-mono text-slate-500">
                         {formatTanggal(k.tanggal)} • {k.medRep} • check-in {k.jamCheckIn} / {k.jamCheckOut ?? 'belum check-out'}
                       </div>
-                      <div className="text-[11px] text-slate-700 mt-1">{k.hasilKunjungan}</div>
+                      <div className="text-xs text-slate-700 mt-1">{k.hasilKunjungan}</div>
                     </li>
                   ))}
                   {kunjunganPelanggan(detail.id).length === 0 && (
-                    <p className="text-[11px] text-slate-500 italic">Belum ada kunjungan tercatat untuk pelanggan ini.</p>
+                    <p className="text-xs text-slate-500 italic">Belum ada kunjungan tercatat untuk pelanggan ini.</p>
                   )}
                 </ol>
               </div>
               <div>
-                <h4 className="text-[11px] font-bold text-slate-800 mb-2">Sales Order terkait</h4>
+                <h4 className="text-xs font-bold text-slate-800 mb-2">Sales Order terkait</h4>
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
                   <table className="w-full text-left">
                     <thead>

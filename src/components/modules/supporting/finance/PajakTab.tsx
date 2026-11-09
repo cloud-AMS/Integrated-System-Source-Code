@@ -9,23 +9,8 @@ import {
   rekapPpnMasa,
   type BarisFakturPajak
 } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  type IdentitasFinance,
-  Panel,
-  Stat,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  kepalaTabelKelas,
-  labelClass,
-  nomorJurnalBerikutnya,
-  pesanClass,
-  selKelas,
-  tabelKelas,
-  tombolPrimer,
-  tombolSekunder
-} from './ui';
+import { Badge, Panel, Stat, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder } from '../../../ui';
+import { type IdentitasFinance, kepalaTabelKelas, nomorJurnalBerikutnya, pesanClass, selKelas, tabelKelas } from './ui';
 import { Download, FileText } from 'lucide-react';
 
 const NPWP_BELUM_DICATAT = 'BELUM-DICATAT';
@@ -147,19 +132,19 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
       >
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">DPP Total</div>
+            <div className="text-2xs text-slate-500">DPP Total</div>
             <div className="font-bold">{formatRupiah(barisFaktur.reduce((a, b) => a + b.dpp, 0))}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">PPN Kurang Bayar</div>
+            <div className="text-2xs text-slate-500">PPN Kurang Bayar</div>
             <div className="font-bold">{formatRupiah(rekap.kurangBayar)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">PPN Lebih Bayar</div>
+            <div className="text-2xs text-slate-500">PPN Lebih Bayar</div>
             <div className="font-bold">{formatRupiah(rekap.lebihBayar)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Baris Tanpa NPWP</div>
+            <div className="text-2xs text-slate-500">Baris Tanpa NPWP</div>
             <div className={`font-bold ${tanpaNpwp ? 'text-rose-700' : 'text-emerald-700'}`}>{tanpaNpwp}</div>
           </div>
         </div>
@@ -216,7 +201,7 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
                   <td className={`${selKelas} font-semibold text-slate-900`}>{b.namaPembeli}</td>
                   <td className={`${selKelas} text-right`}>{formatRupiah(b.dpp)}</td>
                   <td className={`${selKelas} text-right font-bold`}>{formatRupiah(b.ppn)}</td>
-                  <td className={`${selKelas} font-mono text-[10px]`}>{b.kodeTransaksi}</td>
+                  <td className={`${selKelas} font-mono text-2xs`}>{b.kodeTransaksi}</td>
                 </tr>
               ))}
               {barisFaktur.length === 0 && (
@@ -293,7 +278,7 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
                   <tr key={k.komponen} className="hover:bg-slate-50">
                     <td className={`${selKelas} font-semibold text-slate-800`}>{k.komponen}</td>
                     <td className={`${selKelas} text-right`}>{formatRupiah(k.nilai)}</td>
-                    <td className={`${selKelas} text-[10px] ${k.diperlakukan === 'Kapitalisasi persediaan' ? 'text-emerald-700 font-semibold' : 'text-slate-600'}`}>{k.diperlakukan}</td>
+                    <td className={`${selKelas} text-2xs ${k.diperlakukan === 'Kapitalisasi persediaan' ? 'text-emerald-700 font-semibold' : 'text-slate-600'}`}>{k.diperlakukan}</td>
                   </tr>
                 ))}
               </tbody>
@@ -302,28 +287,28 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">Total Tercapitalisasi</div>
+                <div className="text-2xs text-slate-500">Total Tercapitalisasi</div>
                 <div className="font-bold">{formatRupiah(landed.totalTercapitalisasi)}</div>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">Harga Pokok per Unit</div>
+                <div className="text-2xs text-slate-500">Harga Pokok per Unit</div>
                 <div className="font-bold">{formatRupiah(landed.biayaPerUnit)}</div>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">PPN Impor (Masukan)</div>
+                <div className="text-2xs text-slate-500">PPN Impor (Masukan)</div>
                 <div className="font-bold">{formatRupiah(landed.ppnImporMasukan)}</div>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
-                <div className="text-[10px] text-slate-500">PPh 22</div>
+                <div className="text-2xs text-slate-500">PPh 22</div>
                 <div className="font-bold">{formatRupiah(landed.pph22UangMuka)} / beban {formatRupiah(landed.pph22Beban)}</div>
               </div>
             </div>
             {landed.sisaPembulatan !== 0 && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Pembagian {formatRupiah(landed.totalTercapitalisasi)} ke {impor.qty} unit menyisakan {formatRupiah(landed.sisaPembulatan)} rupiah. Sisa itu dibebankan ke unit pertama supaya total harga pokok tetap persis sama — tidak ada rupiah yang hilang atau muncul dua kali.
               </div>
             )}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
               Total pembayaran ke kas negara: <strong className="text-slate-900">{formatRupiah(landed.totalPembayaran)}</strong>
             </div>
             <button type="button" onClick={bukukanLandedCost} className={tombolPrimer}>
@@ -360,14 +345,14 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
                       {t.diperlakukanSebagai}
                     </Badge>
                   </td>
-                  <td className={`${selKelas} text-[10px] whitespace-nowrap`}>
+                  <td className={`${selKelas} text-2xs whitespace-nowrap`}>
                     {formatTanggal(t.berlakuMulai)} – {t.berlakuSampai ? formatTanggal(t.berlakuSampai) : 'berjalan'}
                   </td>
-                  <td className={`${selKelas} text-[10px] text-slate-600`}>{t.dasarHukum}</td>
+                  <td className={`${selKelas} text-2xs text-slate-600`}>{t.dasarHukum}</td>
                   <td className={selKelas}>
                     <Badge tone={t.statusVerifikasiPJT === 'Terverifikasi' ? 'emerald' : 'amber'}>{t.statusVerifikasiPJT}</Badge>
                   </td>
-                  <td className={`${selKelas} text-[10px] text-slate-500 leading-relaxed`}>{t.keterangan}</td>
+                  <td className={`${selKelas} text-2xs text-slate-500 leading-relaxed`}>{t.keterangan}</td>
                 </tr>
               ))}
             </tbody>

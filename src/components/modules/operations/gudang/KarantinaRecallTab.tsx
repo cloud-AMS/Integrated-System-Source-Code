@@ -23,22 +23,8 @@ import {
   ShieldCheck,
   Unlock
 } from 'lucide-react';
-import {
-  Badge,
-  BarCapaian,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  identitasPeranGudang,
-  inputClass,
-  labelClass,
-  tombolBahaya,
-  tombolPrimerGudang,
-  tombolSekunder,
-  toneStatusStok,
-  type Tone
-} from './ui';
+import { Badge, BarCapaian, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolBahaya, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { identitasPeranGudang, toneStatusStok } from './ui';
 
 interface Props {
   currentRole: UserRole;

@@ -2,23 +2,8 @@ import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
 import type { AkunCoA, KelompokLaporan, TipeAkun } from '../../../../types';
 import { NAMA_PUSAT_BIAYA, susunLabaRugi, susunNeraca } from '../../../../utils/akuntansi';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatPersen,
-  formatRupiah,
-  inputClass,
-  labelClass,
-  kepalaTabelKelas,
-  pesanClass,
-  selKelas,
-  tabelKelas,
-  tombolPrimer,
-  tombolSekunder
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, formatPersen, formatRupiah, inputClass, labelClass, tombolPrimer, tombolSekunder } from '../../../ui';
+import { kepalaTabelKelas, pesanClass, selKelas, tabelKelas } from './ui';
 import { Plus, Scale } from 'lucide-react';
 
 const TIPE_AKUN: TipeAkun[] = ['Aset', 'Kewajiban', 'Ekuitas', 'Pendapatan', 'Beban'];
@@ -38,12 +23,12 @@ const SALDO_NORMAL: AkunCoA['saldoNormal'][] = ['Debet', 'Kredit'];
 function BarisLaporanTabel({ judul, baris, total, nadaTotal }: { judul: string; baris: { label: string; kodeAkun: string; nilai: number }[]; total: number; nadaTotal?: boolean }) {
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
-      <div className="bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-700 border-b border-slate-200">{judul}</div>
+      <div className="bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 border-b border-slate-200">{judul}</div>
       <table className={tabelKelas}>
         <tbody className="divide-y divide-slate-100">
           {baris.map((b) => (
             <tr key={b.kodeAkun} className="hover:bg-slate-50">
-              <td className={`${selKelas} font-mono text-[10px] text-slate-500`}>{b.kodeAkun}</td>
+              <td className={`${selKelas} font-mono text-2xs text-slate-500`}>{b.kodeAkun}</td>
               <td className={`${selKelas} text-slate-800`}>{b.label}</td>
               <td className={`${selKelas} text-right font-semibold ${b.nilai < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{formatRupiah(b.nilai)}</td>
             </tr>
@@ -186,28 +171,28 @@ export default function LaporanTab({ dariAcuan }: { dariAcuan: Date }) {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-xs">
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Laba Kotor</div>
+            <div className="text-2xs text-slate-500">Laba Kotor</div>
             <div className="font-bold">{formatRupiah(labaRugi.labaKotor)}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">margin {formatPersen(labaRugi.marginKotorPersen, 1)}</div>
+            <div className="text-2xs text-slate-500 mt-0.5">margin {formatPersen(labaRugi.marginKotorPersen, 1)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Beban Periode</div>
+            <div className="text-2xs text-slate-500">Beban Periode</div>
             <div className="font-bold">{formatRupiah(labaRugi.totalBeban)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Laba Usaha</div>
+            <div className="text-2xs text-slate-500">Laba Usaha</div>
             <div className={`font-bold ${labaRugi.labaUsaha < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{formatRupiah(labaRugi.labaUsaha)}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">margin {formatPersen(labaRugi.marginUsahaPersen, 1)}</div>
+            <div className="text-2xs text-slate-500 mt-0.5">margin {formatPersen(labaRugi.marginUsahaPersen, 1)}</div>
           </div>
           <div className="rounded-xl border border-slate-200 p-3">
-            <div className="text-[10px] text-slate-500">Baris Tanpa Pusat Biaya</div>
+            <div className="text-2xs text-slate-500">Baris Tanpa Pusat Biaya</div>
             <div className="font-bold">{formatRupiah(labaRugi.segmenTanpaLabel)}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">tidak teralokasi ke segmen</div>
+            <div className="text-2xs text-slate-500 mt-0.5">tidak teralokasi ke segmen</div>
           </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-2">
             <Scale className="w-3.5 h-3.5" /> Per Pusat Biaya (segmen)
           </div>
           <table className={tabelKelas}>
@@ -294,11 +279,11 @@ export default function LaporanTab({ dariAcuan }: { dariAcuan: Date }) {
                     </Badge>
                   </td>
                   <td className={`${selKelas} text-slate-600`}>{a.kelompokLaporan}</td>
-                  <td className={`${selKelas} font-mono text-[10px]`}>{a.saldoNormal}</td>
+                  <td className={`${selKelas} font-mono text-2xs`}>{a.saldoNormal}</td>
                   <td className={selKelas}>
                     <Badge tone={a.aktif ? 'emerald' : 'slate'}>{a.aktif ? 'Aktif' : 'Nonaktif'}</Badge>
                   </td>
-                  <td className={`${selKelas} text-[10px] text-slate-500 leading-relaxed`}>{a.catatanRegulasi ?? '-'}</td>
+                  <td className={`${selKelas} text-2xs text-slate-500 leading-relaxed`}>{a.catatanRegulasi ?? '-'}</td>
                 </tr>
               ))}
             </tbody>

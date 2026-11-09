@@ -95,7 +95,7 @@ export default function QAModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-indigo-100 text-indigo-800">
               Modul Mutu
             </span>
             <span className="text-xs text-slate-500">Klausul 8.5 ISO 13485:2016 & Bab V CDAKB</span>
@@ -187,7 +187,7 @@ export default function QAModule() {
                   <span className="text-xs font-semibold text-slate-600">Sumber: {item.sumber}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  <span className={`text-2xs font-bold px-2 py-0.5 rounded ${
                     item.status === 'Efektif Diverifikasi'
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-amber-100 text-amber-800'
@@ -195,7 +195,7 @@ export default function QAModule() {
                     {item.status}
                   </span>
                   {item.verifikasiPJT && (
-                    <span className="text-[10px] font-semibold text-indigo-700 flex items-center gap-1">
+                    <span className="text-2xs font-semibold text-indigo-700 flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Terverifikasi PJT
                     </span>
                   )}
@@ -206,13 +206,13 @@ export default function QAModule() {
                 <div className="space-y-2">
                   <div>
                     <span className="font-semibold text-slate-700 block">Uraian Ketidaksesuaian:</span>
-                    <p className="text-slate-600 leading-relaxed text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <p className="text-slate-600 leading-relaxed text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                       {item.deskripsiMasalah}
                     </p>
                   </div>
                   <div>
                     <span className="font-semibold text-slate-700 block">Analisis Akar Penyebab (Root Cause):</span>
-                    <p className="text-slate-600 leading-relaxed text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <p className="text-slate-600 leading-relaxed text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                       {item.akarPenyebab}
                     </p>
                   </div>
@@ -221,20 +221,20 @@ export default function QAModule() {
                 <div className="space-y-2">
                   <div>
                     <span className="font-semibold text-slate-700 block">Tindakan Korektif (Corrective Action):</span>
-                    <p className="text-slate-600 leading-relaxed text-[11px] bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
+                    <p className="text-slate-600 leading-relaxed text-xs bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
                       {item.tindakanKorektif}
                     </p>
                   </div>
                   <div>
                     <span className="font-semibold text-slate-700 block">Tindakan Pencegahan (Preventive Action):</span>
-                    <p className="text-slate-600 leading-relaxed text-[11px] bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
+                    <p className="text-slate-600 leading-relaxed text-xs bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
                       {item.tindakanPreventif}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+              <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
                 <span>Penanggung Jawab: <strong>{item.penanggungJawab}</strong></span>
                 <span>Target Selesai: <strong>{item.targetSelesai}</strong></span>
               </div>
@@ -271,12 +271,12 @@ export default function QAModule() {
                   <td className="py-3 px-4 font-medium text-slate-900">{r.fasyankes}</td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{r.namaAlkes}</div>
-                    <div className="font-mono text-[10px] text-slate-500">Batch: {r.nomorBatch}</div>
+                    <div className="font-mono text-2xs text-slate-500">Batch: {r.nomorBatch}</div>
                   </td>
                   <td className="py-3 px-4 font-bold">{r.jumlah} {r.satuan}</td>
                   <td className="py-3 px-4 text-slate-700">{r.alasanRetur}</td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    <span className="px-2 py-0.5 rounded text-2xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                       {r.statusKarantina}
                     </span>
                   </td>
@@ -310,12 +310,12 @@ export default function QAModule() {
                   <td className="py-3 px-4 text-slate-600">{doc.kategori}</td>
                   <td className="py-3 px-4 font-mono">Rev. 0{doc.revisi}</td>
                   <td className="py-3 px-4 text-slate-700">{doc.tanggalEfektif}</td>
-                  <td className="py-3 px-4 text-[11px] text-slate-600">
+                  <td className="py-3 px-4 text-xs text-slate-600">
                     <div>Penyusun: {doc.penyusun}</div>
                     <div className="font-semibold text-indigo-800">Penyetuju: {doc.penyetujui}</div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    <span className="px-2 py-0.5 rounded text-2xs font-bold bg-emerald-100 text-emerald-800">
                       {doc.status}
                     </span>
                   </td>

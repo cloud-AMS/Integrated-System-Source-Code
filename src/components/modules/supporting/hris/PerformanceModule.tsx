@@ -11,17 +11,7 @@ import {
   Activity,
   Factory
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const toneCapaian = (persen: number): Tone => (persen >= 95 ? 'emerald' : persen >= 80 ? 'blue' : persen >= 60 ? 'amber' : 'rose');
 
@@ -138,8 +128,8 @@ export default function PerformanceModule() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-xs font-bold text-slate-900">{k.nama}</div>
-                          <div className="text-[11px] text-slate-600 mt-0.5">{k.indikator}</div>
-                          <div className="text-[10px] text-slate-500 mt-1 font-mono">
+                          <div className="text-xs text-slate-600 mt-0.5">{k.indikator}</div>
+                          <div className="text-2xs text-slate-500 mt-1 font-mono">
                             {k.periode} • target {k.target} • realisasi {k.realisasi}
                           </div>
                         </div>
@@ -153,7 +143,7 @@ export default function PerformanceModule() {
                       </div>
                     </div>
                   ))}
-                  {isi.length === 0 && <div className="p-4 text-[11px] text-slate-400 italic">Belum ada indikator.</div>}
+                  {isi.length === 0 && <div className="p-4 text-xs text-slate-400 italic">Belum ada indikator.</div>}
                 </div>
               </div>
             );
@@ -236,14 +226,14 @@ export default function PerformanceModule() {
                         <Users2 className="w-3.5 h-3.5 text-slate-500" />
                         {u.nama}
                       </div>
-                      <div className="text-[10px] text-slate-500">{u.periode}</div>
+                      <div className="text-2xs text-slate-500">{u.periode}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge tone={u.status === 'Selesai' ? 'emerald' : 'amber'}>{u.status}</Badge>
                       <Badge tone={toneCapaian(rata)}>Skor {rata}/100</Badge>
                     </div>
                   </div>
-                  <div className="mt-2 grid grid-cols-4 gap-2 text-[10px]">
+                  <div className="mt-2 grid grid-cols-4 gap-2 text-2xs">
                     {[
                       ['Atasan', u.skorAtasan],
                       ['Rekan', u.skorRekan],
@@ -285,7 +275,7 @@ export default function PerformanceModule() {
                   <td className="py-3 px-4 font-bold text-slate-900">{r.karyawan.nama}</td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{r.karyawan.jabatan}</div>
-                    <div className="text-[10px] text-slate-500">{r.karyawan.divisi} • {r.karyawan.lokasi}</div>
+                    <div className="text-2xs text-slate-500">{r.karyawan.divisi} • {r.karyawan.lokasi}</div>
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-slate-700">{r.rataKpi !== null ? `${r.rataKpi}%` : '—'}</td>
                   <td className="py-3 px-4 text-right font-mono text-slate-700">{r.skorFb !== null ? `${r.skorFb}/100` : '—'}</td>

@@ -14,20 +14,7 @@ import {
   Search,
   MapPin
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  BarCapaian,
-  formatRupiah,
-  formatTanggal,
-  formatPersen,
-  tombolPrimer,
-  tombolSekunder,
-  chipFilter,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, BarCapaian, formatRupiah, formatTanggal, formatPersen, tombolPrimer, tombolSekunder, chipFilter, type Tone } from '../../../ui';
 
 const JENIS: KampanyeAlkes['jenisKegiatan'][] = ['Simposium', 'Pameran Internasional', 'Workshop Klinis', 'Edukasi Spesialis'];
 
@@ -143,7 +130,7 @@ export default function KampanyeMarketingModule() {
         judul="Event & Simposium Manager"
         keterangan="Perencanaan dan realisasi kegiatan promosi (simposium, pameran, workshop klinis, edukasi spesialis). Nilai konversi diukur dari prospek yang lahir pada kegiatan yang sama."
         aksi={
-          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+          <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <Star className="w-3.5 h-3.5 text-emerald-600" />
             ROI = (nilai konversi − realisasi biaya) / realisasi biaya
           </div>
@@ -160,7 +147,7 @@ export default function KampanyeMarketingModule() {
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
             />
           </div>
-          <div className="flex items-center gap-1 text-[11px] flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap">
             {(['Semua', ...JENIS] as const).map((j) => (
               <button key={j} type="button" onClick={() => setFilterJenis(j)} className={chipFilter(filterJenis === j)}>
                 {j}
@@ -190,22 +177,22 @@ export default function KampanyeMarketingModule() {
                   <tr key={k.id} onClick={() => setDetail(k)} className="hover:bg-slate-50 cursor-pointer">
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900">{k.namaKegiatan}</div>
-                      <div className="text-[10px] text-slate-500">PIC {k.penanggungJawab}</div>
+                      <div className="text-2xs text-slate-500">PIC {k.penanggungJawab}</div>
                     </td>
                     <td className="py-3 px-4">
                       <Badge tone="slate">{k.jenisKegiatan}</Badge>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                      <div className="text-2xs text-slate-500 mt-1 flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {k.lokasi}
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-600">
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-600">
                       <div>{k.tanggalMulai}</div>
                       <div>{k.tanggalSelesai}</div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-mono font-semibold text-slate-800">{formatRupiah(k.realisasiBiaya)}</div>
-                      <div className="text-[10px] text-slate-500">pagu {formatRupiah(k.anggaran)}</div>
+                      <div className="text-2xs text-slate-500">pagu {formatRupiah(k.anggaran)}</div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-800">{k.prospekDihasilkan} prospek</td>
                     <td className="py-3 px-4 font-mono font-bold text-emerald-800">{formatRupiah(k.nilaiKonversi)}</td>
@@ -231,7 +218,7 @@ export default function KampanyeMarketingModule() {
           </table>
         </div>
 
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2 text-[11px] text-amber-900">
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2 text-xs text-amber-900">
           <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
           Materi yang dibagikan pada simposium (brosur, slide, handout) wajib lolos verifikasi etika promosi PJT dan
           mencantumkan Nomor Izin Edar. Sponsorship tenaga kesehatan mengikuti batas hadiah/UHC Kemenkes.
@@ -265,14 +252,14 @@ export default function KampanyeMarketingModule() {
                     <td className="py-3 px-4 font-mono font-bold text-emerald-800">{u.nomorUnit}</td>
                     <td className="py-3 px-4">
                       <div className="font-semibold text-slate-900">{u.namaAlkes}</div>
-                      <div className="text-[10px] font-mono text-slate-500">{u.nomorBatch}</div>
+                      <div className="text-2xs font-mono text-slate-500">{u.nomorBatch}</div>
                     </td>
                     <td className="py-3 px-4 text-slate-700">{namaMitra(u.pelangganId)}</td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-600">{u.tanggalPinjam}</td>
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-600">{u.tanggalPinjam}</td>
                     <td className="py-3 px-4">
-                      <div className="font-mono text-[10px] text-slate-700">{formatTanggal(u.tanggalHarusKembali)}</div>
+                      <div className="font-mono text-2xs text-slate-700">{formatTanggal(u.tanggalHarusKembali)}</div>
                       {u.statusPinjam === 'Terpinjam' && (
-                        <div className={`text-[10px] font-semibold ${sisa < 0 ? 'text-rose-700' : 'text-slate-500'}`}>
+                        <div className={`text-2xs font-semibold ${sisa < 0 ? 'text-rose-700' : 'text-slate-500'}`}>
                           {sisa < 0 ? `lewat ${Math.abs(sisa)} hari` : `sisa ${sisa} hari`}
                         </div>
                       )}
@@ -283,7 +270,7 @@ export default function KampanyeMarketingModule() {
                         {status.label}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-600">{u.nomorBeritaAcara}</td>
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-600">{u.nomorBeritaAcara}</td>
                     <td className="py-3 px-4 text-right">
                       {u.statusPinjam === 'Terpinjam' && (
                         <button type="button" className={tombolSekunder} onClick={() => kembalikanUnitDemo(u)}>
@@ -291,7 +278,7 @@ export default function KampanyeMarketingModule() {
                           Tandai Dikembalikan
                         </button>
                       )}
-                      {u.statusPinjam !== 'Terpinjam' && <span className="text-[10px] text-slate-400">riwayat tertutup</span>}
+                      {u.statusPinjam !== 'Terpinjam' && <span className="text-2xs text-slate-400">riwayat tertutup</span>}
                     </td>
                   </tr>
                 );
@@ -299,7 +286,7 @@ export default function KampanyeMarketingModule() {
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+        <p className="mt-3 text-2xs text-slate-500 leading-relaxed">
           PIC peminjaman: {unitDemo[0]?.penanggungJawab ?? '-'} dan seluruh med rep terkait. Unit demo yang dikonversi
           menjadi penjualan dibuatkan Sales Order pada tab Manajemen Order &amp; Penjualan dengan status unit berubah
           menjadi Terjual.
@@ -318,7 +305,7 @@ export default function KampanyeMarketingModule() {
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
                     <h4 className="text-xs font-bold text-slate-900">{r.namaProgram}</h4>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-2xs text-slate-500">
                       Mitra {namaMitra(r.mitraId)} • periode {r.periode}
                     </p>
                   </div>
@@ -333,7 +320,7 @@ export default function KampanyeMarketingModule() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-[10px] mb-3">
+                <div className="grid grid-cols-3 gap-2 text-2xs mb-3">
                   <div className="bg-white rounded-lg border border-slate-200 p-2">
                     <div className="text-slate-500">Nilai Transaksi</div>
                     <div className="font-mono font-bold text-slate-800 mt-0.5">{formatRupiah(r.nilaiTransaksiPeriode)}</div>
@@ -349,13 +336,13 @@ export default function KampanyeMarketingModule() {
                 </div>
 
                 {!hasil.tercapai && (
-                  <p className="text-[10px] text-amber-800 mb-2">
+                  <p className="text-2xs text-amber-800 mb-2">
                     Kekurangan {hasil.kekuranganUnit} unit menuju target volume periode.
                   </p>
                 )}
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                  <span className="text-2xs text-slate-500 flex items-center gap-1.5">
                     <Percent className="w-3 h-3" />
                     Rebate dibayar sebagai nota kredit, bukan kas langsung.
                   </span>
@@ -389,7 +376,7 @@ export default function KampanyeMarketingModule() {
                     ['Nilai Konversi', formatRupiah(detail.nilaiKonversi)]
                   ].map(([label, nilai]) => (
                     <div key={label}>
-                      <dt className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
+                      <dt className="text-2xs font-semibold text-slate-500 uppercase tracking-wide">{label}</dt>
                       <dd className="text-slate-800 font-semibold mt-0.5">{nilai}</dd>
                     </div>
                   ))}
@@ -398,19 +385,19 @@ export default function KampanyeMarketingModule() {
                 <BarCapaian label="Serapan anggaran" persen={serapan} hint={`${formatPersen(serapan, 1)} dari pagu yang disetujui manajemen`} />
 
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-slate-800">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <CircleDollarSign className="w-3.5 h-3.5 text-emerald-600" />
                     Efektivitas biaya
                   </div>
-                  <div className="text-[11px] text-slate-700">
+                  <div className="text-xs text-slate-700">
                     Biaya per prospek: <span className="font-mono font-semibold">{detail.prospekDihasilkan > 0 ? formatRupiah(Math.round(roi.biayaPerProspek)) : '-'}</span>
                   </div>
-                  <div className="text-[11px] text-slate-700">
+                  <div className="text-xs text-slate-700">
                     ROI: <span className="font-mono font-semibold">{detail.realisasiBiaya > 0 ? formatPersen(roi.roiPersen, 1) : '-'}</span> — {roi.label}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2 text-[10px] text-slate-600 rounded-xl border border-slate-200 p-3">
+                <div className="flex items-start gap-2 text-2xs text-slate-600 rounded-xl border border-slate-200 p-3">
                   <FlaskConical className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   Prospek hasil kegiatan masuk ke pipeline pada tab CRM &amp; Management Prospek dengan sumber lead
                   mengikuti jenis kegiatan (Simposium / Pameran).

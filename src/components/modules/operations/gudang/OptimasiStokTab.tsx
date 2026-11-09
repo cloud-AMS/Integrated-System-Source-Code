@@ -25,20 +25,8 @@ import {
   ShoppingCart,
   TrendingDown
 } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatRupiah,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  toneStatusStok,
-  type Tone
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, formatRupiah, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { toneStatusStok } from './ui';
 
 interface Props {
   dariAcuan: Date;

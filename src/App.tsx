@@ -64,7 +64,7 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
         <div className="bg-slate-900 text-slate-200 px-3 sm:px-5 py-1.5 text-xs border-b border-slate-800 flex items-center justify-between no-print">
           <div className="flex items-center gap-2 max-w-[1440px] mx-auto flex-1 justify-center text-center">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0 hidden sm:inline-block" />
-            <span className="text-[11px] text-slate-300">
+            <span className="text-xs text-slate-300">
               <strong className="text-white">Standar Resmi Kementerian Kesehatan RI:</strong> Kepatuhan Izin Edar Alkes (NIE), Sertifikat Distribusi (SDAK), CDAKB Permenkes 4/2014 & ISO 13485:2016.
             </span>
           </div>

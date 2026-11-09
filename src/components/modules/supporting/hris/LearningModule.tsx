@@ -12,18 +12,7 @@ import {
   Award,
   BookOpenCheck
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const toneLevel = (level: SkillMatrix['level']): Tone =>
   level === 'Trainer' ? 'emerald' : level === 'Mahir' ? 'blue' : level === 'Operator' ? 'slate' : 'amber';
@@ -209,7 +198,7 @@ export default function LearningModule() {
                       </td>
                       <td className="py-3 px-4 text-slate-700">{p.sasaran}</td>
                       <td className="py-3 px-4"><Badge tone="blue">{p.frekuensi}</Badge></td>
-                      <td className="py-3 px-4 text-[11px] text-slate-600">{p.dasar}</td>
+                      <td className="py-3 px-4 text-xs text-slate-600">{p.dasar}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -222,10 +211,10 @@ export default function LearningModule() {
               <div key={p.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                    <span className="text-2xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
                       {p.standarRegulasi}
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                    <span className="text-2xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
                       {p.statusEvaluasi}
                     </span>
                   </div>
@@ -239,7 +228,7 @@ export default function LearningModule() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
                   <span>Tanggal: <strong>{p.tanggalPelaksanaan}</strong></span>
                   <span className="text-emerald-700 font-semibold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Sertifikat Terbit
@@ -291,7 +280,7 @@ export default function LearningModule() {
               <div key={level} className="rounded-xl border border-slate-200 p-3">
                 <Badge tone={toneLevel(level)}>{level}</Badge>
                 <div className="text-lg font-bold text-slate-900 mt-1">{skillList.filter((s) => s.level === level).length}</div>
-                <div className="text-[10px] text-slate-500">entri penilaian</div>
+                <div className="text-2xs text-slate-500">entri penilaian</div>
               </div>
             ))}
           </div>
@@ -317,27 +306,27 @@ export default function LearningModule() {
                   <td className="py-3 px-4 font-bold text-slate-900">{emp.namaKaryawan}</td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{emp.jabatan}</div>
-                    <div className="text-[10px] text-slate-500">{emp.divisi}</div>
+                    <div className="text-2xs text-slate-500">{emp.divisi}</div>
                   </td>
                   <td className="py-3 px-4 font-mono text-blue-800 font-semibold">
                     {emp.nomorSIP_STR || 'Kompetensi Teknis Internal'}
                   </td>
                   <td className="py-3 px-4">
                     {emp.sertifikasiCDAKB ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded text-2xs font-bold bg-emerald-100 text-emerald-800">
                         Bersertifikat
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-[10px]">-</span>
+                      <span className="text-slate-400 text-2xs">-</span>
                     )}
                   </td>
                   <td className="py-3 px-4">
                     {emp.sertifikasiISO13485 ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      <span className="px-2 py-0.5 rounded text-2xs font-bold bg-emerald-100 text-emerald-800">
                         Bersertifikat
                       </span>
                     ) : (
-                      <span className="text-slate-400 text-[10px]">-</span>
+                      <span className="text-slate-400 text-2xs">-</span>
                     )}
                   </td>
                   <td className="py-3 px-4 font-mono font-medium text-slate-700">
@@ -378,7 +367,7 @@ export default function LearningModule() {
                     <tr key={`${s.karyawan}-${s.nomor}`} className="hover:bg-slate-50">
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900">{s.karyawan}</div>
-                        <div className="text-[10px] text-slate-500">{s.jabatan} • {s.divisi}</div>
+                        <div className="text-2xs text-slate-500">{s.jabatan} • {s.divisi}</div>
                       </td>
                       <td className="py-3 px-4 text-slate-700">
                         <span className="inline-flex items-center gap-1.5">
@@ -394,7 +383,7 @@ export default function LearningModule() {
                           {s.sisaHari < 0 ? `Lewat ${Math.abs(s.sisaHari)} hari` : `${s.sisaHari} hari`}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-[11px] text-slate-600">
+                      <td className="py-3 px-4 text-xs text-slate-600">
                         {s.status === 'Kedaluwarsa'
                           ? 'Bekukan otorisasi teknis & jadwalkan sertifikasi ulang segera'
                           : 'Ajukan perpanjangan ke lembaga penerbit sebelum H-30'}

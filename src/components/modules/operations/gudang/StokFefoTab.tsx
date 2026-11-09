@@ -38,22 +38,8 @@ import {
   Unlock,
   Wrench
 } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  formatTanggal,
-  identitasPeranGudang,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  toneStatusStok,
-  waktuMutasiMonoton,
-  type Tone
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, formatTanggal, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { identitasPeranGudang, toneStatusStok, waktuMutasiMonoton } from './ui';
 
 interface Props {
   currentRole: UserRole;

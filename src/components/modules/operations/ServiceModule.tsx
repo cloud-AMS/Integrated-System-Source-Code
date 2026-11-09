@@ -75,7 +75,7 @@ export default function ServiceModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
               Layanan Purna Jual
             </span>
             <span className="text-xs text-slate-500">Klausul 7.5.4 ISO 13485 & Bab VII CDAKB</span>
@@ -150,17 +150,17 @@ export default function ServiceModule() {
                   <td className="py-3 px-4 font-semibold text-slate-900">{item.fasyankes}</td>
                   <td className="py-3 px-4 text-slate-700">
                     <div>{item.namaAlkes}</div>
-                    <div className="font-mono text-[10px] text-slate-500">SN: {item.nomorSeri} ({item.tipeModel})</div>
+                    <div className="font-mono text-2xs text-slate-500">SN: {item.nomorSeri} ({item.tipeModel})</div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">
+                    <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-slate-100 text-slate-800">
                       {item.jenisLayanan}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-slate-700">{item.teknisi}</td>
                   <td className="py-3 px-4 font-mono text-slate-700">{item.tanggalJadwal}</td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                       item.status === 'Selesai & Berita Acara Terbit'
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : item.status === 'Proses Pengerjaan'
@@ -169,7 +169,7 @@ export default function ServiceModule() {
                     }`}>
                       {item.status}
                     </span>
-                    <div className="text-[10px] text-emerald-700 font-medium mt-1">{item.hasilUjiFungsi}</div>
+                    <div className="text-2xs text-emerald-700 font-medium mt-1">{item.hasilUjiFungsi}</div>
                   </td>
                 </tr>
               ))}

@@ -8,11 +8,12 @@
  * Bentuk JSON divalidasi sebelum dipakai karena hosting statis dapat mengembalikan
  * index.html (HTTP 200) untuk path yang tidak ada.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, ClipboardList, Globe, LogIn, Mail, Menu, Phone, X } from 'lucide-react';
 import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite } from '../../../../types';
 import { PETA_HALAMAN, TampilkanSeksi, TombolSitus, type ItemRfqPublik, type PropsSeksi } from './SiteSections';
 import { hrefTautan } from '../../../../utils/website';
+import { tampilanEfektif, tumpukanFont } from '../../../../utils/tampilan';
 
 interface Rute {
   halaman: HalamanWebsite;
@@ -46,7 +47,7 @@ const KUNCI_SESI_RFQ = 'ams_web_rfq_v1';
 const gayaTombolHeader =
   'inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer';
 
-const gayaTombolMasuk = `border border-teal-600 text-teal-700 hover:bg-teal-50 ${gayaTombolHeader}`;
+const gayaTombolMasuk = `border border-[var(--brand)] text-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_10%,white)] ${gayaTombolHeader}`;
 
 const inisialLogo = (nama: string) =>
   nama
@@ -260,9 +261,25 @@ export default function PublicWebsite({
         return baru;
       })();
     og.setAttribute('content', konfigurasi.identitas.judulSitus || konfigurasi.identitas.nama);
+    // Favicon: gunakan unggahan dari CMS (identitas.faviconUrl) bila ada.
+    if (konfigurasi.identitas.faviconUrl) {
+      const fav =
+        document.querySelector('link[rel="icon"]') ??
+        (() => {
+          const baru = document.createElement('link');
+          baru.rel = 'icon';
+          document.head.appendChild(baru);
+          return baru as HTMLLinkElement;
+        })();
+      fav.setAttribute('href', konfigurasi.identitas.faviconUrl);
+    }
   }, [konfigurasi.identitas]);
 
-  const seksi = PETA_HALAMAN[rute.halaman] ?? PETA_HALAMAN.beranda;
+  const tema = tampilanEfektif(konfigurasi);
+  const seksi =
+    rute.halaman === 'beranda'
+      ? tema.berandaUrutan
+      : PETA_HALAMAN[rute.halaman] ?? PETA_HALAMAN.beranda;
   const labelBeranda = konfigurasi.menu.find((m) => m.halaman === 'beranda')?.label || 'Beranda';
   const propsSeksi: PropsSeksi = useMemo(
     () => ({
@@ -298,16 +315,24 @@ export default function PublicWebsite({
   const menu = konfigurasi.menu.filter((m) => m.isActive);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-teal-600 selection:text-white" ref={atasRef}>
+    <div
+      className={`template-${tema.templateId} min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-[var(--brand)] selection:text-white`}
+      style={{
+        '--brand': tema.warnaUtama,
+        '--brand-aksen': tema.warnaAksen,
+        fontFamily: tumpukanFont(tema.fontId)
+      } as CSSProperties}
+      ref={atasRef}
+    >
       {/* Header: identitas + navigasi + CTA (meniru advisains.id) */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
+      <header className="situs-header sticky top-0 z-40 bg-white border-b border-slate-200">
         <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
           <div className="flex items-center gap-4 py-3">
             <button type="button" onClick={() => ke('beranda')} className="flex items-center gap-3 cursor-pointer">
               {konfigurasi.identitas.logoUrl ? (
                 <img src={konfigurasi.identitas.logoUrl} alt={konfigurasi.identitas.nama} className="h-10 w-auto object-contain" />
               ) : (
-                <span className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base font-bold">
+                <span className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center text-base font-bold">
                   {inisialLogo(konfigurasi.identitas.nama)}
                 </span>
               )}
@@ -334,7 +359,7 @@ export default function PublicWebsite({
                       type="button"
                       onClick={() => setMegaAktif(megaAktif === item.id ? null : item.id)}
                       className={`flex items-center gap-1 px-3 py-2 text-sm font-semibold transition-colors cursor-pointer ${
-                        rute.halaman === 'produk' ? 'text-teal-700' : 'text-slate-700 hover:text-teal-700'
+                        rute.halaman === 'produk' ? 'text-[var(--brand)]' : 'text-slate-700 hover:text-[var(--brand)]'
                       }`}
                     >
                       {item.label}
@@ -355,7 +380,7 @@ export default function PublicWebsite({
                                         <button
                                           type="button"
                                           onClick={() => ke(t.halaman || 'produk', t.kategoriKey)}
-                                          className="text-left text-sm text-slate-600 hover:text-teal-700 cursor-pointer py-0.5"
+                                          className="text-left text-sm text-slate-600 hover:text-[var(--brand)] cursor-pointer py-0.5"
                                         >
                                           {t.label}
                                         </button>
@@ -372,7 +397,7 @@ export default function PublicWebsite({
                             <button
                               type="button"
                               onClick={() => ke('produk')}
-                              className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 hover:text-teal-800 whitespace-nowrap cursor-pointer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand)] hover:text-[var(--brand)] whitespace-nowrap cursor-pointer"
                             >
                               Buka Seluruh Katalog
                               <ArrowRight className="w-3.5 h-3.5" />
@@ -388,7 +413,7 @@ export default function PublicWebsite({
                     type="button"
                     onClick={() => ke(item.halaman || 'beranda')}
                     className={`px-3 py-2 text-sm font-semibold transition-colors cursor-pointer ${
-                      rute.halaman === item.halaman ? 'text-teal-700' : 'text-slate-700 hover:text-teal-700'
+                      rute.halaman === item.halaman ? 'text-[var(--brand)]' : 'text-slate-700 hover:text-[var(--brand)]'
                     }`}
                   >
                     {item.label}
@@ -412,7 +437,7 @@ export default function PublicWebsite({
                 <button
                   type="button"
                   onClick={() => ke('kontak')}
-                  className={`${gayaTombolHeader} bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 tabular-nums`}
+                  className={`${gayaTombolHeader} bg-[color-mix(in_srgb,var(--brand)_10%,white)] text-[var(--brand)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] hover:bg-[color-mix(in_srgb,var(--brand)_14%,white)] tabular-nums`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
                   RFQ ({daftarRfq.length})
@@ -458,7 +483,7 @@ export default function PublicWebsite({
                         key={t.id}
                         type="button"
                         onClick={() => ke(t.halaman || 'produk', t.kategoriKey)}
-                        className="w-full text-left pl-8 pr-3 py-1.5 text-xs text-slate-500 hover:text-teal-700 cursor-pointer"
+                        className="w-full text-left pl-8 pr-3 py-1.5 text-xs text-slate-500 hover:text-[var(--brand)] cursor-pointer"
                       >
                         {t.label}
                       </button>
@@ -500,7 +525,7 @@ export default function PublicWebsite({
               <button
                 type="button"
                 onClick={() => ke(rute.halaman)}
-                className="text-xs font-bold text-slate-800 uppercase tracking-wider hover:text-teal-700 cursor-pointer"
+                className="text-xs font-bold text-slate-800 uppercase tracking-wider hover:text-[var(--brand)] cursor-pointer"
               >
                 {LABEL_HALAMAN[rute.halaman] ?? rute.halaman}
               </button>
@@ -509,7 +534,7 @@ export default function PublicWebsite({
                   type="button"
                   onClick={() => aturKategoriKatalog(undefined)}
                   title="Hapus filter grup katalog"
-                  className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-teal-800 bg-teal-50 border border-teal-200 hover:bg-teal-100 rounded-full px-2.5 py-0.5 cursor-pointer"
+                  className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] hover:bg-[color-mix(in_srgb,var(--brand)_14%,white)] rounded-full px-2.5 py-0.5 cursor-pointer"
                 >
                   <span>Grup: {rute.kategoriKey}</span>
                   <X className="w-3 h-3" />
@@ -525,7 +550,7 @@ export default function PublicWebsite({
       </main>
 
       {/* Footer multi-kolom */}
-      <footer className="bg-slate-900 text-slate-300">
+      <footer className="situs-footer bg-slate-900 text-slate-300">
         <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-12">
           <div className="grid lg:grid-cols-[1.3fr_repeat(3,0.9fr)] gap-8">
             <div>
@@ -597,7 +622,7 @@ function HeaderAksi({
   const tautan = varian === 'isi' ? cfg.header.utamaTautan : cfg.header.cadanganTautan;
   const kelas =
     varian === 'isi'
-      ? 'bg-teal-600 text-white hover:bg-teal-700 border border-teal-600'
+      ? 'bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] border border-[var(--brand)]'
       : 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-300';
 
   if (tautan?.tipe === 'halaman') {

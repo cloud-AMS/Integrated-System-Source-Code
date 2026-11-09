@@ -10,19 +10,8 @@ import {
   ShieldAlert,
   Wifi
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  chipFilter,
-  identitasPeranGudang,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  waktuMutasiMonoton,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { identitasPeranGudang, waktuMutasiMonoton } from './ui';
 
 interface Props {
   currentRole: UserRole;

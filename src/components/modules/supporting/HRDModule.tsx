@@ -35,7 +35,7 @@ export default function HRDModule() {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+          <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
             Sumber Daya Manusia
           </span>
           <span className="text-xs text-slate-500">Klausul 6.2 ISO 13485 & Bab II CDAKB (Personalia)</span>

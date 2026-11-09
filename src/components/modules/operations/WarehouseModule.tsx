@@ -27,11 +27,11 @@ import OptimasiStokTab from './gudang/OptimasiStokTab';
 import ScannerRfidTab from './gudang/ScannerRfidTab';
 import KarantinaRecallTab from './gudang/KarantinaRecallTab';
 import GerbangPemerintahTab from './gudang/GerbangPemerintahTab';
+import { chipFilter } from '../../ui';
 import {
   GudangTabId,
   TANGGAL_ACUAN_BENIH,
   buatTanggalAcuan,
-  chipFilter,
   identitasPeranGudang
 } from './gudang/ui';
 

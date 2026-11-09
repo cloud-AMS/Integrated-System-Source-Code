@@ -109,7 +109,7 @@ export default function RegulatoryModule() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">
               Modul Utama
             </span>
             <span className="text-xs text-slate-500">Kemenkes RI e-Registration & Regalkes</span>
@@ -214,7 +214,7 @@ export default function RegulatoryModule() {
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4 font-medium text-slate-900">
                       <div>{item.namaAlkes}</div>
-                      <div className="text-[11px] text-slate-500 font-normal">{item.tipeModel} • {item.kategori}</div>
+                      <div className="text-xs text-slate-500 font-normal">{item.tipeModel} • {item.kategori}</div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="font-mono font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
@@ -222,7 +222,7 @@ export default function RegulatoryModule() {
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                         item.kelasRisiko === 'Kelas A' ? 'bg-slate-100 text-slate-800' :
                         item.kelasRisiko === 'Kelas B' ? 'bg-blue-100 text-blue-800' :
                         item.kelasRisiko === 'Kelas C' ? 'bg-amber-100 text-amber-800' :
@@ -233,13 +233,13 @@ export default function RegulatoryModule() {
                     </td>
                     <td className="py-3 px-4 text-slate-700">
                       <div>{item.produsen}</div>
-                      <div className="text-[10px] text-slate-500">{item.negaraAsal}</div>
+                      <div className="text-2xs text-slate-500">{item.negaraAsal}</div>
                     </td>
                     <td className="py-3 px-4 text-slate-700 font-mono">
                       {item.tanggalKedaluwarsa}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-2xs font-bold ${
                         item.status === 'Aktif'
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
@@ -273,10 +273,10 @@ export default function RegulatoryModule() {
                 <p className="text-xs text-slate-500 mb-3">Diterbitkan oleh: {s.penerbit}</p>
                 <div className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                   <span className="font-semibold block mb-0.5">Lingkup Legal:</span>
-                  <p className="leading-relaxed text-[11px]">{s.lingkup}</p>
+                  <p className="leading-relaxed text-xs">{s.lingkup}</p>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
                 <span>Berlaku s.d: <strong>{s.tanggalHabis}</strong></span>
                 <span className="text-emerald-700 font-semibold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Terverifikasi Kemenkes

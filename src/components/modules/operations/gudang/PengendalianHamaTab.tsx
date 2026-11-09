@@ -2,18 +2,7 @@ import { useState } from 'react';
 import { db } from '../../../../services/pocketbase';
 import { LogPestControl } from '../../../../types';
 import { Bug, CheckCircle2, Plus, ShieldAlert } from 'lucide-react';
-import {
-  Badge,
-  Modal,
-  Panel,
-  Stat,
-  chipFilter,
-  inputClass,
-  labelClass,
-  tombolPrimerGudang,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
 
 interface Props {
   dariAcuan: Date;

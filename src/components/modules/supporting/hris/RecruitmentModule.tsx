@@ -11,18 +11,7 @@ import {
   KeyRound,
   ScrollText
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const TAHAP: KandidatATS['tahap'][] = [
   'Skrining CV',
@@ -151,7 +140,7 @@ export default function RecruitmentModule() {
             return (
               <div key={tahap} className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-[11px] font-bold text-slate-700">{tahap}</h4>
+                  <h4 className="text-xs font-bold text-slate-700">{tahap}</h4>
                   <Badge tone={toneTahap(tahap)}>{isi.length}</Badge>
                 </div>
                 <div className="space-y-2">
@@ -159,7 +148,7 @@ export default function RecruitmentModule() {
                     <div key={k.id} className="bg-white rounded-lg border border-slate-200 p-2.5 shadow-xs">
                       <button type="button" className="text-left w-full cursor-pointer" onClick={() => setDetail(k)}>
                         <div className="text-xs font-bold text-slate-900">{k.nama}</div>
-                        <div className="text-[10px] text-slate-500">{k.posisiDilamar}</div>
+                        <div className="text-2xs text-slate-500">{k.posisiDilamar}</div>
                       </button>
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <Badge tone={k.skorKataKunci >= 70 ? 'emerald' : k.skorKataKunci >= 50 ? 'amber' : 'rose'}>
@@ -167,7 +156,7 @@ export default function RecruitmentModule() {
                           Skor CV {k.skorKataKunci}%
                         </Badge>
                         <select
-                          className="text-[10px] border border-slate-300 rounded px-1 py-0.5 bg-white cursor-pointer"
+                          className="text-2xs border border-slate-300 rounded px-1 py-0.5 bg-white cursor-pointer"
                           value={k.tahap}
                           onChange={(e) => pindahTahap(k.id, e.target.value as KandidatATS['tahap'])}
                         >
@@ -178,7 +167,7 @@ export default function RecruitmentModule() {
                       </div>
                     </div>
                   ))}
-                  {isi.length === 0 && <div className="text-[10px] text-slate-400 italic">Tidak ada kandidat</div>}
+                  {isi.length === 0 && <div className="text-2xs text-slate-400 italic">Tidak ada kandidat</div>}
                 </div>
               </div>
             );
@@ -209,7 +198,7 @@ export default function RecruitmentModule() {
                       <tr key={k.id} className="hover:bg-slate-50">
                         <td className="py-3 px-4 font-bold text-slate-900">{k.nama}</td>
                         <td className="py-3 px-4 text-slate-700">{k.posisiDilamar}</td>
-                        <td colSpan={3} className="py-3 px-4 text-slate-400 text-[11px] italic">
+                        <td colSpan={3} className="py-3 px-4 text-slate-400 text-xs italic">
                           Tidak ada lisensi wajib untuk posisi ini
                         </td>
                         <td className="py-3 px-4"><Badge tone={toneTahap(k.tahap)}>{k.tahap}</Badge></td>
@@ -249,7 +238,7 @@ export default function RecruitmentModule() {
         >
           <div className="space-y-4 text-xs">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <div className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <FileSearch className="w-3.5 h-3.5" />
                 Hasil skrining kata kunci CV — skor {detail.skorKataKunci}%
               </div>
@@ -258,18 +247,18 @@ export default function RecruitmentModule() {
                   <Badge key={k} tone="emerald">{k}</Badge>
                 ))}
                 {detail.kataKunciTerdeteksi.length === 0 && (
-                  <span className="text-[11px] text-slate-500 italic">Tidak ada kata kunci regulasi terdeteksi.</span>
+                  <span className="text-xs text-slate-500 italic">Tidak ada kata kunci regulasi terdeteksi.</span>
                 )}
               </div>
             </div>
 
             <div>
-              <div className="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <div className="text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <ClipboardCheck className="w-3.5 h-3.5" />
                 Checklist onboarding digital
               </div>
               {detail.checklistOnboarding.length === 0 ? (
-                <p className="text-[11px] text-slate-500 italic">Checklist dibuat otomatis setelah kandidat lolos skrining CV.</p>
+                <p className="text-xs text-slate-500 italic">Checklist dibuat otomatis setelah kandidat lolos skrining CV.</p>
               ) : (
                 <ul className="space-y-1.5">
                   {detail.checklistOnboarding.map((c, i) => (
@@ -289,7 +278,7 @@ export default function RecruitmentModule() {
               )}
             </div>
 
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-[11px] text-blue-900 leading-relaxed flex gap-2">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 leading-relaxed flex gap-2">
               <ScrollText className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 Dokumen wajib sebelum hari pertama: pakta integritas &amp; kerahasiaan data pasien, surat pernyataan higiene
@@ -298,7 +287,7 @@ export default function RecruitmentModule() {
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
-              <span className="text-[11px] text-slate-500">Pindahkan tahap</span>
+              <span className="text-xs text-slate-500">Pindahkan tahap</span>
               <div className="flex items-center gap-2">
                 <select
                   className={inputClass}
@@ -370,7 +359,7 @@ export default function RecruitmentModule() {
             {form.teksCv && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-blue-900">Skor kata kunci: {hasilSkrining.skor}%</span>
+                  <span className="text-xs font-bold text-blue-900">Skor kata kunci: {hasilSkrining.skor}%</span>
                   <Badge tone={hasilSkrining.skor >= 70 ? 'emerald' : hasilSkrining.skor >= 50 ? 'amber' : 'rose'}>
                     {hasilSkrining.skor >= 70 ? 'Layak lanjut tes teknis' : 'Perlu review manual'}
                   </Badge>

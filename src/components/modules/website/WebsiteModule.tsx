@@ -14,8 +14,10 @@ import {
   ExternalLink,
   Globe,
   History,
+  LayoutGrid,
   Lock,
   Monitor,
+  Palette,
   Pencil,
   RefreshCw,
   Save,
@@ -38,13 +40,18 @@ import {
   type KunciPolos
 } from './skema';
 import { EditorObjek, EditorPolos, EditorSeksiDaftar, EditorTeksPolos } from './editor/sectionsEditor';
-import { Badge, Panel, Stat, tombolPrimer, tombolSekunder, chipFilter, formatTanggal } from '../commercial/sales/ui';
+import { EditorTampilan, EditorTataLetak } from './editor/tampilanEditor';
+import { Badge, Panel, Stat, tombolPrimer, tombolSekunder, chipFilter, formatTanggal } from '../../ui';
 
 interface PropsWebsite {
   currentRole: UserRole;
 }
 
 const GRUP_RAIL: { judul: string; kunci: KunciEditorSitus[] }[] = [
+  {
+    judul: 'Template & Tampilan',
+    kunci: ['tampilan', 'tataLetak']
+  },
   {
     judul: 'Identitas & Navigasi',
     kunci: ['identitas', 'header', 'menu', 'footerKolom', 'footerCatatan']
@@ -60,7 +67,7 @@ const GRUP_RAIL: { judul: string; kunci: KunciEditorSitus[] }[] = [
 ];
 
 const LABEL_RAIL: Record<string, string> = (() => {
-  const peta: Record<string, string> = { footerCatatan: 'Catatan Footer' };
+  const peta: Record<string, string> = { footerCatatan: 'Catatan Footer', tampilan: 'Template, Warna & Font', tataLetak: 'Susunan Seksi Beranda' };
   BAGIAN_WEBSITE.forEach((b) => (peta[b.kunci] = b.label));
   OBJEK_WEBSITE.forEach((b) => (peta[b.kunci] = b.label));
   POLOS_WEBSITE.forEach((b) => (peta[b.kunci] = b.label));
@@ -68,7 +75,7 @@ const LABEL_RAIL: Record<string, string> = (() => {
 })();
 
 const IKON_RAIL: Record<string, ComponentType<{ className?: string }>> = (() => {
-  const peta: Record<string, ComponentType<{ className?: string }>> = { footerCatatan: Pencil };
+  const peta: Record<string, ComponentType<{ className?: string }>> = { footerCatatan: Pencil, tampilan: Palette, tataLetak: LayoutGrid };
   BAGIAN_WEBSITE.forEach((b) => (peta[b.kunci] = b.ikon));
   OBJEK_WEBSITE.forEach((b) => (peta[b.kunci] = b.ikon));
   POLOS_WEBSITE.forEach((b) => (peta[b.kunci] = b.ikon));
@@ -235,6 +242,12 @@ export default function WebsiteModule({ currentRole }: PropsWebsite) {
 
   /** Dipanggil sebagai fungsi (bukan komponen) agar state kartu item tidak hilang saat mengetik. */
   const renderEditor = () => {
+    if (kunci === 'tampilan') {
+      return <EditorTampilan cfg={draf} onGanti={(t) => setDraf({ ...draf, tampilan: t })} />;
+    }
+    if (kunci === 'tataLetak') {
+      return <EditorTataLetak cfg={draf} onGanti={(t) => setDraf({ ...draf, tampilan: t })} />;
+    }
     const bagian = BAGIAN_WEBSITE.find((b) => b.kunci === kunci);
     if (bagian) {
       return (

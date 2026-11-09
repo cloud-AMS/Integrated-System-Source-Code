@@ -14,17 +14,7 @@ import {
   TrendingUp,
   ArrowRight
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const toneStatusSlip = (status: SlipGaji['status']): Tone =>
   status === 'Dibayar' ? 'emerald' : status === 'Diproses' ? 'blue' : 'slate';
@@ -169,7 +159,7 @@ export default function PayrollModule() {
                 <tr key={s.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setDetail(s)}>
                   <td className="py-3 px-4">
                     <div className="font-bold text-slate-900">{s.nama}</div>
-                    <div className="text-[10px] font-mono text-slate-500">{s.periode} • {s.id}</div>
+                    <div className="text-2xs font-mono text-slate-500">{s.periode} • {s.id}</div>
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-slate-700">{formatRupiah(s.gajiPokok)}</td>
                   <td className="py-3 px-4 text-right font-mono text-slate-700">
@@ -265,7 +255,7 @@ export default function PayrollModule() {
                 <Factory className="w-3.5 h-3.5" />
                 Total insentif produksi lini
               </div>
-              <div className="font-mono text-[11px] mt-1">
+              <div className="font-mono text-xs mt-1">
                 ({pieceRate.outputUnit.toLocaleString('id-ID')} unit × (100% − {pieceRate.tingkatRejectPersen}% reject)) × {formatRupiah(pieceRate.tarifPerUnit)}
               </div>
             </div>
@@ -273,7 +263,7 @@ export default function PayrollModule() {
               <div className="text-lg font-bold text-blue-800 font-mono">{formatRupiah(hasilPieceRate)}</div>
               <button
                 type="button"
-                className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 cursor-pointer"
+                className="text-2xs font-semibold text-blue-700 hover:text-blue-900 cursor-pointer"
                 onClick={() => { setRun({ ...run, insentifOperator: hasilPieceRate }); setModalRun(true); }}
               >
                 Gunakan sebagai insentif operator <ArrowRight className="w-3 h-3 inline" />
@@ -315,7 +305,7 @@ export default function PayrollModule() {
                     {daftarSlip.filter((s) => s.metodePph21 === m.metode).length} slip
                   </Badge>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">{m.isi}</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{m.isi}</p>
               </div>
             );
           })}
@@ -361,20 +351,20 @@ export default function PayrollModule() {
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
-              <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Jejak perhitungan PPh 21</div>
-              <div className="font-mono text-[11px] text-slate-700">
+              <div className="font-bold text-slate-800 text-xs uppercase tracking-wide">Jejak perhitungan PPh 21</div>
+              <div className="font-mono text-xs text-slate-700">
                 Biaya jabatan (maks {formatRupiah(P.biayaJabatanMaksTahunan)}): {formatRupiah(Math.min(Math.round(((detail.gajiPokok + detail.tunjanganKehadiran + detail.insentifSales + detail.insentifProduksi + detail.lembur - detail.potonganAbsensi + detail.tunjanganPajak) * 12 * P.biayaJabatanPersen) / 100), P.biayaJabatanMaksTahunan))}
               </div>
-              <div className="font-mono text-[11px] text-slate-700">
+              <div className="font-mono text-xs text-slate-700">
                 PTKP TK/0: {formatRupiah(P.ptkpTK0)} — lapisan tarif: 5% / 15% / 25% / 30% / 35%
               </div>
-              <div className="font-mono text-[11px] text-slate-700">
+              <div className="font-mono text-xs text-slate-700">
                 PPh 21 bulanan: {formatRupiah(detail.pph21)} → tahunan ± {formatRupiah(detail.pph21 * 12)}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
-              <span className="text-[11px] text-slate-500">Alur status: Draft → Diproses → Dibayar</span>
+              <span className="text-xs text-slate-500">Alur status: Draft → Diproses → Dibayar</span>
               <div className="flex gap-2">
                 <button type="button" className={tombolSekunder} onClick={() => ubahStatusSlip(detail.id, 'Diproses')}>Tandai Diproses</button>
                 <button type="button" className={tombolPrimer} onClick={() => ubahStatusSlip(detail.id, 'Dibayar')}>Tandai Dibayar</button>
@@ -448,7 +438,7 @@ export default function PayrollModule() {
                 />
               </div>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               {karyawan.length} karyawan akan diproses. Lembur disetujui periode {run.periode}:{' '}
               <strong>{lembur.filter((l) => l.status === 'Disetujui' && l.tanggal.startsWith(run.periode)).length}</strong> pengajuan.
             </p>

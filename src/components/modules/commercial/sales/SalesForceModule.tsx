@@ -17,20 +17,7 @@ import {
   ChevronDown,
   Clock
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatRupiah,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  chipFilter,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, chipFilter, type Tone } from '../../../ui';
 
 const TUJUAN: KunjunganMedRep['tujuanKunjungan'][] = [
   'Perkenalan Alat',
@@ -160,7 +147,7 @@ export default function SalesForceModule() {
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs"
             />
           </div>
-          <div className="flex items-center gap-1 text-[11px] flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap">
             {(['Semua', ...TUJUAN] as const).map((t) => (
               <button key={t} type="button" onClick={() => setFilterTujuan(t)} className={chipFilter(filterTujuan === t)}>
                 {t}
@@ -189,29 +176,29 @@ export default function SalesForceModule() {
                 return (
                   <tr key={k.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4">
-                      <div className="font-mono text-[11px] font-bold text-emerald-800">{k.tanggal}</div>
-                      <div className="text-[10px] text-slate-500">{k.medRep}</div>
+                      <div className="font-mono text-xs font-bold text-emerald-800">{k.tanggal}</div>
+                      <div className="text-2xs text-slate-500">{k.medRep}</div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">{namaPelanggan(k.pelangganId)}</td>
                     <td className="py-3 px-4">
                       <Badge tone="slate">{k.tujuanKunjungan}</Badge>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-600">
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-600">
                       {k.koordinatCheckIn
                         ? `${k.koordinatCheckIn.lat.toFixed(5)}, ${k.koordinatCheckIn.lon.toFixed(5)}`
                         : '— belum ada —'}
                     </td>
                     <td className="py-3 px-4">
                       {verifikasi?.jarakKm === null || verifikasi?.jarakKm === undefined ? (
-                        <span className="text-[10px] text-slate-400">belum diukur</span>
+                        <span className="text-2xs text-slate-400">belum diukur</span>
                       ) : (
-                        <div className="text-[10px]">
+                        <div className="text-2xs">
                           <span className="font-mono font-semibold text-slate-700">{verifikasi.jarakKm.toFixed(2)} km</span>
                           <span className="text-slate-500"> / radius {k.radiusGeofenceMeter} m</span>
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-600">
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-600">
                       <div>in {k.jamCheckIn}</div>
                       <div>out {k.jamCheckOut ?? '—'}</div>
                     </td>
@@ -250,7 +237,7 @@ export default function SalesForceModule() {
           </table>
         </div>
 
-        <div className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+        <div className="mt-3 text-2xs text-slate-500 leading-relaxed">
           Hasil dan tindak lanjut kunjungan:
           {kunjunganTampil.slice(0, 3).map((k) => (
             <div key={k.id} className="mt-1">
@@ -275,27 +262,27 @@ export default function SalesForceModule() {
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div>
                     <h4 className="text-xs font-bold text-slate-900">{p.namaAlkes}</h4>
-                    <p className="text-[10px] text-slate-500">{p.tipeModel} — {p.produsen}</p>
+                    <p className="text-2xs text-slate-500">{p.tipeModel} — {p.produsen}</p>
                   </div>
                   <Badge tone={nie.status === 'Lolos' ? 'emerald' : 'rose'}>
                     <ShieldCheck className="w-3 h-3" />
                     NIE {nie.status}
                   </Badge>
                 </div>
-                <div className="text-[10px] font-mono text-emerald-800 mb-1">{p.nomorIzinEdar}</div>
-                <p className="text-[10px] text-slate-500 mb-2">
+                <div className="text-2xs font-mono text-emerald-800 mb-1">{p.nomorIzinEdar}</div>
+                <p className="text-2xs text-slate-500 mb-2">
                   {p.kategori} • berlaku sampai {formatTanggal(p.tanggalKedaluwarsaNie)}
                 </p>
-                <p className="text-[11px] text-slate-700 leading-relaxed mb-2">{p.spesifikasiRingkas}</p>
+                <p className="text-xs text-slate-700 leading-relaxed mb-2">{p.spesifikasiRingkas}</p>
                 <ul className="space-y-0.5 mb-2">
                   {p.poinJual.map((s) => (
-                    <li key={s} className="text-[10px] text-slate-600 flex items-start gap-1.5">
+                    <li key={s} className="text-2xs text-slate-600 flex items-start gap-1.5">
                       <span className="text-emerald-600 mt-0.5">•</span>
                       {s}
                     </li>
                   ))}
                 </ul>
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 mb-2">
+                <div className="flex items-center gap-2 text-2xs text-slate-500 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
                   <span className="font-mono truncate">{p.tautanBrosur}</span>
                   <Video className="w-3.5 h-3.5 ml-auto" />
@@ -309,14 +296,14 @@ export default function SalesForceModule() {
                   <div className="mt-2 space-y-2">
                     {p.pertanyaanTeknisUmum.map((t) => (
                       <div key={t.pertanyaan} className="bg-white rounded-lg border border-slate-200 p-2.5">
-                        <div className="text-[10px] font-bold text-slate-800">{t.pertanyaan}</div>
-                        <div className="text-[10px] text-slate-600 mt-1 leading-relaxed">{t.jawaban}</div>
+                        <div className="text-2xs font-bold text-slate-800">{t.pertanyaan}</div>
+                        <div className="text-2xs text-slate-600 mt-1 leading-relaxed">{t.jawaban}</div>
                       </div>
                     ))}
                   </div>
                 )}
                 {nie.status === 'Ditolak' && (
-                  <div className="mt-2 text-[10px] rounded-lg p-2 bg-rose-50 border border-rose-200 text-rose-900 leading-relaxed">
+                  <div className="mt-2 text-2xs rounded-lg p-2 bg-rose-50 border border-rose-200 text-rose-900 leading-relaxed">
                     Materi promosi produk ini tidak boleh diedarkan: {nie.keterangan}
                   </div>
                 )}
@@ -350,15 +337,15 @@ export default function SalesForceModule() {
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4 font-mono font-bold text-emerald-800">{p.nomorPraOrder}</td>
                     <td className="py-3 px-4">
-                      <div className="font-mono text-[11px] text-slate-700">{p.tanggal}</div>
-                      <div className="text-[10px] text-slate-500">{p.medRep}</div>
+                      <div className="font-mono text-xs text-slate-700">{p.tanggal}</div>
+                      <div className="text-2xs text-slate-500">{p.medRep}</div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">{namaPelanggan(p.pelangganId)}</td>
                     <td className="py-3 px-4 text-slate-700">
                       {p.item.map((i) => (
                         <div key={`${p.id}-${i.namaAlkes}`} className="leading-snug">
                           {i.namaAlkes} — {i.jumlah} unit @ {formatRupiah(i.hargaSatuan)}
-                          <div className="text-[10px] font-mono text-slate-500">Batch diminta: {i.nomorBatch}</div>
+                          <div className="text-2xs font-mono text-slate-500">Batch diminta: {i.nomorBatch}</div>
                         </div>
                       ))}
                     </td>
@@ -396,7 +383,7 @@ export default function SalesForceModule() {
                           Konversi Sales Order
                         </button>
                       ) : (
-                        <span className="text-[10px] text-slate-400">selesai diproses</span>
+                        <span className="text-2xs text-slate-400">selesai diproses</span>
                       )}
                     </td>
                   </tr>
@@ -414,7 +401,7 @@ export default function SalesForceModule() {
           onClose={() => setModalCheckIn(null)}
         >
           <form onSubmit={simpanCheckIn} className="space-y-3 text-xs">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
               <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
                 <MapPin className="w-3.5 h-3.5" />
                 Titik koordinat fasyankes (acuan geofence)
@@ -448,7 +435,7 @@ export default function SalesForceModule() {
                 />
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
+            <p className="text-2xs text-slate-500 leading-relaxed">
               Check-in tersimpan bersama jam server dan dicatat pada audit trail (kolom{' '}
               <code className="font-mono">koordinatCheckIn</code> lama dan baru). Kunjungan di luar radius ditandai gagal
               verifikasi dan wajib ditindaklanjuti supervisor wilayah.
@@ -474,9 +461,9 @@ export default function SalesForceModule() {
         >
           <form onSubmit={simpanKonversi} className="space-y-3 text-xs">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Rincian pesanan lapangan</div>
+              <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Rincian pesanan lapangan</div>
               {modalKonversi.item.map((i) => (
-                <div key={`${modalKonversi.id}-${i.namaAlkes}`} className="flex items-center justify-between text-[11px] py-0.5">
+                <div key={`${modalKonversi.id}-${i.namaAlkes}`} className="flex items-center justify-between text-xs py-0.5">
                   <span className="text-slate-700">{i.namaAlkes} × {i.jumlah}</span>
                   <span className="font-mono font-semibold text-slate-800">{formatRupiah(i.jumlah * i.hargaSatuan)}</span>
                 </div>
@@ -484,7 +471,7 @@ export default function SalesForceModule() {
             </div>
 
             {usulanBets && (
-              <div className={`rounded-xl border p-3 text-[11px] leading-relaxed ${usulanBets.alokasi.sisaKekurangan > 0 ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
+              <div className={`rounded-xl border p-3 text-xs leading-relaxed ${usulanBets.alokasi.sisaKekurangan > 0 ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
                 <div className="font-bold flex items-center gap-1.5 mb-1">
                   <QrCode className="w-3.5 h-3.5" />
                   Usulan alokasi FEFO gudang

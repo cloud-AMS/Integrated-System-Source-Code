@@ -29,18 +29,7 @@ import {
   Battery,
   Signal
 } from 'lucide-react';
-import {
-  Badge,
-  Panel,
-  Stat,
-  Modal,
-  formatTanggal,
-  inputClass,
-  labelClass,
-  tombolPrimer,
-  tombolSekunder,
-  type Tone
-} from './ui';
+import { Badge, Panel, Stat, Modal, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
 const TITIK_PABRIK = { lat: -6.2297, lon: 107.1571, radiusMeter: 150, nama: 'Pabrik Cikarang' };
 
@@ -196,16 +185,16 @@ export default function TimeAttendanceModule() {
                 <CalendarClock className="w-4 h-4 text-slate-500" />
                 <h4 className="text-xs font-bold text-slate-900">{s.namaShift}</h4>
               </div>
-              <p className="text-[11px] text-blue-800 font-semibold mt-1">{s.area}</p>
-              <p className="text-[11px] text-slate-600 leading-relaxed mt-2">{s.polaRotasi}</p>
+              <p className="text-xs text-blue-800 font-semibold mt-1">{s.area}</p>
+              <p className="text-xs text-slate-600 leading-relaxed mt-2">{s.polaRotasi}</p>
               <div className="mt-3 pt-2 border-t border-slate-200">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Tim bertugas</div>
+                <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Tim bertugas</div>
                 <div className="flex flex-wrap gap-1">
                   {s.tim.map((t) => (
                     <Badge key={t}>{t}</Badge>
                   ))}
                 </div>
-                <div className="text-[10px] font-mono text-slate-500 mt-2">
+                <div className="text-2xs font-mono text-slate-500 mt-2">
                   Berlaku {formatTanggal(s.tanggalMulai)} — {formatTanggal(s.tanggalBerakhir)}
                 </div>
               </div>
@@ -219,7 +208,7 @@ export default function TimeAttendanceModule() {
           judul="Absensi Geofencing GPS (Mobile)"
           keterangan="Karyawan lapangan (teknisi & sales) melakukan clock-in dari ponsel; sistem menolak bila koordinat di luar pagar geofence lokasi kerja."
         >
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600 mb-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 mb-3">
             Titik acuan: <strong>{TITIK_PABRIK.nama}</strong> — lat {TITIK_PABRIK.lat}, lon {TITIK_PABRIK.lon}, radius {TITIK_PABRIK.radiusMeter} m
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -288,7 +277,7 @@ export default function TimeAttendanceModule() {
                   )}
                   <div>
                     <div className="text-xs font-bold text-slate-900">{perangkat.id} — {perangkat.jenis}</div>
-                    <div className="text-[10px] text-slate-500">{perangkat.lokasi}</div>
+                    <div className="text-2xs text-slate-500">{perangkat.lokasi}</div>
                   </div>
                 </div>
                 <Badge tone={perangkat.tone}>{perangkat.status}</Badge>
@@ -318,7 +307,7 @@ export default function TimeAttendanceModule() {
               <Smartphone className="w-4 h-4 text-blue-600" />
               Mobile App Client v2.4
             </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Aplikasi native Android untuk karyawan PT Anugrah Mitra Selaras (AMS) melakukan clock-in mandiri dengan verifikasi wajah dan geofence GPS terenkripsi.
             </p>
             <div className="pt-2 flex items-center justify-between">
@@ -326,7 +315,7 @@ export default function TimeAttendanceModule() {
               <button
                 type="button"
                 onClick={() => alert('Mengunduh APK Installer Smart Attendance Android App v2.4 (Simulasi)...')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 text-[11px] font-semibold hover:bg-slate-300 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-200 text-slate-800 text-xs font-semibold hover:bg-slate-300 transition-colors cursor-pointer"
               >
                 <Download className="w-3 h-3" />
                 Unduh APK
@@ -339,10 +328,10 @@ export default function TimeAttendanceModule() {
               <MapPin className="w-4 h-4 text-emerald-600" />
               GPS Geofencing Karyawan Lapangan
             </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Sinkronisasi koordinat otomatis saat sales atau teknisi alkes melakukan kunjungan fasyankes atau rumah sakit.
             </p>
-            <div className="text-[10px] font-mono text-slate-500 pt-1">
+            <div className="text-2xs font-mono text-slate-500 pt-1">
               Radius validasi: 150m dari titik operasional pusat.
             </div>
           </div>
@@ -352,10 +341,10 @@ export default function TimeAttendanceModule() {
               <Clock3 className="w-4 h-4 text-amber-600" />
               Sinkronisasi Otomatis Shift & Lembur
             </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Setiap catatan kehadiran pada aplikasi Android langsung mengalir ke kalkulator lembur dan modul payroll bulanan secara real-time.
             </p>
-            <div className="text-[10px] font-mono text-slate-500 pt-1">
+            <div className="text-2xs font-mono text-slate-500 pt-1">
               Integrasi: 100% compliant CDAKB & ISO 13485.
             </div>
           </div>
@@ -415,13 +404,13 @@ export default function TimeAttendanceModule() {
                     <td className="py-3 px-4">
                       <Badge tone={toneStatus(a.status)}>{a.status}</Badge>
                       {a.status === 'Terlambat' && telat.menitTerlambat > 0 && (
-                        <div className="text-[10px] text-amber-700 mt-1">
+                        <div className="text-2xs text-amber-700 mt-1">
                           +{telat.menitTerlambat} menit dari jam masuk {telat.jamAcuan} • potongan{' '}
                           {formatRupiah(hitungPotonganKeterlambatan(telat.menitTerlambat))}
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-[11px] text-slate-600 max-w-md">{a.lokasi}</td>
+                    <td className="py-3 px-4 text-xs text-slate-600 max-w-md">{a.lokasi}</td>
                   </tr>
                 );
               })}
@@ -464,7 +453,7 @@ export default function TimeAttendanceModule() {
                     <td className="py-3 px-4 font-bold text-slate-900">{l.nama}</td>
                     <td className="py-3 px-4 text-right font-mono">{l.jamLembur} jam</td>
                     <td className="py-3 px-4 text-right font-mono">{formatRupiah(l.upahPerJam)}</td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-slate-500">
+                    <td className="py-3 px-4 font-mono text-2xs text-slate-500">
                       ({formatRupiah(l.upahPerJam)} × {P.faktorLemburJamPertama} × {jamPertama} j) +
                       ({formatRupiah(l.upahPerJam)} × {P.faktorLemburJamBerikutnya} × {jamBerikutnya} j)
                     </td>
@@ -555,10 +544,10 @@ export default function TimeAttendanceModule() {
                   <Timer className="w-3.5 h-3.5" />
                   Rincian perhitungan — {karyawanDipilih.nama}
                 </div>
-                <div className="text-blue-900 font-mono text-[11px]">
+                <div className="text-blue-900 font-mono text-xs">
                   Upah sejam = {formatRupiah(karyawanDipilih.gajiPokok)} / {P.pembagiUpahPerJam} = {formatRupiah(previewLembur.upahPerJam)}
                 </div>
-                <div className="text-blue-900 font-mono text-[11px]">
+                <div className="text-blue-900 font-mono text-xs">
                   Lembur = ({formatRupiah(previewLembur.upahPerJam)} × {P.faktorLemburJamPertama} × {Math.min(formLembur.jamLembur, 1)} j) +
                   ({formatRupiah(previewLembur.upahPerJam)} × {P.faktorLemburJamBerikutnya} × {Math.max(formLembur.jamLembur - 1, 0)} j)
                 </div>
@@ -609,7 +598,7 @@ export default function TimeAttendanceModule() {
             <div className="flex justify-center">
               <div className={`w-[320px] rounded-[36px] border-[8px] ${osPreview === 'ios' ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-700 bg-slate-900 text-slate-100'} p-4 shadow-2xl relative overflow-hidden font-sans`}>
                 {/* Phone Status Bar */}
-                <div className="flex items-center justify-between text-[10px] text-slate-400 px-2 pb-3 border-b border-slate-800">
+                <div className="flex items-center justify-between text-2xs text-slate-400 px-2 pb-3 border-b border-slate-800">
                   <span className="font-mono">09:41</span>
                   <div className="flex items-center gap-1.5">
                     <Signal className="w-3 h-3" />
@@ -621,10 +610,10 @@ export default function TimeAttendanceModule() {
                 {/* App Header inside phone */}
                 <div className="py-3 px-2 flex items-center justify-between">
                   <div>
-                    <div className="text-[10px] text-blue-400 font-semibold">AMS Smart Attendance</div>
+                    <div className="text-2xs text-blue-400 font-semibold">AMS Smart Attendance</div>
                     <div className="text-xs font-bold text-white">v.2.4 ({osPreview.toUpperCase()})</div>
                   </div>
-                  <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-2xs font-bold text-white">
                     AMS
                   </div>
                 </div>
@@ -634,12 +623,12 @@ export default function TimeAttendanceModule() {
                   <div className="flex items-center gap-2 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
                     <ScanFace className="w-6 h-6 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="font-bold text-white text-[11px]">{karyawan[0]?.nama || 'Ahmad Fauzi, S.Farm'}</div>
-                      <div className="text-[10px] text-emerald-400 font-mono">Face ID & Geofence Valid</div>
+                      <div className="font-bold text-white text-xs">{karyawan[0]?.nama || 'Ahmad Fauzi, S.Farm'}</div>
+                      <div className="text-2xs text-emerald-400 font-mono">Face ID & Geofence Valid</div>
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700 space-y-1.5 text-[11px]">
+                  <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-700 space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-400">
                       <span>Lokasi Kerja:</span>
                       <span className="text-white font-medium">Pabrik Cikarang</span>
@@ -658,7 +647,7 @@ export default function TimeAttendanceModule() {
                     <div className="bg-emerald-950/80 border border-emerald-500/50 p-3 rounded-xl text-center space-y-1">
                       <Check className="w-6 h-6 text-emerald-400 mx-auto" />
                       <div className="font-bold text-emerald-200 text-xs">CLOCK-IN BERHASIL</div>
-                      <div className="text-[10px] text-emerald-300 font-mono">Tercatat ke Database Pusat HRD AMS</div>
+                      <div className="text-2xs text-emerald-300 font-mono">Tercatat ke Database Pusat HRD AMS</div>
                     </div>
                   ) : (
                     <button

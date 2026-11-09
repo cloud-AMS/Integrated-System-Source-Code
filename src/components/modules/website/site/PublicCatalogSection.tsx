@@ -87,27 +87,27 @@ function punyaHargaNominal(harga?: string): boolean {
 function ikonKategoriAlkes(kategori: string) {
   const k = kategori.toLowerCase();
   if (k.includes('lab') || k.includes('vitro') || k.includes('diagnostik')) {
-    return <Microscope className="w-7 h-7 text-teal-700" />;
+    return <Microscope className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('instrument') || k.includes('bedah')) {
-    return <Scissors className="w-7 h-7 text-teal-700" />;
+    return <Scissors className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('vaccine') || k.includes('cooler') || k.includes('cold')) {
-    return <ThermometerSnowflake className="w-7 h-7 text-teal-700" />;
+    return <ThermometerSnowflake className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('protective') || k.includes('apd')) {
-    return <Shield className="w-7 h-7 text-teal-700" />;
+    return <Shield className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('x-ray') || k.includes('radiasi')) {
-    return <ScanLine className="w-7 h-7 text-teal-700" />;
+    return <ScanLine className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('vet')) {
-    return <Stethoscope className="w-7 h-7 text-teal-700" />;
+    return <Stethoscope className="w-7 h-7 text-[var(--brand)]" />;
   }
   if (k.includes('disposable') || k.includes('steril')) {
-    return <PackageCheck className="w-7 h-7 text-teal-700" />;
+    return <PackageCheck className="w-7 h-7 text-[var(--brand)]" />;
   }
-  return <Activity className="w-7 h-7 text-teal-700" />;
+  return <Activity className="w-7 h-7 text-[var(--brand)]" />;
 }
 
 /**
@@ -401,7 +401,7 @@ export function SeksiProdukPublik({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-3xl">
             {cfg.produk.kepala.eyebrow && (
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand)]">
                 {cfg.produk.kepala.eyebrow}
               </p>
             )}
@@ -432,7 +432,7 @@ export function SeksiProdukPublik({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
               >
-                <FileText className="w-3.5 h-3.5 text-teal-700" />
+                <FileText className="w-3.5 h-3.5 text-[var(--brand)]" />
                 Unduh Katalog PDF
               </a>
               <a
@@ -441,7 +441,7 @@ export function SeksiProdukPublik({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
+                <ExternalLink className="w-3.5 h-3.5 text-[var(--brand)]" />
                 Price List Resmi
               </a>
             </div>
@@ -458,7 +458,7 @@ export function SeksiProdukPublik({
             </div>
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
               <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Grup Katalog</p>
-              <p className="text-xl font-bold text-teal-700 mt-0.5 tabular-nums">{statistikKatalog.totalGrup}</p>
+              <p className="text-xl font-bold text-[var(--brand)] mt-0.5 tabular-nums">{statistikKatalog.totalGrup}</p>
               <p className="text-2xs text-slate-500 mt-0.5">Dari Disposable hingga X-Ray System</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
@@ -486,7 +486,7 @@ export function SeksiProdukPublik({
                   onChange={(e) => setKataKunci(e.target.value)}
                   placeholder="Cari nama alat kesehatan, tipe/model, merek prinsipal, nomor izin edar (AKL/AKD), atau spesifikasi…"
                   aria-label="Cari alat kesehatan"
-                  className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                  className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none"
                 />
                 {kataKunci && (
                   <button
@@ -603,12 +603,12 @@ export function SeksiProdukPublik({
                   onClick={() => pilihKategori(k.label)}
                   className={`inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                     aktif
-                      ? 'bg-teal-700 text-white border-teal-700'
+                      ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
                       : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
                   {k.label}
-                  <span className={`tabular-nums text-2xs ${aktif ? 'text-teal-100' : 'text-slate-400'}`}>
+                  <span className={`tabular-nums text-2xs ${aktif ? 'text-white' : 'text-slate-400'}`}>
                     ({k.jumlah})
                   </span>
                 </button>
@@ -627,7 +627,7 @@ export function SeksiProdukPublik({
                 <button
                   type="button"
                   onClick={resetSemuaFilter}
-                  className="text-xs font-semibold text-teal-700 hover:text-teal-800 cursor-pointer"
+                  className="text-xs font-semibold text-[var(--brand)] hover:text-[var(--brand)] cursor-pointer"
                 >
                   Atur ulang filter
                 </button>
@@ -654,7 +654,7 @@ export function SeksiProdukPublik({
               <button
                 type="button"
                 onClick={() => ke('kontak')}
-                className="px-4 py-2 rounded-full bg-teal-600 hover:bg-teal-700 text-xs font-semibold text-white cursor-pointer"
+                className="px-4 py-2 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-xs font-semibold text-white cursor-pointer"
               >
                 Konsultasikan Kebutuhan Khusus
               </button>
@@ -686,14 +686,14 @@ export function SeksiProdukPublik({
                           <button
                             type="button"
                             onClick={() => setProdukDetail(p)}
-                            className="text-left font-bold text-slate-900 hover:text-teal-700 leading-snug cursor-pointer"
+                            className="text-left font-bold text-slate-900 hover:text-[var(--brand)] leading-snug cursor-pointer"
                           >
                             {p.nama}
                           </button>
                           <p className="text-2xs font-mono text-slate-500 mt-0.5">{p.tipeModel}</p>
                         </td>
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                          <p className="font-semibold text-teal-700">{p.kategori}</p>
+                          <p className="font-semibold text-[var(--brand)]">{p.kategori}</p>
                           <p className="text-2xs text-slate-500 mt-0.5">
                             {p.kategoriRegulasi ? `${p.kategoriRegulasi}` : 'Lini Katalog REMEDI'}
                             {p.kelasRisiko && p.kelasRisiko !== '-' ? ` · ${p.kelasRisiko}` : ''}
@@ -749,7 +749,7 @@ export function SeksiProdukPublik({
                               className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                                 diRfq
                                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                                  : 'bg-teal-600 text-white hover:bg-teal-700'
+                                  : 'bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)]'
                               }`}
                             >
                               {diRfq ? (
@@ -782,7 +782,7 @@ export function SeksiProdukPublik({
               return (
                 <article
                   key={p.id}
-                  className="group bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col hover:border-teal-300 hover:shadow-sm transition-all"
+                  className="group bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col hover:border-[color-mix(in_srgb,var(--brand)_45%,white)] hover:shadow-sm transition-all"
                 >
                   <button
                     type="button"
@@ -794,7 +794,7 @@ export function SeksiProdukPublik({
                   </button>
 
                   <div className="p-5 flex-1 flex flex-col">
-                    <p className="text-2xs font-bold uppercase tracking-wider text-teal-700">
+                    <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">
                       {p.kategori}
                       {p.produsen ? ` · ${p.produsen}` : ''}
                       {p.kelasRisiko && p.kelasRisiko !== '-' ? (
@@ -807,7 +807,7 @@ export function SeksiProdukPublik({
                       onClick={() => setProdukDetail(p)}
                       className="text-left mt-1.5 cursor-pointer"
                     >
-                      <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-700 transition-colors leading-snug">
+                      <h3 className="text-base font-bold text-slate-900 group-hover:text-[var(--brand)] transition-colors leading-snug">
                         {p.nama}
                       </h3>
                     </button>
@@ -871,7 +871,7 @@ export function SeksiProdukPublik({
                         className={`flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                           diRfq
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                            : 'bg-teal-600 text-white hover:bg-teal-700 border border-teal-600'
+                            : 'bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] border border-[var(--brand)]'
                         }`}
                       >
                         {diRfq ? (
@@ -908,7 +908,7 @@ export function SeksiProdukPublik({
             <button
               type="button"
               onClick={() => ke('produk', kategori === 'Semua' ? undefined : kategori)}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs font-semibold transition-colors cursor-pointer shrink-0"
             >
               Buka Katalog Lengkap
               <ArrowRight className="w-4 h-4" />
@@ -922,13 +922,13 @@ export function SeksiProdukPublik({
             <div className="bg-slate-900 text-white rounded-2xl border border-slate-700 shadow-lg p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs tabular-nums shrink-0">
+                  <span className="w-9 h-9 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center font-bold text-xs tabular-nums shrink-0">
                     {daftarRfq.length}
                   </span>
                   <div>
                     <p className="text-xs sm:text-sm font-bold text-white">
                       Daftar Permintaan Penawaran (RFQ) ·{' '}
-                      <span className="tabular-nums text-teal-300">{totalUnitRfq} item/unit</span>
+                      <span className="tabular-nums text-[color-mix(in_srgb,var(--brand)_65%,white)]">{totalUnitRfq} item/unit</span>
                     </p>
                     <p className="text-2xs text-slate-300">
                       Produk terpilih akan otomatis dimuat ke formulir penawaran resmi tim komersial & PJT.
@@ -947,7 +947,7 @@ export function SeksiProdukPublik({
                   <button
                     type="button"
                     onClick={() => ke('kontak')}
-                    className="inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-full bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_75%,black)] text-slate-950 text-xs font-bold transition-colors cursor-pointer"
                   >
                     Lanjut Ajukan Penawaran
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1083,7 +1083,7 @@ function ModalDetailProduk({
         {/* Header Modal */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-5 py-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-2xs font-bold uppercase tracking-wider text-teal-700">
+            <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">
               {produk.kategori}
               {produk.kategoriRegulasi ? ` · ${produk.kategoriRegulasi}` : ''}
               {produk.kelasRisiko && produk.kelasRisiko !== '-' ? ` · ${produk.kelasRisiko}` : ''}
@@ -1113,7 +1113,7 @@ function ModalDetailProduk({
             {/* Kotak Legalitas & Distribusi CDAKB */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
               <div className="flex items-center gap-2 font-bold text-slate-800">
-                <BadgeCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                <BadgeCheck className="w-4 h-4 text-[var(--brand)] shrink-0" />
                 Informasi Kepatuhan & Distribusi
               </div>
               <dl className="space-y-1.5 text-2xs">
@@ -1130,7 +1130,7 @@ function ModalDetailProduk({
                       produk.statusIzinEdar === 'Aktif'
                         ? 'text-emerald-700'
                         : produk.statusIzinEdar === 'Verifikasi Register RA'
-                          ? 'text-teal-700'
+                          ? 'text-[var(--brand)]'
                           : 'text-amber-700'
                     }`}
                   >
@@ -1173,14 +1173,14 @@ function ModalDetailProduk({
                     href={produk.tautanBrosur}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-teal-700"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-[var(--brand)]"
                   >
                     <FileText className="w-3.5 h-3.5" />
                     Buka Katalog / Brosur
                   </a>
                 ) : produk.tautanBrosur ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-2xs text-slate-600">
-                    <FileText className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <FileText className="w-3.5 h-3.5 text-[var(--brand)] shrink-0" />
                     Brosur teknis dilampirkan bersama penawaran resmi
                   </span>
                 ) : null}
@@ -1211,8 +1211,8 @@ function ModalDetailProduk({
           </div>
 
           <div className="flex flex-col">
-            <div className="bg-teal-50/60 border border-teal-200 rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-teal-800">Referensi Harga & Pengadaan</p>
+            <div className="bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] rounded-xl px-4 py-3">
+              <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">Referensi Harga & Pengadaan</p>
               <p className="text-base font-bold text-slate-900 mt-0.5 tabular-nums">
                 {produk.hargaTayang || 'Sesuai Daftar Harga Resmi / Kontrak'}
               </p>
@@ -1232,7 +1232,7 @@ function ModalDetailProduk({
                 <ul className="mt-2 space-y-1.5">
                   {produk.poinJual.map((poin) => (
                     <li key={poin} className="text-xs text-slate-700 flex items-start gap-2">
-                      <Check className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
+                      <Check className="w-3.5 h-3.5 text-[var(--brand)] shrink-0 mt-0.5" />
                       <span>{poin}</span>
                     </li>
                   ))}
@@ -1293,7 +1293,7 @@ function ModalDetailProduk({
                 <button
                   type="button"
                   onClick={simpanKeDaftar}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2.5 rounded-full border border-teal-600 text-teal-700 hover:bg-teal-50 text-xs font-bold transition-colors cursor-pointer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2.5 rounded-full border border-[var(--brand)] text-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_10%,white)] text-xs font-bold transition-colors cursor-pointer"
                 >
                   {ditambahkan ? (
                     <>
@@ -1310,7 +1310,7 @@ function ModalDetailProduk({
                 <button
                   type="button"
                   onClick={() => onAjukanLangsung(Math.max(1, jumlah))}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   <Handshake className="w-4 h-4" />
                   Ajukan Penawaran Sekarang

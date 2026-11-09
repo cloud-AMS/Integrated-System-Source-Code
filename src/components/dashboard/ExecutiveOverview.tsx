@@ -265,7 +265,7 @@ export default function ExecutiveOverview({
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
                 Real-Time Board Cockpit (Direksi)
               </span>
@@ -310,14 +310,14 @@ export default function ExecutiveOverview({
         {/* Executive Summary Metric Cards Row */}
         <div className="mt-6 pt-5 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60">
-            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
               <span>Total Pendapatan YTD</span>
               <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-lg font-bold text-white mt-1">
               Rp {(totalRevenue / 1000000000).toFixed(2)} M
             </div>
-            <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${pertumbuhanBulanan === null ? 'text-slate-400' : pertumbuhanBulanan >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <div className={`text-2xs mt-0.5 flex items-center gap-1 ${pertumbuhanBulanan === null ? 'text-slate-400' : pertumbuhanBulanan >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {pertumbuhanBulanan === null ? (
                 'Bulan pembanding belum ada'
               ) : pertumbuhanBulanan >= 0 ? (
@@ -329,53 +329,53 @@ export default function ExecutiveOverview({
           </div>
 
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60">
-            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
               <span>Kepatuhan Mutu & ISO</span>
               <Award className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-lg font-bold text-white mt-1">
               {`${skorKepatuhanKini.toFixed(1)}%`}
             </div>
-            <div className="text-[10px] text-blue-400 mt-0.5">
+            <div className="text-2xs text-blue-400 mt-0.5">
               Audit KAN & Kemenkes Lulus
             </div>
           </div>
 
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60">
-            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
               <span>Suhu Cold Chain</span>
               <Thermometer className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-lg font-bold text-white mt-1">
               {suhuColdChain === null ? 'Belum ada sensor' : `${suhuColdChain.toFixed(1)}°C`}
             </div>
-            <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${suhuDalamRentang === false ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <div className={`text-2xs mt-0.5 flex items-center gap-1 ${suhuDalamRentang === false ? 'text-rose-400' : 'text-emerald-400'}`}>
               <span className={`w-1.5 h-1.5 rounded-full inline-block ${suhuDalamRentang === false ? 'bg-rose-400' : 'bg-emerald-400'}`} /> {suhuDalamRentang === false ? 'Di Luar Rentang 2-8°C' : 'Standar 2-8°C Aman'}
             </div>
           </div>
 
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60">
-            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
               <span>Izin Edar NIE Aktif</span>
               <Building2 className="w-4 h-4 text-indigo-400" />
             </div>
             <div className="text-lg font-bold text-white mt-1">
               {izinList.length} Produk
             </div>
-            <div className="text-[10px] text-amber-400 mt-0.5">
+            <div className="text-2xs text-amber-400 mt-0.5">
               {niePerluPerpanjangan.length} perlu perpanjangan
             </div>
           </div>
 
           <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60 col-span-2 sm:col-span-1">
-            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
               <span>Tender & e-Katalog</span>
               <Briefcase className="w-4 h-4 text-cyan-400" />
             </div>
             <div className="text-lg font-bold text-white mt-1">
               {tenderList.length} Aktif
             </div>
-            <div className="text-[10px] text-cyan-400 mt-0.5">
+            <div className="text-2xs text-cyan-400 mt-0.5">
               LKPP LPSE Terhubung
             </div>
           </div>
@@ -482,7 +482,7 @@ export default function ExecutiveOverview({
               )}
 
               {seriesAktif.length === 0 && (
-                <text x="350" y="95" textAnchor="middle" className="text-[11px] font-bold fill-slate-500">
+                <text x="350" y="95" textAnchor="middle" className="text-xs font-bold fill-slate-500">
                   Belum ada data untuk grafik ini
                 </text>
               )}
@@ -504,7 +504,7 @@ export default function ExecutiveOverview({
                       className={`transition-all opacity-30 ${chartTab === 'pendapatan' ? 'fill-blue-400' : chartTab === 'suhu' ? 'fill-amber-400' : 'fill-emerald-400'} animate-ping`}
                     />
                   )}
-                  <text x={pt.x} y={pt.y - 12} textAnchor="middle" className="text-[10px] font-bold fill-slate-700 font-mono">
+                  <text x={pt.x} y={pt.y - 12} textAnchor="middle" className="text-2xs font-bold fill-slate-700 font-mono">
                     {pt.label}
                   </text>
                 </g>
@@ -512,7 +512,7 @@ export default function ExecutiveOverview({
             </svg>
           </div>
 
-          <div className="flex justify-between text-[11px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-200">
+          <div className="flex justify-between text-xs text-slate-500 font-mono mt-2 pt-2 border-t border-slate-200">
             {seriesAktif.map((pt, idx) => (
               <span key={idx}>{pt.axis}</span>
             ))}
@@ -546,7 +546,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-blue-100 text-blue-800">
                   Divisi Komersial & LKPP
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Normal Aktif" />
@@ -580,7 +580,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-amber-100 text-amber-800">
                   Divisi Operasional & CDAKB
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Normal Aktif" />
@@ -614,7 +614,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-indigo-100 text-indigo-800">
                   Regulasi & Kepatuhan
                 </span>
                 <span className={`w-2 h-2 rounded-full ${niePerluPerpanjangan.length > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
@@ -650,7 +650,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-purple-100 text-purple-800">
                   Sistem Manajemen Mutu
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -684,7 +684,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-800">
                   Produksi & CPAKB
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -718,7 +718,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-cyan-100 text-cyan-800">
                   Keuangan & Pajak
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -752,7 +752,7 @@ export default function ExecutiveOverview({
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-rose-100 text-rose-800">
                   Sumber Daya Manusia
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
