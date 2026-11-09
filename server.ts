@@ -3,6 +3,7 @@ if (typeof (globalThis as any).__dirname !== 'undefined') {
 }
 
 import http from 'http';
+import crypto from 'crypto';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createServer as createViteServer } from 'vite';
@@ -62,18 +63,33 @@ async function startServer() {
   const httpServer = http.createServer(app);
   const PORT = Number(process.env.PORT) || 3000;
 
-  // PocketBase AMS (C:\pocketbase-ams, port 8091) diakses lewat jalur yang sama dengan aplikasi,
-  // supaya pengguna internet tidak perlu alamat server tersendiri.
-  app.use(
-    '/api/ams-pb',
-    createProxyMiddleware({
-      target: 'http://127.0.0.1:8091',
-      changeOrigin: true,
-      pathRewrite: { '^/api/ams-pb': '' }
-    })
-  );
+  // PocketBase AMS (C:\pocketbase-ams, port 8091) hanya diekspos seperlunya:
+  // GET /api/health, GET /api/realtime (SSE), GET /api/collections/<nama>/records.
+  // Admin UI, superuser, pengaturan, dan tulis/hapus sengaja ditolak di sini —
+  // aplikasi hanya butuh sinyal realtime + baca koleksi publik.
+  const PB_GET_DIIZINKAN = /^\/api\/(health|realtime|collections\/[A-Za-z0-9_-]+\/records)\/?$/;
+  app.use('/api/ams-pb', (req, res, next) => {
+    if (req.method === 'GET' && PB_GET_DIIZINKAN.test(req.path)) return next();
+    return res.status(403).json({ pesan: 'Jalur PocketBase ini tidak diizinkan lewat proxy.' });
+  }, createProxyMiddleware({
+    target: 'http://127.0.0.1:8091',
+    changeOrigin: true,
+    pathRewrite: { '^/api/ams-pb': '' }
+  }));
 
   app.use(express.json({ limit: '10mb' }));
+
+  // Body-parser menolak JSON rusak/payload terlalu besar sebelum rute manapun —
+  // balas 400/413 yang bersih, jangan biarkan error merayap ke atas dan menjatuhkan proses.
+  app.use(((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err?.type === 'entity.parse.failed') {
+      return res.status(400).json({ pesan: 'Isi permintaan bukan JSON valid.' });
+    }
+    if (err?.type === 'entity.too.large') {
+      return res.status(413).json({ pesan: 'Payload terlalu besar (maks 10 MB).' });
+    }
+    next(err);
+  }) as express.ErrorRequestHandler);
 
   // Status and regulatory compliance info
   app.get('/api/health', (req, res) => {
@@ -178,7 +194,38 @@ alkes.perusahaan-anda.co.id {
     res.set('Cache-Control', 'no-store').json(snapshot);
   });
 
+  // Token publikasi server diset lewat environment (AMS_ADMIN_TOKEN). Tanpa token,
+  // publikasi situs dinonaktifkan (fail-closed) — UI menampilkan fallback unduh JSON.
+  const AMS_ADMIN_TOKEN = (process.env.AMS_ADMIN_TOKEN || '').trim();
+  // Rate limit sederhana per IP untuk rute tulis situs (30 percobaan / 15 menit).
+  const putHits = new Map<string, { count: number; reset: number }>();
+  const PUT_WINDOW_MS = 15 * 60 * 1000;
+  const PUT_MAX_HITS = 30;
+  const dapatPosting = (kunci: string): boolean => {
+    const now = Date.now();
+    const cur = putHits.get(kunci);
+    if (!cur || now > cur.reset) {
+      putHits.set(kunci, { count: 1, reset: now + PUT_WINDOW_MS });
+      return true;
+    }
+    if (cur.count >= PUT_MAX_HITS) return false;
+    cur.count += 1;
+    return true;
+  };
+
   app.put('/api/website/published', (req, res) => {
+    if (!AMS_ADMIN_TOKEN) {
+      return res.status(503).json({ pesan: 'Publikasi situs dinonaktifkan di server: AMS_ADMIN_TOKEN belum diset. Pakai tombol Unduh Snapshot JSON, atau set AMS_ADMIN_TOKEN dan kirim header x-ams-admin-token.' });
+    }
+    const token = String(req.headers['x-ams-admin-token'] || '');
+    const cocok = token.length === AMS_ADMIN_TOKEN.length &&
+      crypto.timingSafeEqual(Buffer.from(token), Buffer.from(AMS_ADMIN_TOKEN));
+    if (!cocok) {
+      return res.status(401).json({ pesan: 'Token admin tidak valid.' });
+    }
+    if (!dapatPosting(req.ip ?? 'tidak-diketahui')) {
+      return res.status(429).json({ pesan: 'Terlalu banyak percobaan publikasi. Coba lagi 15 menit.' });
+    }
     const kandidat = ((req.body as Record<string, any> | undefined)?.config ?? req.body) as unknown;
     if (!adalahKonfigurasiSitus(kandidat)) {
       return res.status(400).json({ pesan: 'Bentuk konfigurasi situs tidak valid (identitas.nama dan hero.judul wajib ada).' });

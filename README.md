@@ -84,5 +84,18 @@ Aplikasi ini mencakup **13 Modul Fungsional Utama**:
 
 ---
 
+## 🔒 Keamanan & Konfigurasi Publikasi Situs
+
+- `PUT /api/website/published` (terbitkan snapshot situs dari CMS) **ditolak secara bawaan** sampai `AMS_ADMIN_TOKEN` diset di environment server. Tanpa token: `503` dan UI menampilkan fallback unduh `website-published.json`. Dengan token: kirim header `x-ams-admin-token: <AMS_ADMIN_TOKEN>` (30 percobaan / 15 menit per IP, selebihnya `429`). Contoh publikasi manual:
+
+  ```powershell
+  curl.exe -X PUT -H "Content-Type: application/json" -H "x-ams-admin-token: $env:AMS_ADMIN_TOKEN" -d "@website-published.json" http://127.0.0.1:3001/api/website/published
+  ```
+
+- Proxy `/api/ams-pb/*` hanya meneruskan `GET /api/health`, `GET /api/realtime` (SSE), dan `GET /api/collections/<nama>/records`. Admin UI, superuser, pengaturan, serta tulis/hapus PocketBase dijawab `403`.
+- `server.ts` **tidak membaca `.env`** — `PORT`, `NODE_ENV`, `AMS_ADMIN_TOKEN` diset lewat environment (NSSM/Caddy/PowerShell).
+
+---
+
 ## 📄 Lisensi & Kepatuhan
 Hak Cipta © 2026 PT Anugrah Mitra Selaras (AMS). Seluruh sistem dikembangkan sesuai regulasi dan standar Kementerian Kesehatan Republik Indonesia. Coded by Langgo Bramandityo

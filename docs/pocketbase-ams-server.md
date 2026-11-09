@@ -32,12 +32,13 @@ hanya memakai kanal realtime sebagai pemicu muat ulang dari penyimpanan lokal.
 
 ## Akses dari internet
 
-Aplikasi dijalankan di port 3001 dan di-proxy oleh Express:
+Aplikasi dijalankan di port 3001 dan di-proxy oleh Express — tetapi **hanya tiga jalur baca yang diizinkan**:
 
-- `/api/ams-pb/*` diteruskan ke `http://127.0.0.1:8091/*` (lihat `server.ts`, `createProxyMiddleware`).
-- Klien memakai `${window.location.origin}/api/ams-pb` sebagai `PB_URL` (lihat `src/services/pocketbase.ts`);
-  `window.__PB_URL__` tetap bisa menimpa untuk kasus khusus.
-- Lewat Cloudflare Quick Tunnel, PocketBase AMS dapat dijangkau di `<url-tunnel>/api/ams-pb/api/health`.
+- `GET /api/ams-pb/api/health` (status PB),
+- `GET /api/ams-pb/api/realtime` (SSE),
+- `GET /api/ams-pb/api/collections/<nama>/records` (baca koleksi publik).
+
+Semua jalur lain — Admin UI (`/_/`), superuser, pengaturan, tulis/hapus koleksi — dijawab `403` oleh guard di `server.ts`. Klien memakai `${window.location.origin}/api/ams-pb` sebagai `PB_URL` (lihat `src/services/pocketbase.ts`); `window.__PB_URL__` tetap bisa menimpa untuk kasus khusus. Lewat Cloudflare Quick Tunnel, PocketBase AMS dapat dijangkau di `<url-tunnel>/api/ams-pb/api/health`.
 
 ## Batasan yang perlu diketahui
 
