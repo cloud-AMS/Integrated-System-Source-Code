@@ -192,7 +192,9 @@ import {
   INITIAL_VALUASI_BATCH
 } from '../data/seedKeuangan';
 
-const PB_URL = (typeof window !== 'undefined' && (window as unknown as { __PB_URL__?: string }).__PB_URL__) || 'http://127.0.0.1:8090';
+const PB_URL =
+  (typeof window !== 'undefined' && (window as unknown as { __PB_URL__?: string }).__PB_URL__) ||
+  (typeof window !== 'undefined' ? `${window.location.origin}/api/ams-pb` : 'http://127.0.0.1:8091');
 
 // PocketBase Client instance
 export const pb = new PocketBase(PB_URL);

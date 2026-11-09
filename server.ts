@@ -4,6 +4,7 @@ if (typeof (globalThis as any).__dirname !== 'undefined') {
 
 import http from 'http';
 import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
@@ -60,6 +61,17 @@ async function startServer() {
   const app = express();
   const httpServer = http.createServer(app);
   const PORT = Number(process.env.PORT) || 3000;
+
+  // PocketBase AMS (C:\pocketbase-ams, port 8091) diakses lewat jalur yang sama dengan aplikasi,
+  // supaya pengguna internet tidak perlu alamat server tersendiri.
+  app.use(
+    '/api/ams-pb',
+    createProxyMiddleware({
+      target: 'http://127.0.0.1:8091',
+      changeOrigin: true,
+      pathRewrite: { '^/api/ams-pb': '' }
+    })
+  );
 
   app.use(express.json({ limit: '10mb' }));
 
