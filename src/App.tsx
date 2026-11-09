@@ -134,7 +134,9 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
         {/* Supporting System */}
         {activeTab === 'hrd-pelatihan' && <HRDModule />}
         {activeTab === 'finance-akuntansi' && <FinanceModule currentRole={currentRole} />}
-        {activeTab === 'it-traceability' && <ITModule />}
+        {activeTab === 'it-traceability' && (
+          <ITModule currentRole={currentRole} currentUserName={sesi.namaPengguna} />
+        )}
       </main>
 
       {/* Elegant Footer Watermark */}
