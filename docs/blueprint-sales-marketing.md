@@ -1,4 +1,6 @@
-# Blueprint — Sales & Marketing / SDAK (Child)
+> **Status dokumen (2026-11):** **Sebagian** — alur order → alokasi FEFO sadar-kunci → stok → piutang diimplementasikan dan diuji (`npm run cek:fefo`). CRM/order/tender/kampanye bekerja di atas data contoh (seed) di `localStorage`. **Tidak ada** koneksi nyata ke LPSE/e-Katalog LKPP, SatuSehat, atau DJP — yang ada hanya antrean sinkronisasi + pratinjau payload (lihat blueprint Gudang). Klaim "LPSE Scraper & Alert System" dan "e-Katalog Pricing Engine live" adalah deskripsi UI/seed, bukan integrasi terverifikasi.
+
+# Blueprint - Sales & Marketing / SDAK (Child)
 
 Status: **SELESAI & TERINTEGRASI KE PARENT SYSTEM BLUEPRINT**  
 Parent Document: `/docs/system-blueprint.md` (Domain: Commercial, Sales & PMS)  

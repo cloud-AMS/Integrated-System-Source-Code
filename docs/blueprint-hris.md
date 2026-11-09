@@ -1,4 +1,6 @@
-# Blueprint — Human Resource Information System (HRIS) & HRD Alkes (Child)
+> **Status dokumen (2026-11):** **Sebagian** — kalkulator payroll (gaji pokok/173, PPh 21, BPJS), ambang sertifikat H-90, dan tabel temporal mutasi jabatan diimplementasikan dan ada tes (`payroll.test.ts`). Tetapi data HRIS aktual tersimpan di `localStorage` browser — **tidak ada** koleksi PocketBase `hris_employees`, `payroll_records`, `attendance_logs`, `capa_records`, atau `safety_incidents`; klaim tersebut tidak akurat. Absensi geofencing/GPS adalah UI, tidak ada verifikasi lokasi nyata. Tidak ada integrasi BPJS/DJP. Biometrik/foto tidak diproses (lihat `git-external.md`).
+
+# Blueprint - Human Resource Information System (HRIS) & HRD Alkes (Child)
 
 Status: **SELESAI & TERINTEGRASI KE PARENT SYSTEM BLUEPRINT**  
 Parent Document: `/docs/system-blueprint.md` (Domain: Supporting System — HRD & Pelatihan PJT)  

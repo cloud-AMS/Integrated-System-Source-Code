@@ -1,4 +1,6 @@
-# Blueprint — Menu Warehouse & Logistics (Gudang & Logistik) (Child)
+> **Status dokumen (2026-11):** **Sebagian — logika asli, diuji; persistensi lokal** — 12 tab, FEFO sadar-kunci (`alokasiFEFOSadarKunci`), rantai hash pergerakan, seed 5 gudang/18 bin/19 pergerakan yang dijaga permanen oleh `npm run cek:semua` (hijau saat dokumen ini ditulis). Tetapi: data di `localStorage` (bukan "PocketBase WMS Datastore" / "Express Middleware" seperti ditulis di stack); tidak ada integrasi nyata RFID/PDA/sensor IoT/LKPP/SATUSEHAT — semuanya "antrean + pratinjau payload"; seed bertanggal 2024 vs jam berjalan 2026 (lihat catatan M3); tautan absolut `file:///C:/Users/DESKTOP/Documents/Qoder/…` di Lampiran B merujuk mesin developer lama dan tidak valid di mesin lain.
+
+# Blueprint - Menu Warehouse & Logistics (Gudang & Logistik) (Child)
 
 Status: **M1–M6 SELESAI (tipe domain + seed & penjaga benih + util 12 aturan + accessor/mutasi & jalur FEFO + shell 12 tab & migrasi kepemilikan §0B + verifikasi akhir `cek:semua`, `tsc --noEmit`, `vite build`)** — Penjaga permanen aktif: `npm run cek:semua` (`cek:benih`, `cek:fefo`, `cek:gudang`)  
 **Parent Document:** `/docs/system-blueprint.md` (Domain: Operations & Technical WMS)  

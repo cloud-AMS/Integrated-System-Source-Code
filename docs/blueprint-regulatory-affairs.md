@@ -1,4 +1,6 @@
-# Blueprint — Regulatory Affairs & PJT Management (Child)
+> **Status dokumen (2026-11):** **Sebagian** — UI pengelolaan NIE/PJT, daftar data contoh, dan ambang perpanjangan ada dan tampil. **Tidak ada** koneksi ke OSS RBA / Kemenkes / e-Watch, tidak ada validasi izin edar ke database pemerintah, dan tidak ada pengiriman pelaporan apa pun ke regulator. Data di `localStorage` perangkat. Dokumen ini tipis karena modulnya memang belum dibangun melampaui UI + seed.
+
+# Blueprint - Regulatory Affairs & PJT Management (Child)
 
 Status: **SELESAI & TERINTEGRASI KE PARENT SYSTEM BLUEPRINT**  
 Parent Document: `/docs/system-blueprint.md` (Domain: Regulatory & Quality Compliance)  

@@ -1,4 +1,6 @@
-# Blueprint — Situs Web Publik & Portal Remedi (Child)
+> **Status dokumen (2026-11):** **Hampir jujur — CMS & snapshot server nyata** — editor CMS, draf, tombol "Terbitkan" → `PUT /api/website/published` → `data/website-published.json` + `public/website-published.json` → `/web` tayang lintas perangkat (terverifikasi saat deploy). Tetapi klaim "PocketBase CMS Collections" di §1 **tidak akurat**: tidak ada koleksi PocketBase untuk CMS; draf disimpan di `localStorage` (`website_draft`), tayang lewat berkas JSON di Express + salinan statis di `public/`.
+
+# Blueprint - Situs Web Publik & Portal Remedi (Child)
 
 Status: **SELESAI & TERINTEGRASI KE PARENT SYSTEM BLUEPRINT**  
 Parent Document: `/docs/system-blueprint.md` (Domain: Situs Web Publik & CMS)  

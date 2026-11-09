@@ -1,3 +1,5 @@
+> **Status dokumen (2026-11): RENCANA — BELUM DIEKSEKUSI, JANGAN DIIMPOR APA ADANYA.** Repositori pihak ketiga yang disebut di sini (`driptobhattacharyya/Smart-Attendance-App`) adalah proyek individu tanpa riwayat audit keamanan, lisensi yang jelas, atau review untuk alur penggajian. **Biometrik wajah adalah data pribadi sensitif** (UU PDP No. 27/2022) — memproses citra wajah karyawan tanpa DPIA, dasar pemrosesan, dan pengamanan adalah pelanggaran langsung. Rekomendasi: bangun modul absensi sendiri di atas stack yang sudah ada; jika terpaksa memakai kode luar, fork + audit menyeluruh + pin versi + hapus fitur biometrik sampai ada izin tertulis dan DPIA. Mengimpor APK/repo asing apa adanya = risiko supply-chain ke sistem payroll & data pribadi.
+
 # Integrasi Git Eksternal: Smart-Attendance-App
 
 **Repository Sumber:** `https://github.com/driptobhattacharyya/Smart-Attendance-App.git`  

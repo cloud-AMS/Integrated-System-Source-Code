@@ -1,4 +1,6 @@
-# Alur Integrasi Sistem — Katalog Website Publik & Modul Operasional Internal
+> **Status dokumen (2026-11):** **Sebagian** — alur situs publik (`/web`, CMS, snapshot `/api/website/published`) benar-benar berjalan. Klaim "PocketBase CMS Collections (`website_sections`, `katalog_alkes`)" di §4 **tidak akurat**: tidak ada koleksi PocketBase yang dipakai untuk CMS; yang dipakai adalah berkas JSON snapshot lewat Express + draf di `localStorage`. RFQ lewat `wa.me` dan `mailto:`, bukan "WhatsApp Business Gateway". Katalog ditampilkan dari data contoh seed.
+
+# Alur Integrasi Sistem - Katalog Website Publik & Modul Operasional Internal
 
 **Klasifikasi:** Enterprise Architecture & Regulatory Integration Specification  
 **Standar Kepatuhan:** CDAKB Permenkes RI 4/2014, ISO 13485:2016, Etika Promosi Alat Kesehatan Kemenkes RI, ALCOA+ Data Integrity.  

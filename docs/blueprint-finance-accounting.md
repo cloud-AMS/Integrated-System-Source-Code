@@ -1,4 +1,6 @@
-# Blueprint — Finance & Accounting / F&A (Child)
+> **Status dokumen (2026-11):** **Sebagian** — jurnal berantai SHA-256, CoA, posting/void, dan kalkulator landed cost benar-benar diimplementasikan dan lolos tes (`tests/domain/akuntansi-*.test.ts`, `npm run test` = 189 tes hijau). Tetapi §2 (skema PostgreSQL `accounts`/`journal_entries`) adalah **desain target yang tidak pernah dijalankan**; data aktual tersimpan di `localStorage` browser, bukan di PostgreSQL/PocketBase — tidak ada server ledger sama sekali. Klaim "Real-time / Event-Driven Architecture" adalah aspirasi, bukan keadaan.
+
+# Blueprint - Finance & Accounting / F&A (Child)
 
 Status: **SELESAI & TERINTEGRASI KE PARENT SYSTEM BLUEPRINT**  
 Parent Document: `/docs/system-blueprint.md` (Domain: Supporting System — Finance & Accounting)  

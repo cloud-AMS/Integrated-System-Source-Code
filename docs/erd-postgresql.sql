@@ -1,5 +1,11 @@
 -- =====================================================================
 -- AMS INTEGRATED SYSTEM - ENTERPRISE POSTGRESQL 16 DDL SCHEMA
+-- STATUS DOKUMEN (2026-11): DESIGN TARGET — BELUM DIIMPLEMENTASIKAN.
+-- DDL ini tidak pernah dijalankan terhadap database mana pun, dan aplikasi
+-- saat ini tidak memiliki layer SQL maupun koneksi ke PostgreSQL. Skema ini
+-- adalah spesifikasi target bila migrasi dari localStorage dilakukan.
+-- Jangan dikutip sebagai bukti bahwa basis data produksi sudah ada.
+-- =====================================================================
 -- Target: Modular Monolith / Microservices-Ready, Table Partitioning,
 --         pgvector, Immutable Audit Trail, and Transactional Outbox.
 -- =====================================================================

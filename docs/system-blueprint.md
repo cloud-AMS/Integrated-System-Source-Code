@@ -1,4 +1,6 @@
-# AMS INTEGRATED SYSTEM — ENTERPRISE SYSTEM BLUEPRINT
+> **Status dokumen (2026-11): DESIGN TARGET — BELUM DIIMPLEMENTASIKAN.** Arsitektur di dokumen ini adalah rencana, bukan keadaan yang berjalan. Yang benar-benar berjalan hari ini: modular monolith front-end (React) dengan data di `localStorage`, plus server Express hanya untuk snapshot situs web (`/api/website/published`) dan file statis. **Tidak ada PostgreSQL, tidak ada `journal_entries`/`hris_employees`/`nie_records` di PocketBase, tidak ada koneksi e-Katalog/SatuSehat/DJP yang aktif, dan tidak ada yang "real-time".** Tabel stack di §4 dan ERD di §3 adalah spesifikasi untuk dibangun, bukan dokumentasi sistem hidup. Dokumen ini hanya boleh dikutip sebagai rencana — bukan bukti produk.
+
+# AMS INTEGRATED SYSTEM - ENTERPRISE SYSTEM BLUEPRINT
 **Versi:** v1.4.0 — 2026-11-05  
 **Klasifikasi:** Enterprise Architecture & Domain-Driven Design Specification (**MANDATORY FORMAT GOVERNANCE**)  
 **Standar Kepatuhan:** CDAKB, CPAKB, SDAK, ISO 13485, Kemenkes RI, ALCOA+ Data Integrity  
