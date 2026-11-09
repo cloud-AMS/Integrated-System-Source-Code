@@ -95,6 +95,10 @@ Aplikasi ini mencakup **13 Modul Fungsional Utama**:
 - Proxy `/api/ams-pb/*` hanya meneruskan `GET /api/health`, `GET /api/realtime` (SSE), dan `GET /api/collections/<nama>/records`. Admin UI, superuser, pengaturan, serta tulis/hapus PocketBase dijawab `403`.
 - `server.ts` **tidak membaca `.env`** — `PORT`, `NODE_ENV`, `AMS_ADMIN_TOKEN` diset lewat environment (NSSM/Caddy/PowerShell).
 
+## Developer Notes
+
+Setiap modul aplikasi memuat catatan **Developer Notes** (ikon Info di bagian atas modul, kuning) — pernyataan jujur tentang apa yang nyata di modul itu (diuji/terpasang/tersimpan) dan apa yang masih benih contoh, antrean, atau pratinjau tanpa koneksi nyata. Frontend tidak mengklaim kepatuhan/ketersediaan yang belum diukur. Rujukan lengkap: [`docs/developer-notes.md`](docs/developer-notes.md) dan [`docs/production-list.md`](docs/production-list.md).
+
 ---
 
 ## 📄 Lisensi & Kepatuhan

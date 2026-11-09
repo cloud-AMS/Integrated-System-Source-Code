@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import { db } from '../../../services/pocketbase';
 import type { LogAuditTrail, UserRole } from '../../../types';
 import { 
@@ -233,7 +234,14 @@ alkes.perusahaan-anda.co.id {
 
   return (
     <div className="space-y-6">
-      
+      <DeveloperNotes
+        items={[
+          'Jejak audit dan rantai hash jurnal/pergerakan dihitung & disimpan di perangkat (localStorage). Menghapus data situs menghapus catatannya — ini bukan immutable storage di server.',
+          'Kecepatan langganan PocketBase yang ditampilkan modul ini adalah hasil pengecekan lokal (health.check), bukan pengukuran SLA server; tanpa server aktif tampil "Mode Cache Lokal".',
+          'Ekspor CSV ALCOA+ yang dihasilkan di sini adalah berkas lokal dari data perangkat ini, bukan keluaran sistem teraudit pihak ketiga.',
+          'Infrastruktur & kredensial menu "Panduan Deployment" adalah dokumentasi statis dari berkas kode; belum diuji di server produksi nyata.'
+        ]}
+      />
       {/* Toast Notifikasi Ekspor Berhasil */}
       {exportNotice && (
         <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-4 py-3 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-200">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DeveloperNotes from '../common/DeveloperNotes';
 import { db } from '../../services/pocketbase';
 import {
   Building2, 
@@ -257,7 +258,13 @@ export default function ExecutiveOverview({
 
   return (
     <div className="space-y-6">
-      
+      <DeveloperNotes
+        items={[
+          'Semua angka (Pendapatan, Skor Kepatuhan, Suhu Cold Chain, jumlah Tender) berasal dari data benih contoh di perangkat (localStorage) — bukan hasil pengukuran gudang atau keuangan nyata.',
+          'Label "Real-Time Board Cockpit", "Sinkronisasi Aktif", dan "LKPP LPSE Terhubung" adalah teks antarmuka; belum ada koneksi API ke LKPP/LPSE, Kemenkes, atau sensor suhu.',
+          'Tombol "Sinkronisasi" hanya membaca ulang data dari perangkat ini (dengan jeda 0,6 detik simulasi), bukan penarikan dari server.'
+        ]}
+      />
       {/* Board of Directors Header Cockpit */}
       <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(circle_at_right,rgba(0,170,255,0.2),transparent_70%)] pointer-events-none" />

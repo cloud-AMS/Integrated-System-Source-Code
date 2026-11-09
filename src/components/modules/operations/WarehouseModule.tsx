@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import {
   Boxes,
   Bug,
@@ -93,6 +94,13 @@ export default function WarehouseModule({
 
   return (
     <div className="space-y-6">
+      <DeveloperNotes
+        items={[
+          'Skor kesiapan audit CDB, KPI, dan FEFO dihitung dari data benih 2024 di perangkat (localStorage) — bukan hasil audit CDAKB atau pengukuran gudang nyata.',
+          'Sensor suhu, handheld RFID, dan cetak label belum terhubung perangkat fisik; yang tersedia adalah log contoh + alur validasi.',
+          'Rantai hash pergerakan diverifikasi di sisi lokal; tidak ada replikasi/immutable storage server untuk jejak ini.'
+        ]}
+      />
       {/* Header Modul Gudang & Logistik */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import { db } from '../../../services/pocketbase';
 import { LaporanKTD, PenarikanProduk } from '../../../types';
 import {
@@ -67,6 +68,13 @@ export default function PMSModule({ onBukaRecallGudang }: PMSModuleProps) {
 
   return (
     <div className="space-y-6">
+      <DeveloperNotes
+        items={[
+          'Laporan KTD di formulir ini tersimpan di perangkat (localStorage) dan TIDAK terkirim ke sistem e-Watch Alkes Kemenkes.',
+          'Data recall & daftar fasyankes terdampak memakai benih contoh; penarikan lapangan belum pernah berlangsung di data ini.',
+          'Eksekusi recall mengunci batch di modul Gudang (Tab 11); integrasi LKPP/SATUSEHAT hanya pratinjau payload di modul Gudang Tab 12.'
+        ]}
+      />
       {/* Title */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

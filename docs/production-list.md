@@ -1,5 +1,9 @@
 > **Status dokumen (2026-11): FAKTA TERVERIFIKASI (checklist jujur)** — tetapi **Fase A belum terpenuhi**: aplikasi belum persist ke server, sehingga Fase B–K belum bisa dicentang tanpa membangun persistensi lebih dulu. Jangan centang satu pun item tanpa bukti.
 
+## Developer Notes
+
+Sebelum mengutip dokumen ini di luar tim: aplikasi ini belum lolos Fase A, sehingga seluruh klaim "siap produksi" di bagian mana pun adalah aspirasi, bukan kenyataan. Yang menegakkan kebenaran klaim adalah kode + tes + tanda tangan PJT, bukan tulisan ini.
+
 # Protokol & Checklist Peluncuran Produksi (Production Readiness Checklist)
 
 Dokumen ini adalah **Protokol Resmi Peluncuran Produksi (*Production Deployment Protocol*)** untuk **AMS Integrated System (PT Anugrah Mitra Selaras)**, termasuk panduan dan checklist migrasi data / input data asli (*real data seeding*) untuk setiap modul fungsional.
@@ -163,5 +167,5 @@ Aturan keras:
 1. **Sebelum merilis**: semua kotak Fase A sampai K terisi dengan bukti; tidak ada "nanti saja".
 2. **Jika terjadi kendala**: hentikan deployment, jalankan rollback yang sudah dilatih di D6, evaluasi log lewat Sentry/terminal; jangan "perbaiki langsung di produksi".
 3. **Dokumentasikan perubahan**: setiap penyesuaian konfigurasi produksi dicatat dalam log pembaharuan sistem.
-4. **Kejujuran label**: status apa pun yang belum terukur tidak boleh ditulis sebagai "aktif/terhubung" di UI atau dokumen; tulis "belum dikonfigurasi".
+4. **Developer Notes — label**: status apa pun yang belum terukur tidak boleh ditulis sebagai "aktif/terhubung" di UI atau dokumen; tulis "belum dikonfigurasi".
 5. Berkas ini ditulis ulang pada 2026-11. Perubahan berikutnya wajib melalui review PJT + QA.

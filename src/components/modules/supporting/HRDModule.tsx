@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import {
   Building2,
   Clock3,
@@ -33,6 +34,13 @@ export default function HRDModule() {
 
   return (
     <div className="space-y-6">
+      <DeveloperNotes
+        items={[
+          'Data karyawan, KPI, slip gaji, dan parameter BPJS/PPh memakai benih contoh dengan tarif publik; belum tersambung ke payroll/HRIS produksi.',
+          'Sertifikasi CDAKB/PJT & ambang H-90 dihitung dari tanggal benih 2024; belum dibaca dari register RA atau sertifikat asli.',
+          'Absensi & lembur belum menerima data dari aplikasi Android (lihat modul Absensi untuk Developer Notes integrasi).'
+        ]}
+      />
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2">
           <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-800">

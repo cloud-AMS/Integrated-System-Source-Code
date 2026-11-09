@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DeveloperNotes from '../../../common/DeveloperNotes';
 import { db } from '../../../../services/pocketbase';
 import { KirimanSatuSehat, SinkronisasiLkpp } from '../../../../types';
 import {
@@ -263,6 +264,13 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
 
   return (
     <div className="space-y-5">
+      <DeveloperNotes
+        items={[
+          'Tab Kemenkes RI adalah antrean & pratinjau payload — belum terhubung ke e-Katalog LKPP maupun SATUSEHAT (tidak ada kredensial, endpoint produksi, atau pengiriman nyata).',
+          'Antrean LKPP dan kiriman FHIR hanya tersimpan di perangkat (localStorage); tidak ada yang otomatis terkirim ke mana pun.',
+          'Status "Gagal/Ditolak" adalah penolakan validasi lokal (payload/akun kosong), bukan respons server pemerintah.'
+        ]}
+      />
       {pesan && (
         <div
           className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${

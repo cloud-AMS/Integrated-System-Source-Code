@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import type { UserRole } from '../../../types';
 import { TANGGAL_ACUAN_BENIH, buatTanggalAcuan } from '../operations/gudang/ui';
 import DasborTab from './finance/DasborTab';
@@ -37,6 +38,13 @@ export default function FinanceModule({ currentRole }: { currentRole?: UserRole 
   return (
     <div className="space-y-6">
 
+      <DeveloperNotes
+        items={[
+          'Buku besar ganda & jurnal berantai dihitung dan disimpan di perangkat (localStorage) — ini bukan database server multi-pengguna.',
+          'Nilai PPN/PPh dan jurnal contoh memakai benih; modul ini BELUM tersambung ke Coretax DJP / e-Faktur produksi.',
+          '"Mata Rantai terhubung" berarti rantai hash jurnal dihitung benar secara lokal, bukan bukti audit pihak ketiga atau immutable storage server.'
+        ]}
+      />
       {/* Title */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

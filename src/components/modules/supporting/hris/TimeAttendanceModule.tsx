@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DeveloperNotes from '../../../common/DeveloperNotes';
 import { db } from '../../../../services/pocketbase';
 import type { LogAbsensi, PerhitunganLembur, SumberAbsensi } from '../../../../types';
 import { PARAMETER_PAYROLL_2026 as P } from '../../../../data/initialData';
@@ -148,6 +149,13 @@ export default function TimeAttendanceModule() {
 
   return (
     <div className="space-y-4">
+      <DeveloperNotes
+        items={[
+          'Integrasi Android (Smart-Attendance-App) dan badge "Terhubung (API v2)" belum diverifikasi ke aplikasi turunan apa pun; belum ada endpoint yang menerima absensi riil.',
+          'Data karyawan, absensi, lembur, potongan, dan slip gaji memakai benih contoh (PARAMETER_PAYROLL_2026 & data harga) — bukan payroll produksi.',
+          'Geofencing GPS, verifikasi biometrik wajah, dan push notification adalah simulator UI; tidak memakai GPS/kamera perangkat.'
+        ]}
+      />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Stat
           label="Log Kehadiran Tercatat"

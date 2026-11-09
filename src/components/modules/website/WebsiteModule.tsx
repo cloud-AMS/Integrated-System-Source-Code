@@ -6,6 +6,7 @@
  * penyimpanan/sinkronisasi/penerbitan tercatat pada jejak audit dengan nilai lama & baru.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import DeveloperNotes from '../../common/DeveloperNotes';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -290,6 +291,13 @@ export default function WebsiteModule({ currentRole }: PropsWebsite) {
 
   return (
     <div className="space-y-6">
+      <DeveloperNotes
+        items={[
+          'Terbitkan hanya untuk peran PJT & Admin IT; tanpa AMS_ADMIN_TOKEN di environment server, perubahan TIDAK bisa dikirim ke server — pakai Unduh Snapshot JSON.',
+          'Live Preview memakai draf yang belum disimpan; pengunjung /web hanya melihat snapshot hasil Terbitkan.',
+          'Stok & harga pada kartu katalog publik memakai data benih (register lokal) sampai persistensi server dibangun — bukan FEFO gudang real time.'
+        ]}
+      />
       {/* ================= STATUS KONTEN ================= */}
       <section className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
         <div className="px-5 py-4 flex flex-col xl:flex-row xl:items-center gap-4">
