@@ -11,7 +11,8 @@ import {
   History,
   Layers,
   MapPin,
-  Plus
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { Badge, Panel, Stat, Modal, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, type Tone } from '../../../ui';
 
@@ -42,6 +43,23 @@ export default function CoreHRModule() {
   const [detail, setDetail] = useState<KaryawanHRIS | null>(null);
   const [tabDetail, setTabDetail] = useState<'induk' | 'medis' | 'mutasi'>('induk');
   const [modalMutasi, setModalMutasi] = useState(false);
+  const [modalTambah, setModalTambah] = useState(false);
+  const [formKaryawan, setFormKaryawan] = useState({
+    nik: `AMS-${new Date().getFullYear()}-${String(karyawan.length + 1).padStart(3, '0')}`,
+    nama: '',
+    jabatan: '',
+    divisi: 'Manufacture',
+    lokasi: 'Pabrik Manufaktur' as LokasiKerja,
+    grade: 'ST2',
+    statusKaryawan: 'Tetap' as 'Tetap' | 'Kontrak (PKWT)' | 'Outsourcing',
+    tanggalBergabung: new Date().toISOString().split('T')[0],
+    tanggalLahir: '1995-01-01',
+    statusRekamMedis: 'Fit to Work' as 'Fit to Work' | 'Fit with Restriction' | 'Perlu Evaluasi',
+    gajiPokok: 6500000,
+    namaSertifikat: '',
+    nomorSertifikat: '',
+    masaBerlakuSertifikat: ''
+  });
   const [formMutasi, setFormMutasi] = useState({
     karyawanId: '',
     tanggalEfektif: new Date().toISOString().split('T')[0],
@@ -72,6 +90,62 @@ export default function CoreHRModule() {
       ).sort((a, b) => hitungSisaHari(a.masaBerlaku) - hitungSisaHari(b.masaBerlaku)),
     [karyawan]
   );
+
+  const resetFormKaryawan = () => {
+    const year = new Date().getFullYear();
+    const urutan = String(karyawan.length + 1).padStart(3, '0');
+    setFormKaryawan({
+      nik: `AMS-${year}-${urutan}`,
+      nama: '',
+      jabatan: '',
+      divisi: 'Manufacture',
+      lokasi: 'Pabrik Manufaktur',
+      grade: 'ST2',
+      statusKaryawan: 'Tetap',
+      tanggalBergabung: new Date().toISOString().split('T')[0],
+      tanggalLahir: '1995-01-01',
+      statusRekamMedis: 'Fit to Work',
+      gajiPokok: 6500000,
+      namaSertifikat: '',
+      nomorSertifikat: '',
+      masaBerlakuSertifikat: ''
+    });
+  };
+
+  const simpanKaryawanBaru = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formKaryawan.nama.trim() || !formKaryawan.nik.trim() || !formKaryawan.jabatan.trim()) return;
+
+    const sertifikasiList = formKaryawan.namaSertifikat.trim()
+      ? [
+          {
+            nama: formKaryawan.namaSertifikat.trim(),
+            nomor: formKaryawan.nomorSertifikat.trim() || `CERT-${Date.now().toString().slice(-4)}`,
+            masaBerlaku: formKaryawan.masaBerlakuSertifikat || new Date(Date.now() + 365 * 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          }
+        ]
+      : [];
+
+    const baru: KaryawanHRIS = {
+      id: `EMP-${Date.now().toString().slice(-5)}`,
+      nik: formKaryawan.nik.trim(),
+      nama: formKaryawan.nama.trim(),
+      jabatan: formKaryawan.jabatan.trim(),
+      divisi: formKaryawan.divisi.trim(),
+      lokasi: formKaryawan.lokasi,
+      grade: formKaryawan.grade,
+      statusKaryawan: formKaryawan.statusKaryawan,
+      tanggalBergabung: formKaryawan.tanggalBergabung,
+      tanggalLahir: formKaryawan.tanggalLahir,
+      statusRekamMedis: formKaryawan.statusRekamMedis,
+      gajiPokok: Number(formKaryawan.gajiPokok) || 5000000,
+      sertifikasi: sertifikasiList
+    };
+
+    db.addKaryawanHRIS(baru);
+    setKaryawan(db.getKaryawanHRIS());
+    setModalTambah(false);
+  };
 
   const simpanMutasi = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,10 +244,27 @@ export default function CoreHRModule() {
         judul="Master Data Karyawan"
         keterangan="Data induk personil termasuk rekam medis kerja dan daftar sertifikasi wajib beserta masa berlakunya."
         aksi={
-          <button type="button" className={tombolPrimer} onClick={() => setModalMutasi(true)}>
-            <Plus className="w-4 h-4" />
-            Catat Mutasi
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={tombolPrimer}
+              onClick={() => {
+                resetFormKaryawan();
+                setModalTambah(true);
+              }}
+            >
+              <UserPlus className="w-4 h-4" />
+              Tambah Karyawan
+            </button>
+            <button
+              type="button"
+              className={tombolSekunder}
+              onClick={() => setModalMutasi(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Catat Mutasi
+            </button>
+          </div>
         }
       >
         <div className="flex flex-col md:flex-row gap-2 mb-4">
@@ -542,6 +633,202 @@ export default function CoreHRModule() {
             <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
               <button type="button" className={tombolSekunder} onClick={() => setModalMutasi(false)}>Batal</button>
               <button type="submit" className={tombolPrimer}>Simpan Mutasi</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {modalTambah && (
+        <Modal
+          judul="Tambah Karyawan Baru"
+          keterangan="Pencatatan data personil induk untuk pemenuhan klausul 6.2 ISO 13485 dan standar CDAKB/CPAKB Kemenkes RI."
+          onClose={() => setModalTambah(false)}
+        >
+          <form onSubmit={simpanKaryawanBaru} className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Nomor Induk Pegawai (NIK / NIP)</label>
+                <input
+                  type="text"
+                  required
+                  className={inputClass}
+                  value={formKaryawan.nik}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, nik: e.target.value })}
+                  placeholder="Contoh: AMS-2026-025"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Nama Lengkap &amp; Gelar</label>
+                <input
+                  type="text"
+                  required
+                  className={inputClass}
+                  value={formKaryawan.nama}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, nama: e.target.value })}
+                  placeholder="Contoh: Rian Anggara, S.Farm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Jabatan</label>
+                <input
+                  type="text"
+                  required
+                  className={inputClass}
+                  value={formKaryawan.jabatan}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, jabatan: e.target.value })}
+                  placeholder="Contoh: Staf Logistik Gudang"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Divisi</label>
+                <select
+                  required
+                  className={inputClass}
+                  value={formKaryawan.divisi}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, divisi: e.target.value })}
+                >
+                  <option value="Manufacture">Manufacture</option>
+                  <option value="Quality Control">Quality Control</option>
+                  <option value="Quality Assurance">Quality Assurance</option>
+                  <option value="Warehouse & Logistics">Warehouse & Logistics</option>
+                  <option value="Regulatory Affairs">Regulatory Affairs</option>
+                  <option value="Technical Service">Technical Service</option>
+                  <option value="Sales & Marketing">Sales & Marketing</option>
+                  <option value="Finance & Accounting">Finance & Accounting</option>
+                  <option value="HRD & General Affairs">HRD & General Affairs</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className={labelClass}>Lokasi Kerja</label>
+                <select
+                  className={inputClass}
+                  value={formKaryawan.lokasi}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, lokasi: e.target.value as LokasiKerja })}
+                >
+                  {LOKASI.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Grade Jabatan</label>
+                <select
+                  className={inputClass}
+                  value={formKaryawan.grade}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, grade: e.target.value })}
+                >
+                  {grading.map((g) => (
+                    <option key={g.id} value={g.kodeGrade}>{g.kodeGrade} — {g.namaGrade}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Status Kepegawaian</label>
+                <select
+                  className={inputClass}
+                  value={formKaryawan.statusKaryawan}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, statusKaryawan: e.target.value as 'Tetap' | 'Kontrak (PKWT)' | 'Outsourcing' })}
+                >
+                  <option value="Tetap">Karyawan Tetap (PKWTT)</option>
+                  <option value="Kontrak (PKWT)">Kontrak (PKWT)</option>
+                  <option value="Outsourcing">Outsourcing</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className={labelClass}>Tanggal Bergabung</label>
+                <input
+                  type="date"
+                  required
+                  className={inputClass}
+                  value={formKaryawan.tanggalBergabung}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, tanggalBergabung: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Tanggal Lahir</label>
+                <input
+                  type="date"
+                  required
+                  className={inputClass}
+                  value={formKaryawan.tanggalLahir}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, tanggalLahir: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Gaji Pokok (Rp)</label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  step={100000}
+                  className={inputClass}
+                  value={formKaryawan.gajiPokok}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, gajiPokok: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Status Rekam Medis (MCU)</label>
+                <select
+                  className={inputClass}
+                  value={formKaryawan.statusRekamMedis}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, statusRekamMedis: e.target.value as 'Fit to Work' | 'Fit with Restriction' | 'Perlu Evaluasi' })}
+                >
+                  <option value="Fit to Work">Fit to Work (Siap Bekerja)</option>
+                  <option value="Fit with Restriction">Fit with Restriction (Ada Batasan Medis)</option>
+                  <option value="Perlu Evaluasi">Perlu Evaluasi Lanjutan Dokter K3</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Sertifikasi / Lisensi Teknis (Opsional)</label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  placeholder="Contoh: CDAKB Kemenkes RI / Ahli K3 Umum"
+                  value={formKaryawan.namaSertifikat}
+                  onChange={(e) => setFormKaryawan({ ...formKaryawan, namaSertifikat: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {formKaryawan.namaSertifikat && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                <div>
+                  <label className={labelClass}>Nomor Sertifikasi</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    placeholder="Contoh: CDAKB/PJT/2026/089"
+                    value={formKaryawan.nomorSertifikat}
+                    onChange={(e) => setFormKaryawan({ ...formKaryawan, nomorSertifikat: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Masa Berlaku Sertifikat</label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={formKaryawan.masaBerlakuSertifikat}
+                    onChange={(e) => setFormKaryawan({ ...formKaryawan, masaBerlakuSertifikat: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+              <button type="button" className={tombolSekunder} onClick={() => setModalTambah(false)}>Batal</button>
+              <button type="submit" className={tombolPrimer}>Simpan Karyawan</button>
             </div>
           </form>
         </Modal>
