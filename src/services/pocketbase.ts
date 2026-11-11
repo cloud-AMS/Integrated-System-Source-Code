@@ -76,7 +76,8 @@ import {
   LangkahPicking,
   SinkronisasiLkpp,
   KirimanSatuSehat,
-  KonfigurasiGudang
+  KonfigurasiGudang,
+  AuditInternalIso13485
 } from '../types';
 import {
   alokasiFEFOSadarKunci,
@@ -113,6 +114,10 @@ import {
   sinkronkanKonten,
   VERSI_KONTEN_WEBSITE
 } from '../utils/website';
+import {
+  auditOtomatisDokumenQA,
+  auditOtomatisDokumenQC
+} from '../utils/auditInternalIso13485';
 
 import {
   INITIAL_IZIN_EDAR,
@@ -413,6 +418,7 @@ class AMSDatabaseManager {
 
   private getCollection<T>(key: string, initial: T[]): T[] {
     try {
+      if (typeof localStorage === 'undefined') return initial;
       const stored = localStorage.getItem(STORAGE_PREFIX + key);
       if (!stored) {
         localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(initial));
@@ -426,6 +432,10 @@ class AMSDatabaseManager {
 
   private setCollection<T>(key: string, data: T[]): void {
     try {
+      if (typeof localStorage === 'undefined') {
+        this.notify(key);
+        return;
+      }
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
       this.notify(key);
     } catch (e) {
@@ -501,6 +511,44 @@ class AMSDatabaseManager {
   public addInspeksiQC(item: InspeksiQC) {
     const current = this.getInspeksiQC();
     this.saveInspeksiQC([item, ...current]);
+  }
+
+  // Audit Internal ISO 13485:2016 & CDAKB
+  public getAuditInternal(lingkup?: 'QA' | 'QC' | 'SEMUA'): AuditInternalIso13485[] {
+    const defaultAudits: AuditInternalIso13485[] = [
+      auditOtomatisDokumenQA(this.getDokumenMutu(), this.getCAPA(), this.getProdukKembalian()),
+      auditOtomatisDokumenQC(this.getInspeksiQC(), this.getStokGudang())
+    ];
+    const items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', defaultAudits);
+    if (!lingkup || lingkup === 'SEMUA') return items;
+    return items.filter(a => lingkup === 'QA' ? a.lingkup.includes('QA') : a.lingkup.includes('QC'));
+  }
+  public saveAuditInternal(items: AuditInternalIso13485[]) {
+    this.setCollection('audit_internal_iso', items);
+    this.logAudit('Quality Assurance', 'Pembaruan catatan laporan Audit Internal ISO 13485', items[0]?.nomorAudit || '-');
+  }
+  public addAuditInternal(item: AuditInternalIso13485) {
+    const current = this.getAuditInternal();
+    this.saveAuditInternal([item, ...current]);
+  }
+  public jalankanAuditOtomatisQA(): AuditInternalIso13485 {
+    const hasil = auditOtomatisDokumenQA(
+      this.getDokumenMutu(),
+      this.getCAPA(),
+      this.getProdukKembalian()
+    );
+    this.addAuditInternal(hasil);
+    this.logAudit('Quality Assurance', `Eksekusi audit internal otomatis dokumen mutu (Skor: ${hasil.skorKepatuhan}%)`, hasil.nomorAudit);
+    return hasil;
+  }
+  public jalankanAuditOtomatisQC(): AuditInternalIso13485 {
+    const hasil = auditOtomatisDokumenQC(
+      this.getInspeksiQC(),
+      this.getStokGudang()
+    );
+    this.addAuditInternal(hasil);
+    this.logAudit('Quality Control', `Eksekusi audit internal otomatis pengawasan mutu (Skor: ${hasil.skorKepatuhan}%)`, hasil.nomorAudit);
+    return hasil;
   }
 
   // Stok Gudang

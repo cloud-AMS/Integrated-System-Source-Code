@@ -61,7 +61,8 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
 async function startServer() {
   const app = express();
   const httpServer = http.createServer(app);
-  const PORT = Number(process.env.PORT) || 3000;
+  // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
+  const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
 
   // PocketBase AMS (C:\pocketbase-ams, port 8091) hanya diekspos seperlunya:
   // GET /api/health, GET /api/realtime (SSE), GET /api/collections/<nama>/records.

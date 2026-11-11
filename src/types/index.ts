@@ -69,6 +69,10 @@ export interface DokumenMutu {
   status: 'Berlaku' | 'Revisi Diusulkan' | 'Usang';
   penyusun: string;
   penyetujui: string; // PJT / Direktur
+  klausulIso?: string;
+  tanggalTinjauUlang?: string;
+  statusAudit?: 'Sesuai' | 'Perlu Perbaikan' | 'Belum Diaudit';
+  catatanAudit?: string;
 }
 
 export interface CAPARecord {
@@ -114,6 +118,70 @@ export interface InspeksiQC {
   tanggalKedaluwarsa: string;
   hasilPemeriksaan: 'Lolos (Released)' | 'Karantina (Hold)' | 'Tolak (Rejected)';
   catatanPJT: string;
+  statusAuditDokumen?: 'Lengkap & Sesuai' | 'Catatan Belum Lengkap' | 'Perlu Verifikasi Ulang';
+  adaCoA?: boolean;
+  klausulIso?: string;
+}
+
+// 3.1 ISO 13485:2016 Internal Audit & Compliance Types
+export type TingkatTemuanAudit = 'Major NC' | 'Minor NC' | 'OFI (Peluang Peningkatan)' | 'Sesuai (Compliant)';
+
+export interface EvaluasiKlausulAudit {
+  id: string;
+  klausul: string; // contoh: '4.2.4', '7.4.3', '8.2.6', '8.5.2'
+  judulKlausul: string;
+  standar: 'ISO 13485:2016' | 'CDAKB Permenkes 4/2014' | 'ISO 13485 & CDAKB';
+  lingkup: 'QA' | 'QC' | 'QA & QC Terpadu';
+  status: 'Sesuai' | 'Minor NC' | 'Major NC' | 'OFI';
+  persentaseKepatuhan: number;
+  dokumenDiperiksa: string[];
+  catatanEvaluasi: string;
+  rekomendasiTindakan?: string;
+  nomorCAPATerkait?: string;
+}
+
+export interface DetailPemeriksaanDokumen {
+  id: string;
+  kodeDokumen: string;
+  judulDokumen: string;
+  kategori: string;
+  klausulIso: string;
+  acuanCdakb: string;
+  statusKesesuaian: TingkatTemuanAudit;
+  skor: number; // 0 - 100
+  parameterUji: {
+    kontrolNomorRevisi: boolean; // memiliki nomor revisi valid (>=1)
+    statusMasaBerlaku: boolean; // status berlaku dan tanggal efektif valid
+    otoritasPengesahan: boolean; // disahkan PJT / QA Manager berwenang
+    kelengkapanCatatan: boolean; // data dan field teknis terisi lengkap tanpa kekosongan
+    ketelusuranBatchAlkes: boolean; // nomor batch/lot & masa kedaluwarsa teridentifikasi
+  };
+  catatanAudit: string;
+  tindakanPerbaikan?: string;
+  tanggalPeriksaOtomatis: string;
+}
+
+export interface AuditInternalIso13485 {
+  id: string;
+  nomorAudit: string;
+  judulAudit: string;
+  lingkup: 'Quality Assurance (QA)' | 'Quality Control (QC)' | 'QA & QC Terpadu';
+  tanggalAudit: string;
+  auditorLead: string;
+  auditee: string;
+  status: 'Selesai' | 'Tindak Lanjut CAPA' | 'Terjadwal';
+  skorKepatuhan: number; // 0 - 100
+  totalDokumenDiperiksa: number;
+  dokumenSesuai: number;
+  temuanMinor: number;
+  temuanMajor: number;
+  rekomendasiOFI: number;
+  ringkasanEksekutif: string;
+  kesimpulan: string;
+  klausulAudit: EvaluasiKlausulAudit[];
+  daftarPemeriksaanDokumen: DetailPemeriksaanDokumen[];
+  dibuatSecaraOtomatis: boolean;
+  waktuAuditOtomatis: string;
 }
 
 // 4. Gudang & Logistik

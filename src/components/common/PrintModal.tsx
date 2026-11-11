@@ -8,13 +8,14 @@ import {
   ShieldCheck, 
   ClipboardList
 } from 'lucide-react';
+import { db } from '../../services/pocketbase';
 
 interface PrintModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type DocType = 'berita-acara' | 'laporan-ktd' | 'surat-recall' | 'surat-jalan-fefo' | 'form-capa';
+type DocType = 'berita-acara' | 'laporan-ktd' | 'surat-recall' | 'surat-jalan-fefo' | 'form-capa' | 'laporan-audit-iso';
 
 export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
   const [activeDoc, setActiveDoc] = useState<DocType>('berita-acara');
@@ -104,6 +105,17 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
           >
             <ClipboardList className="w-3.5 h-3.5" />
             Formulir CAPA ISO 13485
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDoc('laporan-audit-iso')}
+            className={`px-3 py-1.5 rounded-xl font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeDoc === 'laporan-audit-iso' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-indigo-100/80 hover:text-indigo-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Laporan Audit ISO 13485
           </button>
         </div>
 
@@ -433,6 +445,79 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                 </div>
               </div>
             )}
+
+            {/* Laporan Resmi Audit Internal ISO 13485 & CDAKB */}
+            {activeDoc === 'laporan-audit-iso' && (() => {
+              const audit = db.getAuditInternal()[0];
+              if (!audit) return <div className="text-center py-8 text-slate-500">Belum ada rekaman audit internal.</div>;
+              return (
+                <div className="space-y-4">
+                  <div className="text-center font-bold text-sm underline uppercase">
+                    LAPORAN HASIL AUDIT INTERNAL SISTEM MANAJEMEN MUTU ISO 13485:2016 & CDAKB
+                  </div>
+                  <div className="text-center text-xs text-slate-600 -mt-3 font-mono">
+                    Nomor: {audit.nomorAudit}
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 grid grid-cols-2 gap-2 text-xs">
+                    <div><strong>Lingkup Audit:</strong> {audit.lingkup}</div>
+                    <div><strong>Tanggal Audit:</strong> {audit.tanggalAudit}</div>
+                    <div><strong>Lead Auditor:</strong> {audit.auditorLead}</div>
+                    <div><strong>Auditee:</strong> {audit.auditee}</div>
+                    <div><strong>Indeks Kepatuhan:</strong> <span className="font-bold text-indigo-700">{audit.skorKepatuhan}%</span></div>
+                    <div><strong>Status:</strong> {audit.status}</div>
+                  </div>
+
+                  <div className="text-xs text-slate-700 leading-relaxed bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
+                    <strong>Ringkasan Eksekutif:</strong>
+                    <p className="mt-1">{audit.ringkasanEksekutif}</p>
+                    <p className="mt-1 font-semibold text-indigo-900">{audit.kesimpulan}</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-800 mb-1">Evaluasi Klausul Utama ISO 13485:2016:</h4>
+                    <table className="w-full text-xs text-left border border-slate-200">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                          <th className="p-2">Klausul</th>
+                          <th className="p-2">Judul Klausul</th>
+                          <th className="p-2">Status</th>
+                          <th className="p-2">Kepatuhan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-2xs">
+                        {audit.klausulAudit.slice(0, 5).map((k) => (
+                          <tr key={k.id}>
+                            <td className="p-2 font-mono font-bold text-indigo-700">{k.klausul}</td>
+                            <td className="p-2">{k.judulKlausul}</td>
+                            <td className="p-2 font-bold">{k.status}</td>
+                            <td className="p-2 font-bold text-indigo-700">{k.persentaseKepatuhan}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 pt-6 text-center text-xs">
+                    <div>
+                      <p className="text-2xs text-slate-600 mb-6">Auditee Terkait:</p>
+                      <div className="font-bold border-b border-slate-400 pb-1">Budi Utomo, S.T</div>
+                      <p className="text-2xs text-slate-500">QA Manager</p>
+                    </div>
+                    <div>
+                      <p className="text-2xs text-slate-600 mb-6">Lead Auditor:</p>
+                      <div className="font-bold border-b border-slate-400 pb-1">apt. Dewi Kartika, S.Si</div>
+                      <p className="text-2xs text-slate-500">Lead Auditor ISO 13485</p>
+                    </div>
+                    <div>
+                      <p className="text-2xs text-slate-600 mb-6">Disahkan oleh PJT:</p>
+                      <div className="font-bold border-b border-slate-400 pb-1">apt. Dewi Kartika, S.Si</div>
+                      <p className="text-2xs text-slate-500">Penanggung Jawab Teknis</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>
         </div>

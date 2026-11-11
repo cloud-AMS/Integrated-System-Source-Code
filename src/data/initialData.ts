@@ -197,7 +197,98 @@ export const INITIAL_SERTIFIKAT: SertifikatPerusahaan[] = [
 
 export const INITIAL_DOKUMEN_MUTU: DokumenMutu[] = [
   {
+    id: 'DOC-000',
+    kodeDokumen: 'PM-AMS-01',
+    judul: 'Pedoman Mutu Sistem Manajemen Mutu Alat Kesehatan ISO 13485:2016 & CDAKB',
+    kategori: 'Pedoman Mutu',
+    revisi: 4,
+    tanggalEfektif: '2024-01-02',
+    status: 'Berlaku',
+    penyusun: 'Budi Utomo, S.T (QA Manager)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '4.2.2 & 4.2.3 (Quality Manual & Medical Device File)',
+    statusAudit: 'Sesuai'
+  },
+  {
     id: 'DOC-001',
+    kodeDokumen: 'SOP-QMS-01',
+    judul: 'Prosedur Pengendalian Dokumen Mutu & Perubahan Spesifikasi',
+    kategori: 'SOP',
+    revisi: 3,
+    tanggalEfektif: '2024-01-08',
+    status: 'Berlaku',
+    penyusun: 'Rian Prasetyo, S.Farm (QA)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '4.2.4 (Control of Documents)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-002',
+    kodeDokumen: 'SOP-QMS-02',
+    judul: 'Prosedur Pengendalian Rekaman Mutu, Retensi 5 Tahun & Integritas ALCOA+',
+    kategori: 'SOP',
+    revisi: 2,
+    tanggalEfektif: '2024-01-15',
+    status: 'Berlaku',
+    penyusun: 'Rian Prasetyo, S.Farm (QA)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '4.2.5 (Control of Records)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-003',
+    kodeDokumen: 'SOP-QMS-03',
+    judul: 'Prosedur Audit Internal Sistem Manajemen Mutu Berkala',
+    kategori: 'SOP',
+    revisi: 3,
+    tanggalEfektif: '2024-02-01',
+    status: 'Berlaku',
+    penyusun: 'Budi Utomo, S.T (QA Manager)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '8.2.4 (Internal Audit)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-004',
+    kodeDokumen: 'SOP-QMS-04',
+    judul: 'Prosedur Tindakan Korektif & Tindakan Preventif (CAPA)',
+    kategori: 'SOP',
+    revisi: 3,
+    tanggalEfektif: '2024-02-15',
+    status: 'Berlaku',
+    penyusun: 'Budi Utomo, S.T (QA Manager)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '8.5.2 & 8.5.3 (Corrective and Preventive Action)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-005',
+    kodeDokumen: 'SOP-QC-01',
+    judul: 'Prosedur Pengawasan Mutu & Sampling Inspeksi Barang Masuk (Incoming QC)',
+    kategori: 'SOP',
+    revisi: 2,
+    tanggalEfektif: '2024-03-01',
+    status: 'Berlaku',
+    penyusun: 'Hendra Setiawan (QC Officer)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '7.4.3 & 8.2.6 (Incoming Verification & Product Inspection)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-006',
+    kodeDokumen: 'SOP-QC-02',
+    judul: 'Prosedur Pelepasan Produk (Release) & Penahanan Karantina Alkes',
+    kategori: 'SOP',
+    revisi: 2,
+    tanggalEfektif: '2024-03-10',
+    status: 'Berlaku',
+    penyusun: 'Hendra Setiawan (QC Officer)',
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '8.2.6 & 8.3 (Product Release & Control of Nonconforming Product)',
+    statusAudit: 'Sesuai'
+  },
+  {
+    id: 'DOC-007',
     kodeDokumen: 'SOP-CDAKB-01',
     judul: 'Prosedur Penerimaan dan Verifikasi Alkes Masuk Gudang',
     kategori: 'SOP',
@@ -205,10 +296,12 @@ export const INITIAL_DOKUMEN_MUTU: DokumenMutu[] = [
     tanggalEfektif: '2024-01-02',
     status: 'Berlaku',
     penyusun: 'Rian Prasetyo, S.Farm (QA)',
-    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)'
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '7.4.3 (Verification of Purchased Product)',
+    statusAudit: 'Sesuai'
   },
   {
-    id: 'DOC-002',
+    id: 'DOC-008',
     kodeDokumen: 'SOP-CDAKB-04',
     judul: 'Prosedur Penyimpanan & Pemantauan Rantai Dingin (Cold Chain 2-8°C)',
     kategori: 'SOP',
@@ -216,10 +309,12 @@ export const INITIAL_DOKUMEN_MUTU: DokumenMutu[] = [
     tanggalEfektif: '2024-03-15',
     status: 'Berlaku',
     penyusun: 'Ahmad Fauzi (Gudang)',
-    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)'
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '7.5.11 (Preservation of Product)',
+    statusAudit: 'Sesuai'
   },
   {
-    id: 'DOC-003',
+    id: 'DOC-009',
     kodeDokumen: 'SOP-CDAKB-08',
     judul: 'Prosedur Penarikan Produk Alkes dari Peredaran (Product Recall)',
     kategori: 'SOP',
@@ -227,10 +322,12 @@ export const INITIAL_DOKUMEN_MUTU: DokumenMutu[] = [
     tanggalEfektif: '2024-05-20',
     status: 'Berlaku',
     penyusun: 'Budi Utomo, S.T (QA Manager)',
-    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)'
+    penyetujui: 'apt. Dewi Kartika, S.Si (PJT)',
+    klausulIso: '8.3.3 & 8.5.2 (Advisory Notices & Recall)',
+    statusAudit: 'Sesuai'
   },
   {
-    id: 'DOC-004',
+    id: 'DOC-010',
     kodeDokumen: 'IK-TEK-02',
     judul: 'Instruksi Kerja Kalibrasi & Uji Fungsi Patient Monitor',
     kategori: 'Instruksi Kerja',
@@ -238,7 +335,9 @@ export const INITIAL_DOKUMEN_MUTU: DokumenMutu[] = [
     tanggalEfektif: '2023-11-10',
     status: 'Berlaku',
     penyusun: 'Dian Nugraha, A.Md.TEM (Teknisi)',
-    penyetujui: 'Budi Utomo, S.T (QA Manager)'
+    penyetujui: 'Budi Utomo, S.T (QA Manager)',
+    klausulIso: '7.6 (Control of Monitoring/Measuring Equipment)',
+    statusAudit: 'Sesuai'
   }
 ];
 

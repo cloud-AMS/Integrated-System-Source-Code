@@ -55,7 +55,8 @@ export default defineConfig(() => {
           ]
         },
         devOptions: {
-          enabled: true,
+          // Dev service worker requires an active HMR websocket. Disable when HMR is disabled in AI Studio.
+          enabled: process.env.DISABLE_HMR !== 'true',
           type: 'module'
         }
       })
