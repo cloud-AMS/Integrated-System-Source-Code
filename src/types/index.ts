@@ -1787,3 +1787,40 @@ export interface KonfigurasiSitus {
    *  konfigurasi lama tanpa field ini dinormalkan ke default REMEDI Klasik). */
   tampilan?: TampilanSitus;
 }
+
+/** Seluruh ID modul yang dapat diatur hak aksesnya di dalam aplikasi (termasuk overview & website). */
+export type ModuleNavId = ModuleId | 'overview' | 'website';
+
+export interface RoleSistem {
+  id: string;
+  nama: string;
+  deskripsi: string;
+  basisPeran: UserRole;
+  aksesPenuh: boolean;
+  modulDiizinkan: ModuleNavId[];
+  bawaanSistem?: boolean;
+  diperbaruiPada?: string;
+}
+
+export interface AkunPengguna {
+  id: string;
+  namaLengkap: string;
+  username: string;
+  email: string;
+  kataSandi: string;
+  roleId: string;
+  status: 'Aktif' | 'Nonaktif';
+  aksesKustom: boolean;
+  aksesPenuhOverride?: boolean;
+  modulDiizinkan?: ModuleNavId[];
+  dibuatPada: string;
+  terakhirMasuk?: string;
+}
+
+export interface AksesEfektif {
+  aksesPenuh: boolean;
+  modulDiizinkan: ModuleNavId[];
+  sumber: 'akses-penuh' | 'kustom-user' | 'role';
+  role?: RoleSistem;
+}
+

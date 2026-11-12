@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import DeveloperNotes from '../../common/DeveloperNotes';
 import { db } from '../../../services/pocketbase';
-import type { LogAuditTrail, UserRole } from '../../../types';
+import type { AksesEfektif, LogAuditTrail, UserRole } from '../../../types';
 import { 
   Cpu, 
   Terminal, 
@@ -9,38 +9,58 @@ import {
   ShieldCheck, 
   Copy, 
   Check, 
-  RefreshCw, 
   Download, 
   Server,
-  Lock,
-  Layers,
   FileCode,
   CheckCircle2,
   FileSpreadsheet,
   Filter,
   Search,
   X,
-  Shield,
   FileText,
   Info,
-  SlidersHorizontal
+  Users
 } from 'lucide-react';
 import { 
   downloadIso13485AuditCsv, 
-  petakanKlausulIso13485, 
-  formatDeltaPerubahan 
+  petakanKlausulIso13485 
 } from '../../../utils/auditExportIso13485';
 import { bacaSesi } from '../../../utils/autentikasi';
+import { SEMUA_ID_MODUL } from '../../../utils/hakAkses';
+import UserAccountRolesModule from '../../dashboard/UserAccountRolesModule';
+
+export type ITSubTabId = 'traceability' | 'audit' | 'user-roles' | 'deployment';
 
 export interface ITModuleProps {
   currentRole?: UserRole;
   currentUserName?: string;
+  aksesAktif?: AksesEfektif;
+  akunAktifId?: string;
+  activeTab?: ITSubTabId;
+  onTabChange?: (tab: ITSubTabId) => void;
 }
 
-export default function ITModule({ currentRole, currentUserName }: ITModuleProps) {
-  const [activeTab, setActiveTab] = useState<'traceability' | 'audit' | 'deployment'>('traceability');
+export default function ITModule({
+  currentRole,
+  currentUserName,
+  aksesAktif,
+  akunAktifId,
+  activeTab: activeTabProp,
+  onTabChange
+}: ITModuleProps) {
+  const [activeTabLokal, setActiveTabLokal] = useState<ITSubTabId>(activeTabProp || 'traceability');
+  const activeTab = activeTabProp ?? activeTabLokal;
+  const setActiveTab = (tab: ITSubTabId) => {
+    setActiveTabLokal(tab);
+    onTabChange?.(tab);
+  };
+  const aksesEfektif: AksesEfektif = aksesAktif ?? {
+    aksesPenuh: true,
+    modulDiizinkan: [...SEMUA_ID_MODUL],
+    sumber: 'akses-penuh'
+  };
   const [auditList, setAuditList] = useState<LogAuditTrail[]>(db.getAuditTrail());
-  const [connStatus, setConnStatus] = useState(db.getConnectionStatus());
+  const [connStatus] = useState(db.getConnectionStatus());
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   // Filter & Search Audit Trail
@@ -339,10 +359,11 @@ alkes.perusahaan-anda.co.id {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 text-xs">
+      <div className="flex items-center gap-2 border-b border-slate-200 text-xs overflow-x-auto">
         <button
+          type="button"
           onClick={() => setActiveTab('traceability')}
-          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'traceability'
               ? 'border-blue-600 text-blue-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -353,8 +374,9 @@ alkes.perusahaan-anda.co.id {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('audit')}
-          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'audit'
               ? 'border-blue-600 text-blue-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -365,8 +387,22 @@ alkes.perusahaan-anda.co.id {
         </button>
 
         <button
+          type="button"
+          onClick={() => setActiveTab('user-roles')}
+          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
+            activeTab === 'user-roles'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          User Account & Roles
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('deployment')}
-          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer ${
+          className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
             activeTab === 'deployment'
               ? 'border-blue-600 text-blue-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -376,6 +412,15 @@ alkes.perusahaan-anda.co.id {
           Konfigurasi Caddy & NSSM Windows Server
         </button>
       </div>
+
+      {/* Tab 0: User Account & Roles */}
+      {activeTab === 'user-roles' && (
+        <UserAccountRolesModule
+          aksesAktif={aksesEfektif}
+          pelakuAktif={namaAdmin}
+          akunAktifId={akunAktifId}
+        />
+      )}
 
       {/* Tab 1: Storage & Sync Status */}
       {activeTab === 'traceability' && (

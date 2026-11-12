@@ -30,8 +30,10 @@ import {
   UserCog,
   LogOut
 } from 'lucide-react';
-import { ModuleId, UserRole } from '../../types';
+import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
 import { db } from '../../services/pocketbase';
+import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
+import type { ITSubTabId } from '../modules/supporting/ITModule';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 export type Tone = 'slate' | 'amber' | 'indigo' | 'blue' | 'emerald' | 'rose';
@@ -194,6 +196,13 @@ interface NavbarProps {
   onRoleChange: (role: UserRole) => void;
   onOpenTraceability: () => void;
   onKeluar: () => void;
+  aksesAktif?: AksesEfektif;
+  daftarAkun?: AkunPengguna[];
+  daftarRole?: RoleSistem[];
+  akunAktifId?: string;
+  onAccountChange?: (akun: AkunPengguna) => void;
+  itSubTab?: ITSubTabId;
+  onITNavigate?: (sub: ITSubTabId) => void;
 }
 
 export default function Navbar({
@@ -202,7 +211,14 @@ export default function Navbar({
   currentRole,
   onRoleChange,
   onOpenTraceability,
-  onKeluar
+  onKeluar,
+  aksesAktif,
+  daftarAkun,
+  daftarRole,
+  akunAktifId,
+  onAccountChange,
+  itSubTab = 'traceability',
+  onITNavigate
 }: NavbarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -249,20 +265,47 @@ export default function Navbar({
     };
   }, [drawerOpen]);
 
+  const aksesEfektif: AksesEfektif = useMemo(
+    () =>
+      aksesAktif ?? {
+        aksesPenuh: true,
+        modulDiizinkan: [...SEMUA_ID_MODUL],
+        sumber: 'akses-penuh'
+      },
+    [aksesAktif]
+  );
+
+  const akunAktif = useMemo(
+    () => daftarAkun?.find((a) => a.id === akunAktifId),
+    [daftarAkun, akunAktifId]
+  );
+  const roleAktifObj = useMemo(
+    () => daftarRole?.find((r) => r.id === (akunAktif?.roleId || currentRole)),
+    [daftarRole, akunAktif, currentRole]
+  );
+
   const activeTabDef = ALL_TABS.find((t) => t.id === currentTab);
 
   const bottomTabs = useMemo(
-    () => BOTTOM_PRIORITY.map((id) => ALL_TABS.find((t) => t.id === id)!).filter(Boolean),
-    []
+    () =>
+      BOTTOM_PRIORITY.filter((id) => bolehAksesModul(id, aksesEfektif))
+        .map((id) => ALL_TABS.find((t) => t.id === id)!)
+        .filter(Boolean),
+    [aksesEfektif]
   );
 
   const subMenuMap = useMemo(() => {
     const map = {} as Record<SubMenuKey, TabDef[]>;
     SUBMENU_ORDER.forEach((key) => {
-      map[key] = ALL_TABS.filter((t) => t.group === key);
+      map[key] = ALL_TABS.filter((t) => t.group === key && bolehAksesModul(t.id, aksesEfektif));
     });
     return map;
-  }, []);
+  }, [aksesEfektif]);
+
+  const goITSub = (sub: ITSubTabId) => {
+    onITNavigate?.(sub);
+    go('it-traceability');
+  };
 
   /* Buka grup yang memuat modul aktif saat drawer dibuka */
   useEffect(() => {
@@ -338,11 +381,11 @@ export default function Navbar({
           >
             <RoleAvatar peran={currentRole} />
             <div className="text-left hidden md:block">
-              <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[150px]">
-                {namaPengguna(currentRole).split('-')[0].trim()}
+              <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[160px]">
+                {akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole).split('-')[0].trim()}
               </div>
-              <div className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
-                {currentRole.replace('_', ' ')}
+              <div className="text-2xs font-semibold uppercase tracking-wider text-slate-500 truncate max-w-[160px]">
+                {roleAktifObj ? roleAktifObj.nama : currentRole.replace('_', ' ')}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
@@ -351,44 +394,83 @@ export default function Navbar({
           {showUserMenu && (
             <>
               <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowUserMenu(false)} />
-              <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 divide-y divide-slate-100">
+              <div className="absolute right-0 top-full mt-1.5 w-72 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 divide-y divide-slate-100">
                 <div className="px-3.5 py-2">
-                  <div className="text-xs font-bold text-slate-900 truncate">{namaPengguna(currentRole)}</div>
-                  <div className="mt-1">
+                  <div className="text-xs font-bold text-slate-900 truncate">
+                    {akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole)}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="text-2xs bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded inline-block border border-slate-200">
-                      {peranPengguna(currentRole)}
+                      {roleAktifObj ? roleAktifObj.nama : peranPengguna(currentRole)}
+                    </span>
+                    <span className="text-2xs text-slate-500">
+                      {aksesEfektif.aksesPenuh ? 'Akses Penuh' : `${aksesEfektif.modulDiizinkan.length} modul`}
                     </span>
                   </div>
-                  <p className="text-2xs text-slate-500 mt-1">Pilih peran aktif untuk simulasi otorisasi divisi:</p>
+                  <p className="text-2xs text-slate-500 mt-1">
+                    {daftarAkun && onAccountChange
+                      ? 'Pilih akun aktif untuk simulasi hak akses & otorisasi:'
+                      : 'Pilih peran aktif untuk simulasi otorisasi divisi:'}
+                  </p>
                 </div>
 
-                <div className="py-1 max-h-60 overflow-y-auto">
-                  {[
-                    { r: 'pjt', label: 'apt. Dewi Kartika (PJT Kemenkes)' },
-                    { r: 'qa_manager', label: 'Budi Utomo, S.T (QA Manager)' },
-                    { r: 'qc_officer', label: 'Hendra Setiawan (Lead QC)' },
-                    { r: 'kepala_gudang', label: 'Ahmad Fauzi (Gudang CDAKB)' },
-                    { r: 'teknisi_elektromedik', label: 'Dian Nugraha (Teknisi STR)' },
-                    { r: 'manajer_produksi', label: 'Ir. Agus Santoso (CPAKB)' },
-                    { r: 'purchasing', label: 'Dewi Anggraini (Purchasing)' },
-                    { r: 'sales_manager', label: 'Farhan Maulana (e-Katalog)' },
-                    { r: 'it_admin', label: 'Admin IT & Hub' },
-                  ].map((item) => (
-                    <button
-                      key={item.r}
-                      type="button"
-                      onClick={() => {
-                        onRoleChange(item.r as UserRole);
-                        setShowUserMenu(false);
-                      }}
-                      className={`w-full text-left px-3.5 py-1.5 text-xs font-semibold flex items-center justify-between cursor-pointer ${
-                        currentRole === item.r ? 'bg-blue-50 text-blue-700' : 'text-slate-800 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {currentRole === item.r && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
-                    </button>
-                  ))}
+                <div className="py-1 max-h-64 overflow-y-auto">
+                  {daftarAkun && onAccountChange ? (
+                    daftarAkun
+                      .filter((a) => a.status === 'Aktif')
+                      .map((akun) => {
+                        const rObj = daftarRole?.find((r) => r.id === akun.roleId);
+                        const isSelected = akunAktifId ? akunAktifId === akun.id : false;
+                        return (
+                          <button
+                            key={akun.id}
+                            type="button"
+                            onClick={() => {
+                              onAccountChange(akun);
+                              setShowUserMenu(false);
+                            }}
+                            className={`w-full text-left px-3.5 py-1.5 text-xs flex items-center justify-between gap-2 cursor-pointer ${
+                              isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-800 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="font-semibold truncate">{akun.namaLengkap}</div>
+                              <div className="text-2xs text-slate-500 truncate">
+                                @{akun.username} · {rObj?.nama || akun.roleId}
+                              </div>
+                            </div>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                          </button>
+                        );
+                      })
+                  ) : (
+                    [
+                      { r: 'pjt', label: 'apt. Dewi Kartika (PJT Kemenkes)' },
+                      { r: 'qa_manager', label: 'Budi Utomo, S.T (QA Manager)' },
+                      { r: 'qc_officer', label: 'Hendra Setiawan (Lead QC)' },
+                      { r: 'kepala_gudang', label: 'Ahmad Fauzi (Gudang CDAKB)' },
+                      { r: 'teknisi_elektromedik', label: 'Dian Nugraha (Teknisi STR)' },
+                      { r: 'manajer_produksi', label: 'Ir. Agus Santoso (CPAKB)' },
+                      { r: 'purchasing', label: 'Dewi Anggraini (Purchasing)' },
+                      { r: 'sales_manager', label: 'Farhan Maulana (e-Katalog)' },
+                      { r: 'it_admin', label: 'Admin IT & Hub' },
+                    ].map((item) => (
+                      <button
+                        key={item.r}
+                        type="button"
+                        onClick={() => {
+                          onRoleChange(item.r as UserRole);
+                          setShowUserMenu(false);
+                        }}
+                        className={`w-full text-left px-3.5 py-1.5 text-xs font-semibold flex items-center justify-between cursor-pointer ${
+                          currentRole === item.r ? 'bg-blue-50 text-blue-700' : 'text-slate-800 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        {currentRole === item.r && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                      </button>
+                    ))
+                  )}
                 </div>
 
                 <div className="py-1.5 px-1.5">
@@ -423,6 +505,7 @@ export default function Navbar({
         {/* Menu utama: tab langsung + dropdown per divisi, sesuai urutan MAIN_MENU */}
         {MAIN_MENU.map((entry) => {
           if (entry.kind === 'tab') {
+            if (!bolehAksesModul(entry.id, aksesEfektif)) return null;
             const tab = ALL_TABS.find((t) => t.id === entry.id)!;
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
@@ -453,6 +536,7 @@ export default function Navbar({
 
           const { key } = entry;
           const items = subMenuMap[key];
+          if (items.length === 0) return null;
           const containsActive = items.some((t) => t.id === currentTab);
           const isOpen = openMenu === key;
           return (
@@ -476,24 +560,51 @@ export default function Navbar({
                   </p>
                   {items.map((tab) => {
                     const Icon = tab.icon;
-                    const isActive = currentTab === tab.id;
+                    const isIT = tab.id === 'it-traceability';
+                    const isActive = isIT
+                      ? currentTab === 'it-traceability' && itSubTab !== 'user-roles'
+                      : currentTab === tab.id;
+                    const isUserRolesActive = currentTab === 'it-traceability' && itSubTab === 'user-roles';
                     return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => go(tab.id)}
-                        className={`w-full text-left px-3 py-2 flex items-start gap-2.5 text-xs font-semibold transition-colors cursor-pointer ${
-                          isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${TONE_ICON}`} />
-                        <span className="flex-1 leading-snug">{tab.label}</span>
-                        {tab.badge && (
-                          <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 text-slate-600">
-                            {tab.badge}
-                          </span>
+                      <div key={tab.id}>
+                        <button
+                          type="button"
+                          onClick={() => (isIT ? goITSub('traceability') : go(tab.id))}
+                          className={`w-full text-left px-3 py-2 flex items-start gap-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                            isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${TONE_ICON}`} />
+                          <span className="flex-1 leading-snug">{tab.label}</span>
+                          {tab.badge && (
+                            <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-slate-200 text-slate-600">
+                              {tab.badge}
+                            </span>
+                          )}
+                        </button>
+                        {isIT && (
+                          <button
+                            type="button"
+                            onClick={() => goITSub('user-roles')}
+                            className={`w-full text-left pl-9 pr-3 py-2 flex items-start gap-2 text-xs font-semibold transition-colors cursor-pointer border-l-2 ml-4 ${
+                              isUserRolesActive
+                                ? 'bg-slate-100 text-slate-900 border-blue-600'
+                                : 'text-slate-600 hover:bg-slate-50 border-slate-200'
+                            }`}
+                          >
+                            <UserCheck className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${TONE_ICON}`} />
+                            <div className="flex-1 leading-snug">
+                              <div>User Account & Roles</div>
+                              <div className="text-2xs font-normal text-slate-500">
+                                Buat akun, tetapkan role, & checklist modul
+                              </div>
+                            </div>
+                            <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-blue-100 text-blue-700">
+                              RBAC
+                            </span>
+                          </button>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -538,6 +649,7 @@ export default function Navbar({
             <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-1">
               {MAIN_MENU.map((entry) => {
                 if (entry.kind === 'tab') {
+                  if (!bolehAksesModul(entry.id, aksesEfektif)) return null;
                   const tab = ALL_TABS.find((t) => t.id === entry.id)!;
                   const Icon = tab.icon;
                   const isActive = currentTab === tab.id;
@@ -567,6 +679,7 @@ export default function Navbar({
 
                 const { key } = entry;
                 const items = subMenuMap[key];
+                if (items.length === 0) return null;
                 const tone = SUBMENU_TONE[key];
                 const isOpen = openGroup === key;
                 const containsActive = items.some((t) => t.id === currentTab);
@@ -592,28 +705,52 @@ export default function Navbar({
                       <div className="mt-1 mb-1.5 ml-3 pl-3 border-l border-slate-200 space-y-1">
                         {items.map((tab) => {
                           const Icon = tab.icon;
-                          const isActive = currentTab === tab.id;
+                          const isIT = tab.id === 'it-traceability';
+                          const isActive = isIT
+                            ? currentTab === 'it-traceability' && itSubTab !== 'user-roles'
+                            : currentTab === tab.id;
+                          const isUserRolesActive = currentTab === 'it-traceability' && itSubTab === 'user-roles';
                           return (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => go(tab.id)}
-                              className={`w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
-                                isActive ? TONE_ACTIVE : 'text-slate-700 active:bg-slate-100'
-                              }`}
-                            >
-                              <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isActive ? 'text-white' : TONE_ICON}`} />
-                              <span className="flex-1 text-sm font-semibold leading-snug">{tab.label}</span>
-                              {tab.badge && (
-                                <span
-                                  className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
-                                    isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
+                            <div key={tab.id} className="space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => (isIT ? goITSub('traceability') : go(tab.id))}
+                                className={`w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                                  isActive ? TONE_ACTIVE : 'text-slate-700 active:bg-slate-100'
+                                }`}
+                              >
+                                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isActive ? 'text-white' : TONE_ICON}`} />
+                                <span className="flex-1 text-sm font-semibold leading-snug">{tab.label}</span>
+                                {tab.badge && (
+                                  <span
+                                    className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                                      isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-600'
+                                    }`}
+                                  >
+                                    {tab.badge}
+                                  </span>
+                                )}
+                              </button>
+                              {isIT && (
+                                <button
+                                  type="button"
+                                  onClick={() => goITSub('user-roles')}
+                                  className={`w-full flex items-center gap-2 rounded-xl pl-7 pr-2.5 py-2 text-left transition-colors ${
+                                    isUserRolesActive ? TONE_ACTIVE : 'text-slate-600 active:bg-slate-100'
                                   }`}
                                 >
-                                  {tab.badge}
-                                </span>
+                                  <UserCheck className={`w-3.5 h-3.5 shrink-0 ${isUserRolesActive ? 'text-white' : TONE_ICON}`} />
+                                  <span className="flex-1 text-xs font-semibold leading-snug">User Account & Roles</span>
+                                  <span
+                                    className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                                      isUserRolesActive ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-700'
+                                    }`}
+                                  >
+                                    RBAC
+                                  </span>
+                                </button>
                               )}
-                            </button>
+                            </div>
                           );
                         })}
                       </div>

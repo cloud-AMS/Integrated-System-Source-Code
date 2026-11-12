@@ -14,19 +14,23 @@ import {
   DollarSign,
   BarChart3,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Lock
 } from 'lucide-react';
 import type {
+  AksesEfektif,
   CAPARecord,
   IzinEdarAlkes,
   ModuleId,
   SertifikatPerusahaan,
 } from '../../types';
+import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
 
 interface ExecutiveOverviewProps {
   onSelectModule: (module: ModuleId) => void;
   onOpenTraceability: () => void;
   onOpenPrintModal: () => void;
+  aksesAktif?: AksesEfektif;
 }
 
 const NAMA_BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -104,8 +108,19 @@ function bidangLintasan(pts: TitikSerie[]): string {
 export default function ExecutiveOverview({
   onSelectModule,
   onOpenTraceability,
-  onOpenPrintModal
+  onOpenPrintModal,
+  aksesAktif
 }: ExecutiveOverviewProps) {
+  const aksesEfektif: AksesEfektif = aksesAktif ?? {
+    aksesPenuh: true,
+    modulDiizinkan: [...SEMUA_ID_MODUL],
+    sumber: 'akses-penuh'
+  };
+
+  const bukaModulJikaDiizinkan = (mod: ModuleId) => {
+    if (!bolehAksesModul(mod, aksesEfektif)) return;
+    onSelectModule(mod);
+  };
   const [izinList, setIzinList] = useState(db.getIzinEdar());
   const [sertifikatList] = useState(db.getSertifikat());
   const [stokList] = useState(db.getStokGudang());
@@ -548,8 +563,10 @@ export default function ExecutiveOverview({
           
           {/* Divisi 1: Commercial / Sales & e-Katalog LKPP */}
           <div 
-            onClick={() => onSelectModule('sales-marketing')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-blue-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('sales-marketing')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('sales-marketing', aksesEfektif) ? 'hover:border-blue-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -576,14 +593,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-blue-600">
-              Buka Modul Komersial <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('sales-marketing', aksesEfektif) ? (
+                <>Buka Modul Komersial <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 2: Warehouse & Logistics (CDAKB) */}
           <div 
-            onClick={() => onSelectModule('gudang-logistik')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-amber-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('gudang-logistik')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('gudang-logistik', aksesEfektif) ? 'hover:border-amber-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -610,14 +633,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-amber-600">
-              Buka Modul Gudang <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('gudang-logistik', aksesEfektif) ? (
+                <>Buka Modul Gudang <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 3: Regulatory Affairs & PJT */}
           <div 
-            onClick={() => onSelectModule('ra-pjt')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('ra-pjt')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('ra-pjt', aksesEfektif) ? 'hover:border-indigo-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -646,14 +675,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
-              Buka Modul Regulatory <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('ra-pjt', aksesEfektif) ? (
+                <>Buka Modul Regulatory <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 4: Quality Assurance & ISO 13485 */}
           <div 
-            onClick={() => onSelectModule('qa-mutu')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-purple-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('qa-mutu')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('qa-mutu', aksesEfektif) ? 'hover:border-purple-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -680,14 +715,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-600">
-              Buka Modul QA <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('qa-mutu', aksesEfektif) ? (
+                <>Buka Modul QA <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 5: Manufaktur CPAKB */}
           <div 
-            onClick={() => onSelectModule('produksi-cpakb')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('produksi-cpakb')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('produksi-cpakb', aksesEfektif) ? 'hover:border-emerald-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -714,14 +755,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-emerald-600">
-              Buka Modul Produksi <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('produksi-cpakb', aksesEfektif) ? (
+                <>Buka Modul Produksi <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 6: Finance & Accounting */}
           <div 
-            onClick={() => onSelectModule('finance-akuntansi')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-cyan-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('finance-akuntansi')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('finance-akuntansi', aksesEfektif) ? 'hover:border-cyan-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -748,14 +795,20 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-cyan-600">
-              Buka Modul Keuangan <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('finance-akuntansi', aksesEfektif) ? (
+                <>Buka Modul Keuangan <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
           {/* Divisi 7: HRD & Payroll */}
           <div 
-            onClick={() => onSelectModule('hrd-pelatihan')}
-            className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-rose-500 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => bukaModulJikaDiizinkan('hrd-pelatihan')}
+            className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-xs transition-all group flex flex-col justify-between ${
+              bolehAksesModul('hrd-pelatihan', aksesEfektif) ? 'hover:border-rose-500 hover:shadow-md cursor-pointer' : 'opacity-70 cursor-not-allowed'
+            }`}
           >
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -782,7 +835,11 @@ export default function ExecutiveOverview({
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-rose-600">
-              Buka Modul HRIS <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              {bolehAksesModul('hrd-pelatihan', aksesEfektif) ? (
+                <>Buka Modul HRIS <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" /></>
+              ) : (
+                <span className="text-slate-500 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Akses Terbatas</span>
+              )}
             </div>
           </div>
 
@@ -804,13 +861,15 @@ export default function ExecutiveOverview({
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => onSelectModule('pms-vigilance')}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Pusat Laporan KTD
-          </button>
+          {bolehAksesModul('pms-vigilance', aksesEfektif) && (
+            <button
+              type="button"
+              onClick={() => bukaModulJikaDiizinkan('pms-vigilance')}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Pusat Laporan KTD
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenPrintModal}
