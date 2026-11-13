@@ -9,6 +9,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { db } from '../../services/pocketbase';
+import LogoAplikasi from './LogoAplikasi';
 
 interface PrintModalProps {
   isOpen: boolean;
@@ -124,9 +125,11 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
           <div className="bg-white text-slate-900 w-full max-w-2xl p-8 rounded-xl shadow-xs border border-slate-300 font-sans text-xs leading-relaxed print:m-0 print:p-4 print:shadow-none print:border-none">
             
             {/* Kop Surat Perusahaan */}
-            <div className="border-b-2 border-slate-900 pb-3 mb-4 text-center">
+            <div className="border-b-2 border-slate-900 pb-3 mb-4 flex items-center justify-center gap-3 text-center">
+              <LogoAplikasi ukuran="lg" className="border-slate-300" />
+              <div>
               <h2 className="text-base font-extrabold tracking-wide uppercase text-slate-900">
-                PT ANUGRAH MITRA SELARAS
+                PT ANUGRAHMITRA SELARAS
               </h2>
               <p className="text-xs text-slate-700">
                 Sertifikat Distribusi Alat Kesehatan (SDAK) No: SDAK-91203049201940001 • Sertifikat CPAKB Kemenkes RI
@@ -134,6 +137,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
               <p className="text-2xs text-slate-500">
                 Kawasan Industri Medis Cikarang Blok B-12, Bekasi, Jawa Barat | Telepon: (021) 8990-2134 | Email: pjt@anugrahmitraselaras.co.id
               </p>
+              </div>
             </div>
 
             {/* Document Content Switcher */}
@@ -316,7 +320,7 @@ export default function PrintModal({ isOpen, onClose }: PrintModalProps) {
                   <div className="h-16 flex items-end justify-center font-bold text-slate-900 border-b border-slate-400">
                     apt. Dewi Kartika, S.Si
                   </div>
-                  <p className="text-2xs text-slate-500 mt-1">PJT Alkes PT Anugrah Mitra Selaras</p>
+                  <p className="text-2xs text-slate-500 mt-1">PJT Alkes PT Anugrahmitra Selaras</p>
                 </div>
               </div>
             )}

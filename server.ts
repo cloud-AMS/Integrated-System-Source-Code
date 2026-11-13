@@ -96,7 +96,7 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'aktif',
-      sistem: 'AMS Integrated System - PT Anugrah Mitra Selaras',
+      sistem: 'AMS Integrated System - PT Anugrahmitra Selaras',
       versi: '2.4.0-cdakb',
       standar: ['CDAKB Permenkes 4/2014', 'CPAKB Permenkes 20/2017', 'SDAK OSS-RBA', 'ISO 13485:2016'],
       basisData: 'PocketBase 0.28.1 (Real-time Kanal Terhubung) + Cache Lokal',

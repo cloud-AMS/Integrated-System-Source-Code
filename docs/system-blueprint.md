@@ -10,7 +10,7 @@
 
 ## 1. STRUKTUR UTAMA APLIKASI (MENU & MODUL)
 
-AMS Integrated System dirancang sebagai **Modular Monolith Enterprise ERP** khusus untuk perusahaan distributor dan manufaktur Alat Kesehatan di Indonesia (PT Anugrah Mitra Selaras / REMEDI). Seluruh menu dikelompokkan ke dalam 5 domain utama:
+AMS Integrated System dirancang sebagai **Modular Monolith Enterprise ERP** khusus untuk perusahaan distributor dan manufaktur Alat Kesehatan di Indonesia (PT Anugrahmitra Selaras / REMEDI). Seluruh menu dikelompokkan ke dalam 5 domain utama:
 
 ```mermaid
 graph TD

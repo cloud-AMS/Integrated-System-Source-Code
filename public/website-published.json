@@ -3,11 +3,12 @@
   "lastModifiedAt": 1793800909600,
   "lastModifiedBy": "Belum pernah disimpan",
   "identitas": {
-    "nama": "PT Anugrah Mitra Selaras",
+    "nama": "PT Anugrahmitra Selaras",
     "tagline": "REMEDI — Every Life Matters",
-    "logoUrl": "/site/logo-remedi-new-bw.png",
-    "judulSitus": "PT Anugrah Mitra Selaras (REMEDI) — Produsen, Agen & Distributor Alat Kesehatan",
-    "metaDeskripsi": "PT Anugrah Mitra Selaras (REMEDI) berdiri sejak 1994: produsen, agen, dan distributor peralatan kesehatan, instrument set, serta barang habis pakai. Bersertifikat ISO 9001:2015, ISO 13485:2016, dan CDAKB Kementerian Kesehatan RI 2024-2029."
+    "logoUrl": "/assets/aistudio/Logo_AMS_5ee808c6.png",
+    "faviconUrl": "/assets/aistudio/Logo_AMS_5ee808c6.png",
+    "judulSitus": "PT Anugrahmitra Selaras (REMEDI) — Produsen, Agen & Distributor Alat Kesehatan",
+    "metaDeskripsi": "PT Anugrahmitra Selaras (REMEDI) berdiri sejak 1994: produsen, agen, dan distributor peralatan kesehatan, instrument set, serta barang habis pakai. Bersertifikat ISO 9001:2015, ISO 13485:2016, dan CDAKB Kementerian Kesehatan RI 2024-2029."
   },
   "header": {
     "utamaTeks": "Request for Quotation",
@@ -363,7 +364,7 @@
         "isActive": true,
         "nilai": "1994",
         "label": "Tahun Berdiri",
-        "keterangan": "PT Anugrah Mitra Selaras beroperasi sejak 1994 dengan merek dagang Remedi"
+        "keterangan": "PT Anugrahmitra Selaras beroperasi sejak 1994 dengan merek dagang Remedi"
       },
       {
         "id": "rujuk-stat-pelanggan",
@@ -460,7 +461,7 @@
         "kelasRisiko": "Kelas B",
         "nomorIzinEdar": "KEMENKES RI AKD 20501910234",
         "statusIzinEdar": "Aktif",
-        "produsen": "PT Anugrah Mitra Selaras",
+        "produsen": "PT Anugrahmitra Selaras",
         "negaraAsal": "Indonesia",
         "hargaTayang": "Rp 33.000.000 (Harga Distributor)",
         "zonaSuhu": "Ruang Sejuk AC (15°C - 25°C)",
@@ -534,7 +535,7 @@
         "kelasRisiko": "Kelas C",
         "nomorIzinEdar": "KEMENKES RI AKD 21603910442",
         "statusIzinEdar": "Perpanjangan",
-        "produsen": "PT Anugrah Mitra Selaras",
+        "produsen": "PT Anugrahmitra Selaras",
         "negaraAsal": "Indonesia",
         "hargaTayang": "Sesuai Kontrak / e-Katalog LKPP",
         "zonaSuhu": "Suhu Kamar (< 30°C)",
@@ -1388,8 +1389,8 @@
         "id": "rujuk-faq-profil",
         "sumberId": "rujuk-faq-profil",
         "isActive": true,
-        "pertanyaan": "Siapa PT Anugrah Mitra Selaras dan merek apa yang dipakainya?",
-        "jawaban": "PT Anugrah Mitra Selaras, dikenal dengan merek dagang REMEDI, berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan bertindak sebagai produsen, agen, dan distributor."
+        "pertanyaan": "Siapa PT Anugrahmitra Selaras dan merek apa yang dipakainya?",
+        "jawaban": "PT Anugrahmitra Selaras, dikenal dengan merek dagang REMEDI, berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan bertindak sebagai produsen, agen, dan distributor."
       },
       {
         "id": "rujuk-faq-katalog",
@@ -1436,7 +1437,7 @@
       "subjudul": "Disalin dari halaman About AMS dan Company Profile pada situs resmi perusahaan."
     },
     "paragraf": [
-      "PT Anugrah Mitra Selaras — dikenal dengan merek dagang REMEDI — berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan memproduksi dan memasok peralatan kesehatan, instrument set, dan consumables dengan mereknya sendiri, Remedi, sekaligus bertindak sebagai agen dan distributor.",
+      "PT Anugrahmitra Selaras — dikenal dengan merek dagang REMEDI — berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan memproduksi dan memasok peralatan kesehatan, instrument set, dan consumables dengan mereknya sendiri, Remedi, sekaligus bertindak sebagai agen dan distributor.",
       "Fasilitas produksi berada di Brebes (Jawa Tengah) dan Sumedang (Jawa Barat), ditambah keterlibatan saham pada sebuah pabrik di Zhangjiagang, Jiangsu, Tiongkok. Melalui fasilitas tersebut, sekitar 10% barang habis pakai yang didistribusikan telah diproduksi di dalam negeri.",
       "Visi: menjadi penyedia solusi utama dan acuan (benchmark) untuk kebutuhan pelayanan kesehatan di Indonesia maupun dunia.",
       "Misi: (1) memberikan kepuasan pelanggan melalui informasi yang komprehensif, produk berkualitas, sumber daya profesional, dan layanan terbaik; (2) mematuhi seluruh standar, persyaratan, dan regulasi serta menjadi mitra strategis pemerintah; (3) membina hubungan dan kolaborasi yang baik dengan perkumpulan tenaga medis maupun komunitas kesehatan; (4) memberi kontribusi positif bagi masyarakat dan lingkungan untuk meningkatkan kualitas hidup; (5) memperluas jangkauan pasar agar menjadi produk Indonesia yang terkemuka di dunia.",
@@ -1503,7 +1504,7 @@
         "isActive": true,
         "nama": "Pabrik Partisipasi Zhangjiagang",
         "alamat": "Zhangjiagang, Jiangsu, Tiongkok",
-        "penanggungJawab": "Kepemilikan saham PT Anugrah Mitra Selaras"
+        "penanggungJawab": "Kepemilikan saham PT Anugrahmitra Selaras"
       }
     ]
   },
@@ -1649,6 +1650,6 @@
       ]
     }
   ],
-  "footerCatatan": "© 2026 PT Anugrah Mitra Selaras (REMEDI). Seluruh hak cipta dilindungi. Produsen, agen, dan distributor alat kesehatan sejak 1994 — distribusi dijalankan sesuai Cara Distribusi Alat Kesehatan yang Baik (CDAKB) Kementerian Kesehatan RI.",
+  "footerCatatan": "© 2026 PT Anugrahmitra Selaras (REMEDI). Seluruh hak cipta dilindungi. Produsen, agen, dan distributor alat kesehatan sejak 1994 — distribusi dijalankan sesuai Cara Distribusi Alat Kesehatan yang Baik (CDAKB) Kementerian Kesehatan RI.",
   "lastPublishedAt": 1793800909625
 }

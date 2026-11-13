@@ -26,7 +26,7 @@ Coded by Langgo Bramandityo
 ### 3. SDAK & Izin Edar (NIE)
 - **Yang ada**: UI daftar NIE, kelas risiko A–D, tanggal perpanjangan, seed 6+ produk contoh, ambang peringatan.
 - **Yang BELUM ada**: koneksi apa pun ke OSS RBA / Kemenkes / portal perizinan; validasi nomor NIE ke database nasional; SDAK perusahaan yang diunggah dan diverifikasi; reminder otomatis nyata (hanya tampilan).
-- **Sebelum klaim "sesuai"**: SDAK aktif atas nama PT Anugrah Mitra Selaras + NIE seluruh produk yang diklaim tercatat & terverifikasi ke aslinya + SOP perpanjangan dengan pemilik tugas.
+- **Sebelum klaim "sesuai"**: SDAK aktif atas nama PT Anugrahmitra Selaras + NIE seluruh produk yang diklaim tercatat & terverifikasi ke aslinya + SOP perpanjangan dengan pemilik tugas.
 - **Rekomendasi**: impor data NIE asli dari dokumen perusahaan (bukan seed) sebagai langkah pertama `production-list.md` Fase H3.
 
 ### 4. Pengadaan & e-Katalog Pemerintah (LKPP / LPSE)

@@ -316,7 +316,7 @@ export default function TimeAttendanceModule() {
               Mobile App Client v2.4
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Aplikasi native Android untuk karyawan PT Anugrah Mitra Selaras (AMS) melakukan clock-in mandiri dengan verifikasi wajah dan geofence GPS terenkripsi.
+              Aplikasi native Android untuk karyawan PT Anugrahmitra Selaras (AMS) melakukan clock-in mandiri dengan verifikasi wajah dan geofence GPS terenkripsi.
             </p>
             <div className="pt-2 flex items-center justify-between">
               <Badge tone="emerald">Status: Terhubung (API v2)</Badge>

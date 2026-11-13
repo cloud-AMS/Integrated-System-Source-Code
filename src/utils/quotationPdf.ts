@@ -171,7 +171,7 @@ export async function unduhQuotationPdfA4(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(17, 24, 39);
-  const namaLines = doc.splitTextToSize(identitas.namaPerusahaan || 'PT ANUGRAH MITRA SELARAS', maxTextW);
+  const namaLines = doc.splitTextToSize(identitas.namaPerusahaan || 'PT ANUGRAHMITRA SELARAS', maxTextW);
   doc.text(namaLines, textStartX, y + 4.5);
   let leftY = y + 4.5 + (namaLines.length - 1) * 5;
 
@@ -543,7 +543,7 @@ export async function unduhQuotationPdfA4(
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(17, 24, 39);
   doc.text(quotation.namaPenerima || 'Pihak Pemesan', sigLeftX, y + 4.5);
-  doc.text(identitas.namaPerusahaan || 'PT ANUGRAH MITRA SELARAS', sigRightX, y + 4.5);
+  doc.text(identitas.namaPerusahaan || 'PT ANUGRAHMITRA SELARAS', sigRightX, y + 4.5);
 
   // Garis tanda tangan
   const lineSigY = y + 23;

@@ -1,4 +1,4 @@
-# AMS Integrated System — PT Anugrah Mitra Selaras
+# AMS Integrated System — PT Anugrahmitra Selaras
 
 Sistem Informasi Manajemen Terintegrasi Perusahaan Alat Kesehatan Indonesia berbasis standar **CDAKB** (Cara Distribusi Alat Kesehatan yang Baik), **CPAKB** (Cara Pembuatan Alat Kesehatan yang Baik), **SDAK**, dan **ISO 13485:2016** Kementerian Kesehatan Republik Indonesia.
 
@@ -6,7 +6,7 @@ Sistem Informasi Manajemen Terintegrasi Perusahaan Alat Kesehatan Indonesia berb
 
 ## 🌟 Tentang Aplikasi
 
-**AMS Integrated System** adalah platform Enterprise Resource Planning (ERP) dan Manajemen Kepatuhan spesifik industri alat kesehatan (Alkes) yang dikembangkan untuk **PT Anugrah Mitra Selaras (AMS)**. Sistem ini menghubungkan seluruh divisi operasional perusahaan dari hulu (manufaktur dan regulasi) hingga hilir (distribusi, e-Katalog LKPP, purna jual, dan post-market surveillance).
+**AMS Integrated System** adalah platform Enterprise Resource Planning (ERP) dan Manajemen Kepatuhan spesifik industri alat kesehatan (Alkes) yang dikembangkan untuk **PT Anugrahmitra Selaras (AMS)**. Sistem ini menghubungkan seluruh divisi operasional perusahaan dari hulu (manufaktur dan regulasi) hingga hilir (distribusi, e-Katalog LKPP, purna jual, dan post-market surveillance).
 
 ---
 
@@ -102,4 +102,4 @@ Setiap modul aplikasi memuat catatan **Developer Notes** (ikon Info di bagian at
 ---
 
 ## 📄 Lisensi & Kepatuhan
-Hak Cipta © 2026 PT Anugrah Mitra Selaras (AMS). Seluruh sistem dikembangkan sesuai regulasi dan standar Kementerian Kesehatan Republik Indonesia. Coded by Langgo Bramandityo
+Hak Cipta © 2026 PT Anugrahmitra Selaras (AMS). Seluruh sistem dikembangkan sesuai regulasi dan standar Kementerian Kesehatan Republik Indonesia. Coded by Langgo Bramandityo

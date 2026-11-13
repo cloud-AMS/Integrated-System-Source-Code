@@ -9,6 +9,7 @@ import Navbar, { type NavId } from './components/layout/Navbar';
 import ExecutiveOverview from './components/dashboard/ExecutiveOverview';
 import TraceabilityModal from './components/traceability/TraceabilityModal';
 import PrintModal from './components/common/PrintModal';
+import { terapkanFaviconAplikasi, useIdentitasVisualAplikasi } from './components/common/LogoAplikasi';
 import HalamanDepan from './components/modules/website/site/HalamanDepan';
 
 // Module components
@@ -35,6 +36,11 @@ import { bolehAksesModul, hitungAksesEfektif } from './utils/hakAkses';
 
 export default function App() {
   const [sesi, setSesi] = useState<SesiLogin | null>(() => bacaSesi());
+  const identitasVisual = useIdentitasVisualAplikasi();
+
+  useEffect(() => {
+    terapkanFaviconAplikasi(identitasVisual.faviconUrl || identitasVisual.logoUrl);
+  }, [identitasVisual.faviconUrl, identitasVisual.logoUrl]);
 
   if (!sesi) return <HalamanDepan onMasuk={setSesi} />;
 
@@ -251,7 +257,7 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span>© 2026 PT Anugrah Mitra Selaras (AMS) • Sistem Terintegrasi CDAKB & ISO 13485</span>
+            <span>© 2026 PT Anugrahmitra Selaras (AMS) • Sistem Terintegrasi CDAKB & ISO 13485</span>
           </div>
           <div className="font-semibold text-slate-600 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />

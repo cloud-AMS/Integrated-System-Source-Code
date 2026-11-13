@@ -6,7 +6,7 @@ Sebelum mengutip dokumen ini di luar tim: aplikasi ini belum lolos Fase A, sehin
 
 # Protokol & Checklist Peluncuran Produksi (Production Readiness Checklist)
 
-Dokumen ini adalah **Protokol Resmi Peluncuran Produksi (*Production Deployment Protocol*)** untuk **AMS Integrated System (PT Anugrah Mitra Selaras)**, termasuk panduan dan checklist migrasi data / input data asli (*real data seeding*) untuk setiap modul fungsional.
+Dokumen ini adalah **Protokol Resmi Peluncuran Produksi (*Production Deployment Protocol*)** untuk **AMS Integrated System (PT Anugrahmitra Selaras)**, termasuk panduan dan checklist migrasi data / input data asli (*real data seeding*) untuk setiap modul fungsional.
 Coded by Langgo Bramandityo
 
 Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia nyata: **pintu dikunci dulu, baru integrasi dibuka; backup dibuktikan bisa dipulihkan sebelum data dimasukkan; data dimasukkan dengan rekonsiliasi; kepatuhan ditandatangani; baru go-live**. Seluruh item ditulis ulang agar jujur terhadap kondisi aplikasi.

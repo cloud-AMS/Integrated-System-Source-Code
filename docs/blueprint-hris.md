@@ -11,7 +11,7 @@ Coded by Langgo Bramandityo
 ---
 
 ## 0. Ringkasan Eksekutif & Karakteristik Industri Alkes
-Industri distribusi dan manufaktur alat kesehatan (PT Anugrah Mitra Selaras / REMEDI) memiliki karakteristik operasional yang menuntut tingkat kepatuhan hukum (*regulatory compliance*) yang sangat tinggi:
+Industri distribusi dan manufaktur alat kesehatan (PT Anugrahmitra Selaras / REMEDI) memiliki karakteristik operasional yang menuntut tingkat kepatuhan hukum (*regulatory compliance*) yang sangat tinggi:
 1. **Kepatuhan Kompetensi (PJT & QC):** Personil kunci seperti Penanggung Jawab Teknis (PJT) wajib memiliki sertifikasi resmi (CDAKB, CPOAKB) dengan pemantauan masa berlaku ketat (ambang H-90).
 2. **Dual-Environment Operasional:** Memadukan tenaga kerja pabrik manufaktur (sistem shift 24/7, cleanroom/steril, insentif yield produksi) dengan tenaga kerja kantor pusat dan mobile sales/distribusi (geofencing, absensi lapangan).
 3. **Integritas Data Karyawan (ALCOA+):** Rekam medis kerja dan riwayat mutasi jabatan dikelola dengan prinsip tabel temporal (*system-versioned*) dan kerahasiaan data kesehatan.

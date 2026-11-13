@@ -200,7 +200,7 @@ describe('Audit Internal Otomatis ISO 13485:2016 & CDAKB', () => {
       const audit = auditOtomatisDokumenQA(dummyDocs, dummyCapa, dummyRetur);
       const csv = generateAuditInternalCsv(audit);
 
-      expect(csv).toContain('PT ANUGRAH MITRA SELARAS (AMS) - LAPORAN RESMI AUDIT INTERNAL ISO 13485:2016 & CDAKB');
+      expect(csv).toContain('PT ANUGRAHMITRA SELARAS (AMS) - LAPORAN RESMI AUDIT INTERNAL ISO 13485:2016 & CDAKB');
       expect(csv).toContain(audit.nomorAudit);
       expect(csv).toContain('Kode Dokumen / Laporan');
       expect(csv).toContain('SOP-QMS-01');

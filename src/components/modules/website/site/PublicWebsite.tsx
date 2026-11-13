@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { ArrowLeft, ArrowRight, ChevronDown, ClipboardList, Globe, LogIn, Mail, Menu, Phone, X } from 'lucide-react';
 import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite } from '../../../../types';
 import { PETA_HALAMAN, TampilkanSeksi, TombolSitus, type ItemRfqPublik, type PropsSeksi } from './SiteSections';
-import { hrefTautan } from '../../../../utils/website';
+import { hrefTautan, selesaikanGambar } from '../../../../utils/website';
 import { tampilanEfektif, tumpukanFont } from '../../../../utils/tampilan';
 
 interface Rute {
@@ -261,18 +261,7 @@ export default function PublicWebsite({
         return baru;
       })();
     og.setAttribute('content', konfigurasi.identitas.judulSitus || konfigurasi.identitas.nama);
-    // Favicon: gunakan unggahan dari CMS (identitas.faviconUrl) bila ada.
-    if (konfigurasi.identitas.faviconUrl) {
-      const fav =
-        document.querySelector('link[rel="icon"]') ??
-        (() => {
-          const baru = document.createElement('link');
-          baru.rel = 'icon';
-          document.head.appendChild(baru);
-          return baru as HTMLLinkElement;
-        })();
-      fav.setAttribute('href', konfigurasi.identitas.faviconUrl);
-    }
+
   }, [konfigurasi.identitas]);
 
   const tema = tampilanEfektif(konfigurasi);
@@ -329,8 +318,12 @@ export default function PublicWebsite({
         <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
           <div className="flex items-center gap-4 py-3">
             <button type="button" onClick={() => ke('beranda')} className="flex items-center gap-3 cursor-pointer">
-              {konfigurasi.identitas.logoUrl ? (
-                <img src={konfigurasi.identitas.logoUrl} alt={konfigurasi.identitas.nama} className="h-10 w-auto object-contain" />
+              {selesaikanGambar(konfigurasi.identitas.logoUrl) ? (
+                <img
+                  src={selesaikanGambar(konfigurasi.identitas.logoUrl)}
+                  alt={konfigurasi.identitas.nama}
+                  className="h-10 w-auto object-contain"
+                />
               ) : (
                 <span className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center text-base font-bold">
                   {inisialLogo(konfigurasi.identitas.nama)}

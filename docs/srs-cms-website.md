@@ -14,7 +14,7 @@
 ## 1. Pendahuluan
 
 ### 1.1 Tujuan
-Dokumen ini menspesifikasikan **modul CMS visual** pada aplikasi **AMS Integrated System (PT Anugrah Mitra Selaras / REMEDI)**: kemampuan bagi admin (tanpa menyentuh kode) untuk mengatur **template, warna merek, tipografi, favicon/logo, dan urutan seksi Beranda** situs publik `/web`, serta mekanisme penerapan perubahan itu ke halaman depan.
+Dokumen ini menspesifikasikan **modul CMS visual** pada aplikasi **AMS Integrated System (PT Anugrahmitra Selaras / REMEDI)**: kemampuan bagi admin (tanpa menyentuh kode) untuk mengatur **template, warna merek, tipografi, favicon/logo, dan urutan seksi Beranda** situs publik `/web`, serta mekanisme penerapan perubahan itu ke halaman depan.
 
 ### 1.2 Ruang Lingkup
 **Termasuk:** pengaturan template dasar; kustomisasi warna utama/sekunder; pilihan font; unggah logo & favicon; penyusunan urutan seksi Beranda; penerapan real-time ke pratinjau dan tayang setelah diterbitkan.

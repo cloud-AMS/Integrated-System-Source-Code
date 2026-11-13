@@ -1,6 +1,6 @@
 # Panduan & Checklist Deployment VPS — AMS Integrated System
 
-Dokumen ini memuat panduan teknis, spesifikasi infrastruktur server, checklist kesiapan, serta langkah-langkah deployment end-to-end untuk sistem **AMS Integrated System (PT Anugrah Mitra Selaras)** pada Virtual Private Server (VPS) berbasis Linux (Ubuntu 22.04 / 24.04 LTS).
+Dokumen ini memuat panduan teknis, spesifikasi infrastruktur server, checklist kesiapan, serta langkah-langkah deployment end-to-end untuk sistem **AMS Integrated System (PT Anugrahmitra Selaras)** pada Virtual Private Server (VPS) berbasis Linux (Ubuntu 22.04 / 24.04 LTS).
 
 ---
 

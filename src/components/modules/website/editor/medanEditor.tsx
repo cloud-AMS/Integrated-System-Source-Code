@@ -245,7 +245,8 @@ function MedanGambar({
     setSedangOlah(true);
     setGagal('');
     try {
-      const dataUrl = await kompresGambarWebsite(berkas);
+      const adalahLogoAtauIkon = kunciLower.includes('logo') || labelLower.includes('logo') || kunciLower.includes('favicon') || labelLower.includes('favicon');
+      const dataUrl = await kompresGambarWebsite(berkas, 1280, 0.82, adalahLogoAtauIkon);
       const id = `img-${Math.random().toString(36).slice(2, 9)}`;
       simpanMediaWebsite({ id, nama: berkas.name, dataUrl, ukuran: berkas.size });
       onChange(`media:${id}`);

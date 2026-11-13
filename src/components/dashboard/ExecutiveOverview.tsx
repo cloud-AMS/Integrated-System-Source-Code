@@ -291,7 +291,7 @@ export default function ExecutiveOverview({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
                 Real-Time Board Cockpit (Direksi)
               </span>
-              <span className="text-xs text-slate-400">PT Anugrah Mitra Selaras (AMS) • Kemenkes RI Standar</span>
+              <span className="text-xs text-slate-400">PT Anugrahmitra Selaras (AMS) • Kemenkes RI Standar</span>
             </div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               Executive Dashboard & Pemantauan Divisi
@@ -551,7 +551,7 @@ export default function ExecutiveOverview({
               Laporan Kinerja & Status per Divisi Perusahaan
             </h3>
             <p className="text-xs text-slate-500">
-              Ringkasan operasional real-time dari setiap departemen fungsional PT Anugrah Mitra Selaras
+              Ringkasan operasional real-time dari setiap departemen fungsional PT Anugrahmitra Selaras
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-blue-100 text-blue-800 rounded-full">

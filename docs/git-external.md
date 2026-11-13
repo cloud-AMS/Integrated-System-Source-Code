@@ -5,7 +5,7 @@
 **Repository Sumber:** `https://github.com/driptobhattacharyya/Smart-Attendance-App.git`  
 **Standar Kepatuhan:** CDAKB Permenkes RI 4/2014, ISO 13485:2016, ALCOA+ Data Integrity  
 **Modul Sasaran:** HRD & Pelatihan (Time & Attendance) -> `src/components/modules/supporting/hris/TimeAttendanceModule.tsx`  
-**Target:** Integrasi aplikasi turunan berbasis Android untuk karyawan (*Smart Attendance Android App*) dengan sinkronisasi geofencing GPS, face recognition, dan presensi real-time ke sistem pusat PT Anugrah Mitra Selaras (AMS).
+**Target:** Integrasi aplikasi turunan berbasis Android untuk karyawan (*Smart Attendance Android App*) dengan sinkronisasi geofencing GPS, face recognition, dan presensi real-time ke sistem pusat PT Anugrahmitra Selaras (AMS).
 
 ---
 

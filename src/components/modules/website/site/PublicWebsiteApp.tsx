@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Construction, ExternalLink, RefreshCw } from 'lucide-react';
 import type { KonfigurasiSitus } from '../../../../types';
 import { db, KOLEKSI_OPERASIONAL_SITUS } from '../../../../services/pocketbase';
-import { selaraskanKontenOperasional } from '../../../../utils/website';
+import { selaraskanKontenOperasional, selesaikanGambar } from '../../../../utils/website';
+import { terapkanFaviconAplikasi } from '../../../common/LogoAplikasi';
 import PublicWebsite, { adalahKonfigurasiSitus, muatSnapshot } from './PublicWebsite';
 
 export type StatusTayangPublik = 'tayang' | 'belum' | 'tahan';
@@ -122,6 +123,13 @@ export default function PublicWebsiteApp() {
       berhentiTerbit();
     };
   }, []);
+
+  useEffect(() => {
+    const aktif = ADALAH_PRATINJAU ? drafPratinjauSinkron : konfigurasiTayangSinkron;
+    if (!aktif) return;
+    const fav = selesaikanGambar(aktif.identitas.faviconUrl || aktif.identitas.logoUrl);
+    terapkanFaviconAplikasi(fav);
+  }, [drafPratinjauSinkron, konfigurasiTayangSinkron]);
 
   if (ADALAH_PRATINJAU) {
     if (!drafPratinjauSinkron) {

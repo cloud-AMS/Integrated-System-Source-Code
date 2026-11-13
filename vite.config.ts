@@ -37,7 +37,7 @@ export default defineConfig(() => {
         },
         manifest: {
           id: '/',
-          name: 'AMS Integrated System - PT Anugrah Mitra Selaras',
+          name: 'AMS Integrated System - PT Anugrahmitra Selaras',
           short_name: 'AMS ERP',
           description: 'Sistem Informasi Manajemen Terintegrasi Perusahaan Alat Kesehatan Indonesia berbasis standar CDAKB, CPAKB, SDAK, dan ISO 13485 Kemenkes RI.',
           theme_color: '#0ea5e9',

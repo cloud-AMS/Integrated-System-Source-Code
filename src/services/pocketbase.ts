@@ -215,10 +215,13 @@ const STORAGE_PREFIX = 'ams_alkes_';
 
 /** Nama perusahaan lama yang mungkin masih tersimpan di basis data lokal perangkat. */
 const NAMA_LAMA: [string, string][] = [
-  ['PT AMS MEDIKA INTEGRASI INDONESIA', 'PT ANUGRAH MITRA SELARAS'],
-  ['PT AMS Medika Integrasi Indonesia', 'PT Anugrah Mitra Selaras'],
-  ['PT AMS Manufaktur Alkes Indonesia', 'PT Anugrah Mitra Selaras'],
-  ['PT AMS Alkes', 'PT Anugrah Mitra Selaras'],
+  ['PT AMS MEDIKA INTEGRASI INDONESIA', 'PT ANUGRAHMITRA SELARAS'],
+  ['PT AMS Medika Integrasi Indonesia', 'PT Anugrahmitra Selaras'],
+  ['PT AMS Manufaktur Alkes Indonesia', 'PT Anugrahmitra Selaras'],
+  ['PT AMS Alkes', 'PT Anugrahmitra Selaras'],
+  ['PT ANUGRAH MITRA SELARAS', 'PT ANUGRAHMITRA SELARAS'],
+  ['PT Anugrah Mitra Selaras', 'PT Anugrahmitra Selaras'],
+  ['Anugrah Mitra Selaras', 'Anugrahmitra Selaras'],
   ['AMS Alkes Integrated System', 'AMS Integrated System'],
   ['pjt@ams-medika.co.id', 'pjt@anugrahmitraselaras.co.id']
 ];
@@ -2561,7 +2564,7 @@ class AMSDatabaseManager {
 
     const namaAlkes = stok?.namaAlkes || qc?.namaBarang || bmr?.namaProduk || 'Alat Kesehatan Terdaftar';
     const nomorIzinEdar = stok?.nomorIzinEdar || 'KEMENKES RI Terdaftar';
-    const produsen = bmr ? 'PT Anugrah Mitra Selaras (CPAKB)' : 'Shenzhen Mindray / Prinsipal Resmi';
+    const produsen = bmr ? 'PT Anugrahmitra Selaras (CPAKB)' : 'Shenzhen Mindray / Prinsipal Resmi';
 
     const fasyankesPenerima = sales.map(s => ({
       nama: s.fasyankes,

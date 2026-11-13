@@ -138,7 +138,7 @@ export default function AuditReportModal({ audit, isOpen, onClose }: AuditReport
             {/* KOP SURAT PERUSAHAAN */}
             <div className="border-b-2 border-slate-900 pb-3 mb-4 text-center">
               <h2 className="text-base font-extrabold tracking-wide uppercase text-slate-900">
-                PT ANUGRAH MITRA SELARAS (AMS)
+                PT ANUGRAHMITRA SELARAS (AMS)
               </h2>
               <p className="text-xs text-slate-700 font-medium">
                 Penyalur Alat Kesehatan Berizin Kemenkes RI • Sertifikat Distribusi (SDAK) No: SDAK-91203049201940001

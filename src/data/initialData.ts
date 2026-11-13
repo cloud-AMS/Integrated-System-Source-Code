@@ -92,7 +92,7 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     nomorIzinEdar: 'KEMENKES RI AKD 20501910234',
     kategori: 'Elektromedik Non Radiasi',
     kelasRisiko: 'Kelas B',
-    produsen: 'PT Anugrah Mitra Selaras',
+    produsen: 'PT Anugrahmitra Selaras',
     negaraAsal: 'Indonesia',
     tanggalTerbit: '2022-09-10',
     tanggalKedaluwarsa: '2027-09-10',
@@ -122,7 +122,7 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     nomorIzinEdar: 'KEMENKES RI AKD 21603910442',
     kategori: 'Non Elektromedik Steril',
     kelasRisiko: 'Kelas C',
-    produsen: 'PT Anugrah Mitra Selaras',
+    produsen: 'PT Anugrahmitra Selaras',
     negaraAsal: 'Indonesia',
     tanggalTerbit: '2021-11-05',
     tanggalKedaluwarsa: '2026-11-05',
@@ -2556,12 +2556,12 @@ export const INITIAL_KIRIMAN_SATU_SEHAT: KirimanSatuSehat[] = [
     tipeSumberDaya: 'Organization',
     nomorRujukan: 'SDAK-KEMENKES-910248201',
     kodeFasyankes: 'FKN-PD-0007',
-    namaFasyankes: 'PT Anugrah Mitra Selaras (REMEDI)',
+    namaFasyankes: 'PT Anugrahmitra Selaras (REMEDI)',
     nomorBatch: '-',
     nomorSerial: '-',
     suhuRantaiDingin: '-',
     status: 'Diterima (201)',
-    payloadJson: '{"resourceType":"Organization","name":"PT Anugrah Mitra Selaras","identifier":[{"system":"https://sso.kemkes.go.id/fhir/NamingSystem/sdak","value":"SDAK-KEMENKES-910248201"}],"active":true}',
+    payloadJson: '{"resourceType":"Organization","name":"PT Anugrahmitra Selaras","identifier":[{"system":"https://sso.kemkes.go.id/fhir/NamingSystem/sdak","value":"SDAK-KEMENKES-910248201"}],"active":true}',
     catatan: 'Sinkronisasi profil penyalur alkes; sumber daya Organization wajib valid sebelum kiriman SupplyDelivery diterima.'
   },
   {
@@ -4931,7 +4931,7 @@ export const INITIAL_PENGETAHUAN_PRODUK: PengetahuanProdukAlkes[] = [
     kategori: 'Elektromedik Non Radiasi',
     nomorIzinEdar: 'KEMENKES RI AKL 20501819203',
     tanggalKedaluwarsaNie: '2028-04-15',
-    produsen: 'PT Anugrah Mitra Selaras (CPAKB)',
+    produsen: 'PT Anugrahmitra Selaras (CPAKB)',
     spesifikasiRingkas: 'Monitor 12,1 inci, ECG 3/5 lead, SpO2, NIBP, suhu ganda, baterai 4 jam, cocok untuk ICU/NICU.',
     poinJual: ['Layar 12,1 inci anti-glare', 'Baterai tahan 4 jam untuk transfer pasien', 'Rekam tren 72 jam untuk tinjauan perawat'],
     tautanBrosur: '/brosur/ams-v12-pro.pdf',
@@ -4948,7 +4948,7 @@ export const INITIAL_PENGETAHUAN_PRODUK: PengetahuanProdukAlkes[] = [
     kategori: 'Elektromedik Non Radiasi',
     nomorIzinEdar: 'KEMENKES RI AKD 20501910234',
     tanggalKedaluwarsaNie: '2027-09-10',
-    produsen: 'PT Anugrah Mitra Selaras (CPAKB)',
+    produsen: 'PT Anugrahmitra Selaras (CPAKB)',
     spesifikasiRingkas: 'Laju infus 0,01-1500 ml/jam, akurasi ±5%, alarm oklusi, baterai 6 jam, multi-suntikan 5-60 ml.',
     poinJual: ['Akurasi rendah-volume untuk neonatus', 'Stacking hingga 4 kanal', 'Riwayat alarm dapat diekspor untuk audit'],
     tautanBrosur: '/brosur/ams-sp500.pdf',
@@ -4982,7 +4982,7 @@ export const INITIAL_PENGETAHUAN_PRODUK: PengetahuanProdukAlkes[] = [
     kategori: 'Non Elektromedik Steril',
     nomorIzinEdar: 'KEMENKES RI AKD 21603910442',
     tanggalKedaluwarsaNie: '2026-11-05',
-    produsen: 'PT Anugrah Mitra Selaras (CPAKB)',
+    produsen: 'PT Anugrahmitra Selaras (CPAKB)',
     spesifikasiRingkas: 'Benang jahit absorben anyaman, ukuran 2-0 sampai 4-0, kekuatan tarik tersisa 60% pada hari 21.',
     poinJual: ['Sterilisasi gamma 25 kGy terdokumentasi', 'Kemasan unit RS mengurangi sisa pemborongan'],
     tautanBrosur: '/brosur/polyglactin-910.pdf',
@@ -5687,7 +5687,8 @@ export const INITIAL_MEDIA_SURAT: MediaSurat[] = [
   { id: 'MED-03', namaFile: 'iris-scissor.jpg', tipeMime: 'image/jpeg', ukuranKB: 112, url: '/site/iris-scissor.jpg', diunggahPada: '2026-04-22', penanggungJawab: 'Koordinator Pemasaran' },
   { id: 'MED-04', namaFile: 'sino-sn-1500h.jpg', tipeMime: 'image/jpeg', ukuranKB: 143, url: '/site/sino-sn-1500h.jpg', diunggahPada: '2026-06-08', penanggungJawab: 'Manajer Pemasaran' },
   { id: 'MED-05', namaFile: 'company-profile-ams-thumb.jpg', tipeMime: 'image/jpeg', ukuranKB: 78, url: '/site/company-profile-ams-thumb.jpg', diunggahPada: '2026-07-19', penanggungJawab: 'Manajer Pemasaran' },
-  { id: 'MED-06', namaFile: 'logo-remedi-new-bw.png', tipeMime: 'image/png', ukuranKB: 24, url: '/site/logo-remedi-new-bw.png', diunggahPada: '2026-01-30', penanggungJawab: 'Manajer Pemasaran' }
+  { id: 'MED-06', namaFile: 'logo-remedi-new-bw.png', tipeMime: 'image/png', ukuranKB: 24, url: '/site/logo-remedi-new-bw.png', diunggahPada: '2026-01-30', penanggungJawab: 'Manajer Pemasaran' },
+  { id: 'MED-07', namaFile: 'Logo_AMS_5ee808c6.png', tipeMime: 'image/png', ukuranKB: 42, url: '/assets/aistudio/Logo_AMS_5ee808c6.png', diunggahPada: '2026-11-13', penanggungJawab: 'Manajer Pemasaran' }
 ];
 
 export const INITIAL_KAMPANYE_SURAT: KampanyeSurat[] = [

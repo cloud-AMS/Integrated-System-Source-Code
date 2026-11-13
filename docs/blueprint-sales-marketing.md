@@ -11,7 +11,7 @@ Coded by Langgo Bramandityo
 ---
 
 ## 0. Ringkasan Eksekutif & Karakteristik Industri Alkes
-Sistem ERP komersial untuk manufaktur dan distribusi alat kesehatan (PT Anugrah Mitra Selaras / REMEDI) memiliki karakteristik unik:
+Sistem ERP komersial untuk manufaktur dan distribusi alat kesehatan (PT Anugrahmitra Selaras / REMEDI) memiliki karakteristik unik:
 1. **Validasi Kepatuhan Medis (CDAKB Validator):** Sales Order (SO) tidak dapat diproses jika nomor izin edar (NIE) alkes kedaluwarsa atau fasyankes tujuan tidak memiliki izin operasional yang sah.
 2. **Keterikatan dengan e-Katalog LKPP & LPSE:** Sebagian besar volume penjualan institusi pemerintah dikelola melalui kontrak harga e-Katalog dengan manajemen margin dan pagu kredit (*Credit Limit & TOP*) yang ketat.
 3. **Eksekusi FEFO Sadar-Kunci:** Transaksi penjualan langsung terintegrasi dengan mesin alokasi stok gudang FIFO/FEFO untuk memastikan batch kedaluwarsa terdekat atau batch terkarantina tidak pernah terpilih.

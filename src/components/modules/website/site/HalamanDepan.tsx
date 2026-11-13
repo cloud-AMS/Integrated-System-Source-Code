@@ -3,10 +3,11 @@
  * sebelum pengguna masuk. Dashboard hanya dirender setelah sesi login tersimpan.
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Eye, EyeOff, LogIn, ShieldCheck, X } from 'lucide-react';
+import { Eye, EyeOff, LogIn, X } from 'lucide-react';
 import type { KonfigurasiSitus } from '../../../../types';
 import { db } from '../../../../services/pocketbase';
 import { cobaMasuk, type SesiLogin } from '../../../../utils/autentikasi';
+import LogoAplikasi from '../../../common/LogoAplikasi';
 import PublicWebsite from './PublicWebsite';
 import { tentukanKontenTayang, useKonfigurasiOperasionalSinkron } from './PublicWebsiteApp';
 
@@ -70,7 +71,7 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-slate-900/60" onClick={() => setFormTerbuka(false)} />
           <div className="relative w-full max-w-md">
-            <KartuMasuk onTerima={terima} onBatal={() => setFormTerbuka(false)} />
+            <KartuMasuk logoUrl={konfigurasi.identitas.logoUrl} onTerima={terima} onBatal={() => setFormTerbuka(false)} />
           </div>
         </div>
       )}
@@ -78,7 +79,15 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
   );
 }
 
-export function KartuMasuk({ onTerima, onBatal }: { onTerima: (sesi: SesiLogin) => void; onBatal: () => void }) {
+export function KartuMasuk({
+  logoUrl,
+  onTerima,
+  onBatal
+}: {
+  logoUrl?: string;
+  onTerima: (sesi: SesiLogin) => void;
+  onBatal: () => void;
+}) {
   const [namaPengguna, setNamaPengguna] = useState('');
   const [kataSandi, setKataSandi] = useState('');
   const [tampilSandi, setTampilSandi] = useState(false);
@@ -115,9 +124,7 @@ export function KartuMasuk({ onTerima, onBatal }: { onTerima: (sesi: SesiLogin) 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xl">
       <div className="flex items-start gap-3">
-        <span className="w-10 h-10 rounded-xl bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] text-[var(--brand)] flex items-center justify-center shrink-0">
-          <ShieldCheck className="w-5 h-5" />
-        </span>
+        <LogoAplikasi overrideUrl={logoUrl} ukuran="lg" />
         <div>
           <h2 className="text-base font-bold text-slate-900 leading-tight">Masuk ke Aplikasi AMS</h2>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">

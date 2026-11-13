@@ -26,6 +26,7 @@ import {
 import { db } from '../../../../services/pocketbase';
 import { gabungkanKatalogProduk, selesaikanGambar } from '../../../../utils/website';
 import { ProdukWebsite } from '../../../../types';
+import LogoAplikasi from '../../../common/LogoAplikasi';
 import { Panel } from '../../../ui';
 
 /** Lebar 210mm dalam piksel CSS (96dpi) — dipakai untuk menghitung skala pratinjau. */
@@ -49,14 +50,14 @@ export default function InternalCatalogModule() {
   }, []);
 
   // State pengaturan katalog
-  const [judulKatalog, setJudulKatalog] = useState('Katalog Resmi Alkes & BMHP • PT Anugrah Mitra Selaras 2026');
+  const [judulKatalog, setJudulKatalog] = useState('Katalog Resmi Alkes & BMHP • PT Anugrahmitra Selaras 2026');
   const [subjudulKatalog, setSubjudulKatalog] = useState('Standar Mutu CDAKB & ISO 13485:2016 • e-Katalog LKPP Pemerintah & Swasta');
   const [produkPerPage, setProdukPerPage] = useState<number>(2); // Maksimum 2 produk per halaman (1 atau 2)
   
   // Cover Depan (Full Manual Editing + Background Color RGB & Image)
   const [tampilCover, setTampilCover] = useState(true);
   const [judulCover, setJudulCover] = useState('KATALOG PRODUK ALAT KESEHATAN');
-  const [subjudulCover, setSubjudulCover] = useState('PT ANUGRAH MITRA SELARAS (REMEDI)');
+  const [subjudulCover, setSubjudulCover] = useState('PT ANUGRAHMITRA SELARAS (REMEDI)');
   const [penulisCover, setPenulisCover] = useState('Divisi Komersial & Penjaminan Mutu (PJT)');
   const [badgeCover, setBadgeCover] = useState('EDISI RESMI 2026');
   const [bgCoverColor, setBgCoverColor] = useState('#ffffff');
@@ -189,9 +190,9 @@ export default function InternalCatalogModule() {
         >
           <div className="shrink-0 flex items-center justify-between border-b pb-[4mm] border-current/20">
             <div className="flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-emerald-600" />
+              <LogoAplikasi ukuran="sm" />
               <div>
-                <p className="text-xs font-bold">PT ANUGRAH MITRA SELARAS</p>
+                <p className="text-xs font-bold">PT ANUGRAHMITRA SELARAS</p>
                 <p className="text-3xs opacity-80">Kemenkes RI • CDAKB &amp; ISO 13485:2016</p>
               </div>
             </div>
@@ -275,7 +276,7 @@ export default function InternalCatalogModule() {
                           ) : (
                             <div className="flex flex-col items-center justify-center text-slate-400">
                               <ImageOff className="w-7 h-7 mb-1" />
-                              <span className="text-3xs">PT Anugrah Mitra Selaras</span>
+                              <span className="text-3xs">PT Anugrahmitra Selaras</span>
                             </div>
                           )}
                         </div>
@@ -336,7 +337,7 @@ export default function InternalCatalogModule() {
 
             {/* Footer Halaman */}
             <div className="shrink-0 flex items-center justify-between gap-[6mm] border-t border-slate-200 pt-[3mm] text-3xs text-slate-500">
-              <span>PT Anugrah Mitra Selaras • Dokumen Kendali Mutu e-Katalog LKPP</span>
+              <span>PT Anugrahmitra Selaras • Dokumen Kendali Mutu e-Katalog LKPP</span>
               <span className="shrink-0">Validasi PJT &amp; Tim Komersial</span>
             </div>
           </div>
@@ -357,9 +358,9 @@ export default function InternalCatalogModule() {
         >
           <div className="shrink-0 flex items-center justify-between border-b pb-[4mm] border-current/20">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
+              <LogoAplikasi ukuran="sm" />
               <div>
-                <p className="text-xs font-bold">PT ANUGRAH MITRA SELARAS</p>
+                <p className="text-xs font-bold">PT ANUGRAHMITRA SELARAS</p>
                 <p className="text-3xs opacity-80">Pusat Distribusi Alat Kesehatan &amp; Bahan Medis Habis Pakai</p>
               </div>
             </div>
@@ -389,7 +390,7 @@ export default function InternalCatalogModule() {
           </div>
 
           <div className="shrink-0 pt-[4mm] border-t border-current/20 flex items-center justify-between text-2xs opacity-80">
-            <span>© 2026 PT Anugrah Mitra Selaras. All Rights Reserved.</span>
+            <span>© 2026 PT Anugrahmitra Selaras. All Rights Reserved.</span>
             <span className="text-emerald-400 font-semibold">Standar Mutu CDAKB &amp; ISO 13485:2016</span>
           </div>
         </div>

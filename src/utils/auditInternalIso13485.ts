@@ -487,7 +487,7 @@ export function auditOtomatisDokumenQA(
   const ringkasanEksekutif = `Hasil audit internal sistem kepatuhan dokumen otomatis pada modul Quality Assurance menunjukkan indeks kepatuhan sebesar ${rerataSkor}%. Sebanyak ${total} rekaman dokumen mutu, CAPA, dan karantina diperiksa secara menyeluruh. Ditemukan ${majorNC} temuan mayor, ${minorNC} temuan minor, dan ${ofi} peluang peningkatan (OFI).`;
 
   const kesimpulan = majorNC === 0 && rerataSkor >= 85
-    ? 'Sistem Manajemen Mutu QA PT Anugrah Mitra Selaras MEMENUHI SYARAT (COMPLIANT) terhadap standar ISO 13485:2016 dan CDAKB Kemenkes RI.'
+    ? 'Sistem Manajemen Mutu QA PT Anugrahmitra Selaras MEMENUHI SYARAT (COMPLIANT) terhadap standar ISO 13485:2016 dan CDAKB Kemenkes RI.'
     : 'Dibutuhkan tindakan perbaikan segera (CAPA) sebelum jadwal audit sertifikasi eksternal Kemenkes RI / Badan Sertifikasi KAN.';
 
   return {
@@ -656,7 +656,7 @@ export function generateAuditInternalCsv(audit: AuditInternalIso13485): string {
 
   const headerLines = [
     '# ==========================================================================================',
-    '# PT ANUGRAH MITRA SELARAS (AMS) - LAPORAN RESMI AUDIT INTERNAL ISO 13485:2016 & CDAKB',
+    '# PT ANUGRAHMITRA SELARAS (AMS) - LAPORAN RESMI AUDIT INTERNAL ISO 13485:2016 & CDAKB',
     `# Nomor Laporan Audit   : ${audit.nomorAudit}`,
     `# Judul Pelaksanaan     : ${audit.judulAudit}`,
     `# Lingkup Audit         : ${audit.lingkup}`,

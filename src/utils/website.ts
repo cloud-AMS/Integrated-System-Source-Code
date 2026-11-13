@@ -54,7 +54,7 @@ export const WEBSITE_MEDIA_KEY = 'ams_alkes_website_media_v1';
  * perangkat dengan versi lebih lama dibangun ulang dari konten bawaan terbaru — suntingan
  * terkunci dan item buatan tangan tetap dipertahankan.
  */
-export const VERSI_KONTEN_WEBSITE = 3;
+export const VERSI_KONTEN_WEBSITE = 5;
 
 /** Kunci kategori izin edar untuk tautan filter katalog produk. */
 export const KUNCI_KATEGORI: Record<IzinEdarAlkes['kategori'], string> = {
@@ -560,11 +560,11 @@ export function bangunKontenDefault(sumber: SumberKontenWebsite): KonfigurasiSit
     identitas: {
       nama: IDENTITAS_PERUSAHAAN.nama,
       tagline: `${identitasRujukan.merekDagang} — ${identitasRujukan.tagline}`,
-      logoUrl: '/site/logo-remedi-new-bw.png',
-      faviconUrl: undefined,
+      logoUrl: '/assets/aistudio/Logo_AMS_5ee808c6.png',
+      faviconUrl: '/assets/aistudio/Logo_AMS_5ee808c6.png',
       judulSitus: `${IDENTITAS_PERUSAHAAN.nama} (REMEDI) — Produsen, Agen & Distributor Alat Kesehatan`,
       metaDeskripsi:
-        'PT Anugrah Mitra Selaras (REMEDI) berdiri sejak 1994: produsen, agen, dan distributor peralatan kesehatan, instrument set, serta barang habis pakai. Bersertifikat ISO 9001:2015, ISO 13485:2016, dan CDAKB Kementerian Kesehatan RI 2024-2029.'
+        'PT Anugrahmitra Selaras (REMEDI) berdiri sejak 1994: produsen, agen, dan distributor peralatan kesehatan, instrument set, serta barang habis pakai. Bersertifikat ISO 9001:2015, ISO 13485:2016, dan CDAKB Kementerian Kesehatan RI 2024-2029.'
     },
 
     header: {
@@ -1116,7 +1116,16 @@ export function padukanKonten(lama: KonfigurasiSitus, baru: KonfigurasiSitus): K
     if (!seksiBaru || !Array.isArray(seksiBaru.item)) continue;
     hasil[kunci] = { ...seksiBaru, item: padukanItem(seksiLama?.item ?? [], seksiBaru.item) };
   }
-  return hasil as unknown as KonfigurasiSitus;
+  const konf = hasil as unknown as KonfigurasiSitus;
+  const logoLama = lama.identitas?.logoUrl;
+  const faviconLama = lama.identitas?.faviconUrl;
+  const logoKustom = logoLama && logoLama !== '/site/logo-remedi-new-bw.png';
+  konf.identitas = {
+    ...konf.identitas,
+    logoUrl: logoKustom ? logoLama : baru.identitas.logoUrl,
+    faviconUrl: faviconLama || baru.identitas.faviconUrl
+  };
+  return konf;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1275,7 +1284,12 @@ export function selesaikanGambar(referensi?: string): string | undefined {
 }
 
 /** Kompres ke lebar maksimal agar muat di penyimpanan browser. */
-export async function kompresGambarWebsite(file: File, lebarMaks = 1280, kualitas = 0.82): Promise<string> {
+export async function kompresGambarWebsite(
+  file: File,
+  lebarMaks = 1280,
+  kualitas = 0.82,
+  pertahankanTransparansi = false
+): Promise<string> {
   const asal = await new Promise<string>((selesai, gagal) => {
     const pemb = new FileReader();
     pemb.onload = () => selesai(String(pemb.result));
@@ -1295,5 +1309,8 @@ export async function kompresGambarWebsite(file: File, lebarMaks = 1280, kualita
   const konteks = kanvas.getContext('2d');
   if (!konteks) return asal;
   konteks.drawImage(gambar, 0, 0, kanvas.width, kanvas.height);
+  if (pertahankanTransparansi && (file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/svg+xml')) {
+    return kanvas.toDataURL('image/png');
+  }
   return kanvas.toDataURL('image/jpeg', kualitas);
 }

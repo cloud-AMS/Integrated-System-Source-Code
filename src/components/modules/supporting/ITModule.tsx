@@ -228,7 +228,7 @@ alkes.perusahaan-anda.co.id {
       peranAdmin: String(peranAdmin),
       filterModul: filterLabel,
       nomorKontrolDokumen: 'AMS-QMS-REC-425-IT',
-      namaPerusahaan: 'PT ANUGRAH MITRA SELARAS (AMS)'
+      namaPerusahaan: 'PT ANUGRAHMITRA SELARAS (AMS)'
     });
 
     // Catat aksi ekspor ke dalam audit trail itu sendiri (Klausul 4.2.5 & FDA 21 CFR Part 11)

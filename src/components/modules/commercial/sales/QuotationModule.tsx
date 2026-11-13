@@ -68,16 +68,21 @@ function parseHargaNumerik(hargaTayang?: string): number {
 }
 
 function buatIdentitasDefault(role: UserRole): IdentitasPerusahaanQuotation {
+  const draf = db.getWebsiteDraft();
   try {
     const tersimpan = localStorage.getItem(KUNCI_IDENTITAS_QUOTATION);
     if (tersimpan) {
-      return JSON.parse(tersimpan) as IdentitasPerusahaanQuotation;
+      const parsed = JSON.parse(tersimpan) as IdentitasPerusahaanQuotation;
+      const logoLegacy = !parsed.logoUrl || parsed.logoUrl === '/site/logo-remedi-new-bw.png';
+      return {
+        ...parsed,
+        logoUrl: logoLegacy ? draf.identitas.logoUrl || '' : parsed.logoUrl
+      };
     }
   } catch {
     /* ignore */
   }
 
-  const draf = db.getWebsiteDraft();
   const sertifikat = db.getSertifikat();
   const ringkasanSertifikat = sertifikat
     .slice(0, 3)
@@ -87,7 +92,7 @@ function buatIdentitasDefault(role: UserRole): IdentitasPerusahaanQuotation {
   return {
     tampilkanLogo: true,
     logoUrl: draf.identitas.logoUrl || '',
-    namaPerusahaan: draf.identitas.nama || 'PT ANUGRAH MITRA SELARAS',
+    namaPerusahaan: draf.identitas.nama || 'PT ANUGRAHMITRA SELARAS',
     tagline: draf.identitas.tagline || 'Distributor & Produsen Alat Kesehatan Nasional • CDAKB & ISO 13485:2016',
     tampilkanLegalitas: true,
     nomorLegalitas:
@@ -173,7 +178,7 @@ export default function QuotationModule({
         kategori: p.kategori || 'Alat Kesehatan',
         nomorIzinEdar: p.nomorIzinEdar || 'Dalam Verifikasi',
         statusIzinEdar: p.statusIzinEdar || 'Aktif',
-        produsen: p.produsen || 'PT Anugrah Mitra Selaras',
+        produsen: p.produsen || 'PT Anugrahmitra Selaras',
         spesifikasi: p.spesifikasi || '',
         satuan: p.satuan || 'Unit',
         hargaReferensi,
@@ -1377,7 +1382,7 @@ export default function QuotationModule({
                     )}
                     <div className="min-w-0">
                       <h1 className="text-base font-extrabold tracking-wide uppercase text-slate-900 leading-tight">
-                        {identitas.namaPerusahaan || 'PT ANUGRAH MITRA SELARAS'}
+                        {identitas.namaPerusahaan || 'PT ANUGRAHMITRA SELARAS'}
                       </h1>
                       {identitas.tagline && (
                         <p className="text-[11px] font-bold mt-0.5" style={{ color: identitas.warnaAksen }}>

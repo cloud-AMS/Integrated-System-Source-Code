@@ -1,5 +1,5 @@
 /**
- * Konten situs publik PT Anugrah Mitra Selaras (REMEDI) — dipindahkan dari situs
+ * Konten situs publik PT Anugrahmitra Selaras (REMEDI) — dipindahkan dari situs
  * resmi perusahaan, https://www.remediams.com, pada 4 November 2026.
  *
  * Isi file ini murni DATA: teks, nama merek, grup katalog, alamat, dan tautan
@@ -32,7 +32,7 @@ import {
 /* -------------------------------------------------------------------------- */
 
 export const IDENTITAS_RUJUKAN = {
-  nama: 'PT Anugrah Mitra Selaras',
+  nama: 'PT Anugrahmitra Selaras',
   namaLegalSitus: 'PT. Anugrahmitra Selaras',
   merekDagang: 'REMEDI',
   tagline: 'Every Life Matters',
@@ -310,7 +310,7 @@ const statistik: StatistikWebsite[] = [
     isActive: true,
     nilai: '1994',
     label: 'Tahun Berdiri',
-    keterangan: 'PT Anugrah Mitra Selaras beroperasi sejak 1994 dengan merek dagang Remedi'
+    keterangan: 'PT Anugrahmitra Selaras beroperasi sejak 1994 dengan merek dagang Remedi'
   },
   {
     id: 'rujuk-stat-pelanggan',
@@ -468,9 +468,9 @@ const faq: FaqWebsite[] = [
     id: 'rujuk-faq-profil',
     sumberId: 'rujuk-faq-profil',
     isActive: true,
-    pertanyaan: 'Siapa PT Anugrah Mitra Selaras dan merek apa yang dipakainya?',
+    pertanyaan: 'Siapa PT Anugrahmitra Selaras dan merek apa yang dipakainya?',
     jawaban:
-      'PT Anugrah Mitra Selaras, dikenal dengan merek dagang REMEDI, berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan bertindak sebagai produsen, agen, dan distributor.'
+      'PT Anugrahmitra Selaras, dikenal dengan merek dagang REMEDI, berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan bertindak sebagai produsen, agen, dan distributor.'
   },
   {
     id: 'rujuk-faq-katalog',
@@ -547,7 +547,7 @@ const kantor: KantorWebsite[] = [
     isActive: true,
     nama: 'Pabrik Partisipasi Zhangjiagang',
     alamat: 'Zhangjiagang, Jiangsu, Tiongkok',
-    penanggungJawab: 'Kepemilikan saham PT Anugrah Mitra Selaras'
+    penanggungJawab: 'Kepemilikan saham PT Anugrahmitra Selaras'
   }
 ];
 
@@ -727,7 +727,7 @@ export const KONTEN_RUJUKAN = {
 };
 
 export const PARAGRAF_TENTANG = [
-  'PT Anugrah Mitra Selaras — dikenal dengan merek dagang REMEDI — berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan memproduksi dan memasok peralatan kesehatan, instrument set, dan consumables dengan mereknya sendiri, Remedi, sekaligus bertindak sebagai agen dan distributor.',
+  'PT Anugrahmitra Selaras — dikenal dengan merek dagang REMEDI — berdiri sejak 1994 dan bergerak di bidang pengadaan serta distribusi alat kesehatan medis dan barang habis pakai medis maupun nonmedis ke seluruh Indonesia. Perusahaan memproduksi dan memasok peralatan kesehatan, instrument set, dan consumables dengan mereknya sendiri, Remedi, sekaligus bertindak sebagai agen dan distributor.',
   'Fasilitas produksi berada di Brebes (Jawa Tengah) dan Sumedang (Jawa Barat), ditambah keterlibatan saham pada sebuah pabrik di Zhangjiagang, Jiangsu, Tiongkok. Melalui fasilitas tersebut, sekitar 10% barang habis pakai yang didistribusikan telah diproduksi di dalam negeri.',
   'Visi: menjadi penyedia solusi utama dan acuan (benchmark) untuk kebutuhan pelayanan kesehatan di Indonesia maupun dunia.',
   'Misi: (1) memberikan kepuasan pelanggan melalui informasi yang komprehensif, produk berkualitas, sumber daya profesional, dan layanan terbaik; (2) mematuhi seluruh standar, persyaratan, dan regulasi serta menjadi mitra strategis pemerintah; (3) membina hubungan dan kolaborasi yang baik dengan perkumpulan tenaga medis maupun komunitas kesehatan; (4) memberi kontribusi positif bagi masyarakat dan lingkungan untuk meningkatkan kualitas hidup; (5) memperluas jangkauan pasar agar menjadi produk Indonesia yang terkemuka di dunia.',

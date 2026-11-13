@@ -14,7 +14,6 @@ import {
   Cpu,
   Globe,
   LayoutDashboard,
-  ShieldCheck,
   Menu,
   X,
   ChevronDown,
@@ -32,6 +31,7 @@ import {
   FileText
 } from 'lucide-react';
 import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
+import LogoAplikasi from '../common/LogoAplikasi';
 import { db } from '../../services/pocketbase';
 import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
 import type { ITSubTabId } from '../modules/supporting/ITModule';
@@ -347,9 +347,7 @@ export default function Navbar({
           className="flex items-center gap-2.5 min-w-0 shrink sm:shrink text-left"
           title="AMS Integrated System"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-xs shrink-0 ring-2 ring-blue-500/20">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
+          <LogoAplikasi ukuran="md" />
           <div className="min-w-0 text-left">
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 leading-tight truncate whitespace-nowrap">
               AMS Integrated System
@@ -661,9 +659,7 @@ export default function Navbar({
             {/* Header Drawer */}
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3.5">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
+                <LogoAplikasi ukuran="sm" />
                 <div className="min-w-0">
                   <p className="text-base font-bold text-slate-900 leading-tight truncate">
                     AMS Integrated System

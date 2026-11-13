@@ -211,7 +211,7 @@ export function generateIso13485AuditCsv(
   const sekarang = new Date();
   const tanggalWib = `${sekarang.toISOString().split('T')[0]} ${sekarang.toLocaleTimeString('id-ID')} WIB`;
   const tanggalUtc = sekarang.toISOString();
-  const namaPerusahaan = meta.namaPerusahaan || 'PT ANUGRAH MITRA SELARAS (AMS)';
+  const namaPerusahaan = meta.namaPerusahaan || 'PT ANUGRAHMITRA SELARAS (AMS)';
   const nomorKontrol = meta.nomorKontrolDokumen || 'AMS-QMS-REC-425-IT';
   const adminName = meta.namaAdmin || 'Administrator IT / PJT apt. Dewi Kartika, S.Si';
   const adminRole = meta.peranAdmin || 'it_admin / Penanggung Jawab Teknis';
