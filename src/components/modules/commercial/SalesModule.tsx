@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Users,
+  FileText,
   Gavel,
   MapPinned,
   ShoppingCart,
@@ -9,8 +10,9 @@ import {
   Mail,
   BookOpen
 } from 'lucide-react';
-import { UserRole } from '../../../types';
+import { PelangganB2B, UserRole } from '../../../types';
 import CrmProspekModule from './sales/CrmProspekModule';
+import QuotationModule from './sales/QuotationModule';
 import TenderKontrakModule from './sales/TenderKontrakModule';
 import SalesForceModule from './sales/SalesForceModule';
 import SalesOrderModule from './sales/SalesOrderModule';
@@ -19,10 +21,11 @@ import AnalitikSalesModule from './sales/AnalitikSalesModule';
 import ListmonkModule from './sales/ListmonkModule';
 import InternalCatalogModule from './sales/InternalCatalogModule';
 
-type SalesTab = 'crm' | 'tender' | 'sfa' | 'order' | 'kampanye' | 'listmonk' | 'analitik' | 'katalog-internal';
+export type SalesTab = 'crm' | 'quotation' | 'tender' | 'sfa' | 'order' | 'kampanye' | 'listmonk' | 'analitik' | 'katalog-internal';
 
 const TABS: { id: SalesTab; label: string; ikon: typeof Users }[] = [
   { id: 'crm', label: 'CRM & Management Prospek', ikon: Users },
+  { id: 'quotation', label: 'Quotation (Penawaran PDF A4)', ikon: FileText },
   { id: 'tender', label: 'Manajemen Tender & Kontrak (e-Katalog & LPSE)', ikon: Gavel },
   { id: 'sfa', label: 'Otomasi Sales Force (SFA)', ikon: MapPinned },
   { id: 'order', label: 'Manajemen Order & Penjualan', ikon: ShoppingCart },
@@ -32,8 +35,26 @@ const TABS: { id: SalesTab; label: string; ikon: typeof Users }[] = [
   { id: 'analitik', label: 'Analitik & Dashboard (BI)', ikon: ChartColumn }
 ];
 
-export default function SalesModule({ currentRole }: { currentRole: UserRole }) {
-  const [activeTab, setActiveTab] = useState<SalesTab>('order');
+export default function SalesModule({
+  currentRole,
+  initialTab = 'order',
+  onTabChange
+}: {
+  currentRole: UserRole;
+  initialTab?: SalesTab;
+  onTabChange?: (tab: SalesTab) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<SalesTab>(initialTab);
+  const [quotationPelanggan, setQuotationPelanggan] = useState<PelangganB2B | null>(null);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const pilihTab = (tab: SalesTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   return (
     <div className="space-y-6">
@@ -52,7 +73,7 @@ export default function SalesModule({ currentRole }: { currentRole: UserRole }) 
           Distribusi alkes ke Rumah Sakit Pemerintah (LKPP), RS Swasta, dan Klinik dengan verifikasi etika promosi alkes oleh PJT (bebas dari klaim medis palsu) dan alokasi stok sistem FEFO sadar-kunci.
         </p>
         <p className="text-xs text-slate-500 mt-2 max-w-3xl leading-relaxed">
-          Cetak biru divisi komersial: 8 kelompok kerja (CRM &amp; Prospek, Tender &amp; Kontrak, Otomasi Sales Force,
+          Cetak biru divisi komersial: 9 kelompok kerja (CRM &amp; Prospek, Penerbitan Quotation PDF A4, Tender &amp; Kontrak, Otomasi Sales Force,
           Manajemen Order, Penyusun e-Katalog Internal PDF, Kampanye &amp; Rebate, Newsletter &amp; Mailing List, Analitik BI). Ketertelusuran batch &amp;
           nomor serial dipusatkan penuh pada menu Gudang &amp; Logistik (Tab 3).
         </p>
@@ -66,7 +87,7 @@ export default function SalesModule({ currentRole }: { currentRole: UserRole }) 
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => pilihTab(tab.id)}
               className={`pb-3 px-3 font-semibold transition-colors border-b-2 flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 aktif ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -78,7 +99,17 @@ export default function SalesModule({ currentRole }: { currentRole: UserRole }) 
         })}
       </div>
 
-      {activeTab === 'crm' && <CrmProspekModule />}
+      {activeTab === 'crm' && (
+        <CrmProspekModule
+          onBuatQuotation={(pel) => {
+            setQuotationPelanggan(pel);
+            pilihTab('quotation');
+          }}
+        />
+      )}
+      {activeTab === 'quotation' && (
+        <QuotationModule currentRole={currentRole} pelangganAwal={quotationPelanggan} />
+      )}
       {activeTab === 'tender' && <TenderKontrakModule />}
       {activeTab === 'sfa' && <SalesForceModule />}
       {activeTab === 'order' && <SalesOrderModule />}

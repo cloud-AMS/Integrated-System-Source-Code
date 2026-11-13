@@ -20,7 +20,7 @@ import type { GudangTabId } from './components/modules/operations/gudang/ui';
 import ServiceModule from './components/modules/operations/ServiceModule';
 import ProductionModule from './components/modules/operations/ProductionModule';
 import ProcurementModule from './components/modules/operations/ProcurementModule';
-import SalesModule from './components/modules/commercial/SalesModule';
+import SalesModule, { type SalesTab } from './components/modules/commercial/SalesModule';
 import PMSModule from './components/modules/commercial/PMSModule';
 import HRDModule from './components/modules/supporting/HRDModule';
 import FinanceModule from './components/modules/supporting/FinanceModule';
@@ -89,6 +89,7 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
     return awalAkses.modulDiizinkan[0] || 'overview';
   });
   const [itSubTab, setItSubTab] = useState<ITSubTabId>('traceability');
+  const [salesSubTab, setSalesSubTab] = useState<SalesTab>('order');
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [showComplianceBanner, setShowComplianceBanner] = useState(true);
@@ -151,6 +152,11 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
           setItSubTab(sub);
           setActiveTab('it-traceability');
         }}
+        salesSubTab={salesSubTab}
+        onSalesNavigate={(sub) => {
+          setSalesSubTab(sub);
+          setActiveTab('sales-marketing');
+        }}
       />
 
       {/* Main Application Content Container */}
@@ -207,7 +213,13 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
             {activeTab === 'purchasing-procurement' && <ProcurementModule />}
 
             {/* Sales & Marketing */}
-            {activeTab === 'sales-marketing' && <SalesModule currentRole={currentRole} />}
+            {activeTab === 'sales-marketing' && (
+              <SalesModule
+                currentRole={currentRole}
+                initialTab={salesSubTab}
+                onTabChange={setSalesSubTab}
+              />
+            )}
             {activeTab === 'pms-vigilance' && (
               <PMSModule
                 onBukaRecallGudang={() => {

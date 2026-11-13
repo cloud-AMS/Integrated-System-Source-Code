@@ -28,12 +28,14 @@ import {
   Shield,
   Crown,
   UserCog,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
 import { db } from '../../services/pocketbase';
 import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
 import type { ITSubTabId } from '../modules/supporting/ITModule';
+import type { SalesTab } from '../modules/commercial/SalesModule';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 export type Tone = 'slate' | 'amber' | 'indigo' | 'blue' | 'emerald' | 'rose';
@@ -203,6 +205,8 @@ interface NavbarProps {
   onAccountChange?: (akun: AkunPengguna) => void;
   itSubTab?: ITSubTabId;
   onITNavigate?: (sub: ITSubTabId) => void;
+  salesSubTab?: SalesTab;
+  onSalesNavigate?: (sub: SalesTab) => void;
 }
 
 export default function Navbar({
@@ -218,7 +222,9 @@ export default function Navbar({
   akunAktifId,
   onAccountChange,
   itSubTab = 'traceability',
-  onITNavigate
+  onITNavigate,
+  salesSubTab = 'order',
+  onSalesNavigate
 }: NavbarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -305,6 +311,11 @@ export default function Navbar({
   const goITSub = (sub: ITSubTabId) => {
     onITNavigate?.(sub);
     go('it-traceability');
+  };
+
+  const goSalesSub = (sub: SalesTab) => {
+    onSalesNavigate?.(sub);
+    go('sales-marketing');
   };
 
   /* Buka grup yang memuat modul aktif saat drawer dibuka */
@@ -561,15 +572,20 @@ export default function Navbar({
                   {items.map((tab) => {
                     const Icon = tab.icon;
                     const isIT = tab.id === 'it-traceability';
+                    const isSales = tab.id === 'sales-marketing';
+                    const isSalesCrmSub = salesSubTab === 'crm' || salesSubTab === 'quotation';
                     const isActive = isIT
                       ? currentTab === 'it-traceability' && itSubTab !== 'user-roles'
-                      : currentTab === tab.id;
+                      : isSales
+                        ? currentTab === 'sales-marketing' && !isSalesCrmSub
+                        : currentTab === tab.id;
                     const isUserRolesActive = currentTab === 'it-traceability' && itSubTab === 'user-roles';
+                    const isCrmQuotationActive = currentTab === 'sales-marketing' && isSalesCrmSub;
                     return (
                       <div key={tab.id}>
                         <button
                           type="button"
-                          onClick={() => (isIT ? goITSub('traceability') : go(tab.id))}
+                          onClick={() => (isIT ? goITSub('traceability') : isSales ? goSalesSub('order') : go(tab.id))}
                           className={`w-full text-left px-3 py-2 flex items-start gap-2.5 text-xs font-semibold transition-colors cursor-pointer ${
                             isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'
                           }`}
@@ -601,6 +617,28 @@ export default function Navbar({
                             </div>
                             <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-blue-100 text-blue-700">
                               RBAC
+                            </span>
+                          </button>
+                        )}
+                        {isSales && (
+                          <button
+                            type="button"
+                            onClick={() => goSalesSub('quotation')}
+                            className={`w-full text-left pl-9 pr-3 py-2 flex items-start gap-2 text-xs font-semibold transition-colors cursor-pointer border-l-2 ml-4 ${
+                              isCrmQuotationActive
+                                ? 'bg-slate-100 text-slate-900 border-emerald-600'
+                                : 'text-slate-600 hover:bg-slate-50 border-slate-200'
+                            }`}
+                          >
+                            <FileText className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${TONE_ICON}`} />
+                            <div className="flex-1 leading-snug">
+                              <div>CRM Marketing &amp; Quotation</div>
+                              <div className="text-2xs font-normal text-slate-500">
+                                Prospek CRM &amp; terbitkan penawaran PDF A4
+                              </div>
+                            </div>
+                            <span className="shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold bg-emerald-100 text-emerald-700">
+                              CRM
                             </span>
                           </button>
                         )}
@@ -706,15 +744,20 @@ export default function Navbar({
                         {items.map((tab) => {
                           const Icon = tab.icon;
                           const isIT = tab.id === 'it-traceability';
+                          const isSales = tab.id === 'sales-marketing';
+                          const isSalesCrmSub = salesSubTab === 'crm' || salesSubTab === 'quotation';
                           const isActive = isIT
                             ? currentTab === 'it-traceability' && itSubTab !== 'user-roles'
-                            : currentTab === tab.id;
+                            : isSales
+                              ? currentTab === 'sales-marketing' && !isSalesCrmSub
+                              : currentTab === tab.id;
                           const isUserRolesActive = currentTab === 'it-traceability' && itSubTab === 'user-roles';
+                          const isCrmQuotationActive = currentTab === 'sales-marketing' && isSalesCrmSub;
                           return (
                             <div key={tab.id} className="space-y-1">
                               <button
                                 type="button"
-                                onClick={() => (isIT ? goITSub('traceability') : go(tab.id))}
+                                onClick={() => (isIT ? goITSub('traceability') : isSales ? goSalesSub('order') : go(tab.id))}
                                 className={`w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
                                   isActive ? TONE_ACTIVE : 'text-slate-700 active:bg-slate-100'
                                 }`}
@@ -747,6 +790,25 @@ export default function Navbar({
                                     }`}
                                   >
                                     RBAC
+                                  </span>
+                                </button>
+                              )}
+                              {isSales && (
+                                <button
+                                  type="button"
+                                  onClick={() => goSalesSub('quotation')}
+                                  className={`w-full flex items-center gap-2 rounded-xl pl-7 pr-2.5 py-2 text-left transition-colors ${
+                                    isCrmQuotationActive ? TONE_ACTIVE : 'text-slate-600 active:bg-slate-100'
+                                  }`}
+                                >
+                                  <FileText className={`w-3.5 h-3.5 shrink-0 ${isCrmQuotationActive ? 'text-white' : TONE_ICON}`} />
+                                  <span className="flex-1 text-xs font-semibold leading-snug">CRM Marketing &amp; Quotation</span>
+                                  <span
+                                    className={`shrink-0 text-3xs px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                                      isCrmQuotationActive ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
+                                    }`}
+                                  >
+                                    CRM
                                   </span>
                                 </button>
                               )}

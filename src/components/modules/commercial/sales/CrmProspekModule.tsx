@@ -10,7 +10,8 @@ import {
   Target,
   ArrowRight,
   ShieldCheck,
-  Banknote
+  Banknote,
+  FileText
 } from 'lucide-react';
 import { Badge, Panel, Stat, Modal, BarCapaian, formatRupiah, formatTanggal, inputClass, labelClass, tombolPrimer, tombolSekunder, chipFilter, type Tone } from '../../../ui';
 
@@ -33,7 +34,11 @@ const toneIzin = (tanggalBerlaku: string): Tone => {
   return sisa < 0 ? 'rose' : sisa <= 90 ? 'amber' : 'emerald';
 };
 
-export default function CrmProspekModule() {
+export default function CrmProspekModule({
+  onBuatQuotation
+}: {
+  onBuatQuotation?: (pelanggan: PelangganB2B) => void;
+} = {}) {
   const [pelanggan, setPelanggan] = useState<PelangganB2B[]>(db.getPelangganB2B());
   const [prospek, setProspek] = useState<ProspekAlkes[]>(db.getProspek());
   const [teritorial] = useState<TeritorialPenjualan[]>(db.getTeritorial());
@@ -471,6 +476,22 @@ export default function CrmProspekModule() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+          {onBuatQuotation && (
+            <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = detail;
+                  setDetail(null);
+                  onBuatQuotation(target);
+                }}
+                className={tombolPrimer}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Terbitkan Quotation PDF A4
+              </button>
             </div>
           )}
         </Modal>
