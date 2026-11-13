@@ -249,6 +249,7 @@ class AMSDatabaseManager {
   private pbRealtimeTerpasang: boolean = false;
   private kanalSiaran: BroadcastChannel | null = null;
   private connectionStatusText: string = 'Penyimpanan Lokal Aktif (Offline-First)';
+  private migrasiDraftAktif: boolean = false;
 
   constructor() {
     this.ratakanNamaPerusahaan();
@@ -2447,8 +2448,14 @@ class AMSDatabaseManager {
     if (tersimpan && versiTersimpan === VERSI_KONTEN_WEBSITE) return tersimpan;
     const awal = bangunKontenDefault(this.getSumberKontenWebsite());
     const hasil = tersimpan ? padukanKonten(tersimpan, awal) : awal;
-    this.setJson('website_draft', hasil);
-    this.setJson('website_content_v', VERSI_KONTEN_WEBSITE);
+    if (this.migrasiDraftAktif) return hasil;
+    this.migrasiDraftAktif = true;
+    try {
+      this.setJson('website_content_v', VERSI_KONTEN_WEBSITE);
+      this.setJson('website_draft', hasil);
+    } finally {
+      this.migrasiDraftAktif = false;
+    }
     return hasil;
   }
 

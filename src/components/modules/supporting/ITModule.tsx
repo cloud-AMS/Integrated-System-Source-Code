@@ -25,9 +25,10 @@ import {
   downloadIso13485AuditCsv, 
   petakanKlausulIso13485 
 } from '../../../utils/auditExportIso13485';
-import { bacaSesi } from '../../../utils/autentikasi';
+import { authFetch, bacaSesi, punyaIzin, type SesiLogin } from '../../../utils/autentikasi';
 import { SEMUA_ID_MODUL } from '../../../utils/hakAkses';
 import UserAccountRolesModule from '../../dashboard/UserAccountRolesModule';
+import RbacManagementTab from './it/RbacManagementTab';
 
 export type ITSubTabId = 'traceability' | 'audit' | 'user-roles' | 'deployment';
 
@@ -38,6 +39,8 @@ export interface ITModuleProps {
   akunAktifId?: string;
   activeTab?: ITSubTabId;
   onTabChange?: (tab: ITSubTabId) => void;
+  sesi?: SesiLogin;
+  onPermissionsUpdated?: () => void;
 }
 
 export default function ITModule({
@@ -46,8 +49,11 @@ export default function ITModule({
   aksesAktif,
   akunAktifId,
   activeTab: activeTabProp,
-  onTabChange
+  onTabChange,
+  sesi,
+  onPermissionsUpdated
 }: ITModuleProps) {
+  const bolehRbac = sesi ? punyaIzin(sesi, 'rbac-admin', 'view') : true;
   const [activeTabLokal, setActiveTabLokal] = useState<ITSubTabId>(activeTabProp || 'traceability');
   const activeTab = activeTabProp ?? activeTabLokal;
   const setActiveTab = (tab: ITSubTabId) => {
@@ -71,7 +77,7 @@ export default function ITModule({
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   // Sesi pengguna aktif untuk atribusi kepatuhan ALCOA+
-  const sesiAktif = bacaSesi();
+  const sesiAktif = sesi ?? bacaSesi();
   const namaAdmin = currentUserName || sesiAktif?.namaPengguna || 'Administrator IT / PJT apt. Dewi Kartika, S.Si';
   const peranAdmin = currentRole || sesiAktif?.peran || 'it_admin';
 
@@ -133,10 +139,10 @@ alkes.perusahaan-anda.co.id {
   });
 
   useEffect(() => {
-    fetch('/api/system/deployment-guides')
-      .then(res => res.json())
+    authFetch('/api/system/deployment-guides')
+      .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (data.caddyfile && data.nssmCommands) {
+        if (data?.caddyfile && data?.nssmCommands) {
           setDeploymentConfig(data);
         }
       })
@@ -386,6 +392,7 @@ alkes.perusahaan-anda.co.id {
           Jejak Audit Trail Digital ({auditList.length})
         </button>
 
+        {bolehRbac && (
         <button
           type="button"
           onClick={() => setActiveTab('user-roles')}
@@ -396,8 +403,9 @@ alkes.perusahaan-anda.co.id {
           }`}
         >
           <Users className="w-4 h-4" />
-          User Account & Roles
+          Manajemen RBAC Server &amp; Peran
         </button>
+        )}
 
         <button
           type="button"
@@ -413,13 +421,20 @@ alkes.perusahaan-anda.co.id {
         </button>
       </div>
 
-      {/* Tab 0: User Account & Roles */}
-      {activeTab === 'user-roles' && (
-        <UserAccountRolesModule
-          aksesAktif={aksesEfektif}
-          pelakuAktif={namaAdmin}
-          akunAktifId={akunAktifId}
-        />
+      {/* Tab 0: Manajemen RBAC Server / User Account & Roles */}
+      {activeTab === 'user-roles' && bolehRbac && (
+        sesi ? (
+          <RbacManagementTab
+            sesi={sesi}
+            onPermissionsUpdated={onPermissionsUpdated}
+          />
+        ) : (
+          <UserAccountRolesModule
+            aksesAktif={aksesEfektif}
+            pelakuAktif={namaAdmin}
+            akunAktifId={akunAktifId}
+          />
+        )
       )}
 
       {/* Tab 1: Storage & Sync Status */}

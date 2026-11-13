@@ -10,6 +10,13 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { RBAC_RESOURCES, ServerRbacStore } from './server/rbacStore';
+import {
+  clearSessionCookie,
+  createRbacMiddleware,
+  getClientIp,
+  setSessionCookie
+} from './server/rbacMiddleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +24,8 @@ const __dirname = path.dirname(__filename);
 const BERKAS_SNAPSHOT = path.resolve(__dirname, 'data', 'website-published.json');
 const BERKAS_SNAPSHOT_STATIS = path.resolve(__dirname, 'public', 'website-published.json');
 const BERKAS_INDEKS = path.resolve(__dirname, 'index.html');
+const rbacStore = new ServerRbacStore(path.resolve(__dirname, 'data'));
+const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
 
 /** Snapshot harus berbentuk KonfigurasiSitus; penolakan melindungi berkas data dari muatan sembarangan. */
 function adalahKonfigurasiSitus(nilai: unknown): nilai is Record<string, any> {
@@ -79,6 +88,7 @@ async function startServer() {
   }));
 
   app.use(express.json({ limit: '10mb' }));
+  app.use(attachAuth);
 
   // Body-parser menolak JSON rusak/payload terlalu besar sebelum rute manapun —
   // balas 400/413 yang bersih, jangan biarkan error merayap ke atas dan menjatuhkan proses.
@@ -99,13 +109,194 @@ async function startServer() {
       sistem: 'AMS Integrated System - PT Anugrahmitra Selaras',
       versi: '2.4.0-cdakb',
       standar: ['CDAKB Permenkes 4/2014', 'CPAKB Permenkes 20/2017', 'SDAK OSS-RBA', 'ISO 13485:2016'],
-      basisData: 'PocketBase 0.28.1 (Real-time Kanal Terhubung) + Cache Lokal',
+      basisData: 'PocketBase 0.28.1 (Real-time Kanal Terhubung) + Cache Lokal + Server RBAC',
+      rbacAktif: true,
       waktuServer: new Date().toISOString()
     });
   });
 
+  // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
+  app.post('/api/auth/login', (req, res) => {
+    const { username, password } = (req.body || {}) as { username?: string; password?: string };
+    if (!username || !password) {
+      return res.status(400).json({ error: 'BAD_REQUEST', pesan: 'Nama pengguna dan kata sandi wajib diisi.' });
+    }
+    const result = rbacStore.authenticate(
+      username,
+      password,
+      getClientIp(req),
+      String(req.headers['user-agent'] || '')
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'AUTH_FAILED', pesan: result.message });
+    }
+    setSessionCookie(req, res, result.token);
+    res.json({
+      user: result.user,
+      role: result.role,
+      permissions: result.role.permissions,
+      token: result.token,
+      expiresAt: result.session.expiresAt
+    });
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    if (req.auth) {
+      rbacStore.revokeSession(req.auth.session.id, req.auth.user.username, req.auth.role.id, getClientIp(req));
+    }
+    clearSessionCookie(req, res);
+    res.json({ ok: true });
+  });
+
+  app.get('/api/auth/me', requireAuth, (req, res) => {
+    res.set('Cache-Control', 'no-store').json({
+      user: req.auth!.user,
+      role: req.auth!.role,
+      permissions: req.auth!.role.permissions,
+      expiresAt: req.auth!.session.expiresAt
+    });
+  });
+
+  app.post('/api/auth/change-password', requireAuth, (req, res) => {
+    const { currentPassword, newPassword } = (req.body || {}) as { currentPassword?: string; newPassword?: string };
+    const result = rbacStore.changeOwnPassword(
+      req.auth!.user.id,
+      String(currentPassword || ''),
+      String(newPassword || ''),
+      getClientIp(req)
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'CHANGE_PASSWORD_FAILED', pesan: result.message });
+    }
+    res.json({ ok: true, pesan: 'Kata sandi berhasil diperbarui di server.' });
+  });
+
+  app.get('/api/rbac/metadata', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    res.json({
+      resources: RBAC_RESOURCES,
+      actions: [
+        { id: 'view', label: 'Lihat Modul' },
+        { id: 'create', label: 'Tambah' },
+        { id: 'update', label: 'Ubah' },
+        { id: 'delete', label: 'Hapus' },
+        { id: 'approve', label: 'Setujui / Rilis' },
+        { id: 'publish', label: 'Terbitkan' },
+        { id: 'export', label: 'Ekspor' }
+      ]
+    });
+  });
+
+  app.get('/api/rbac/roles', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    res.json({ roles: rbacStore.listRoles() });
+  });
+
+  app.post('/api/rbac/roles', requirePermission('rbac-admin', 'create'), (req, res) => {
+    const { id, name, description, permissions } = (req.body || {}) as Record<string, any>;
+    const result = rbacStore.createRole(
+      { id: String(id || ''), name: String(name || ''), description: String(description || ''), permissions: permissions || {} },
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    res.status(201).json({ role: result.role });
+  });
+
+  app.put('/api/rbac/roles/:roleId', requirePermission('rbac-admin', 'update'), (req, res) => {
+    const { name, description, permissions } = (req.body || {}) as Record<string, any>;
+    const result = rbacStore.updateRole(
+      req.params.roleId,
+      { name, description, permissions },
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    res.json({ role: result.role });
+  });
+
+  app.delete('/api/rbac/roles/:roleId', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const result = rbacStore.deleteRole(
+      req.params.roleId,
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    res.json({ ok: true });
+  });
+
+  app.get('/api/rbac/users', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    res.json({ users: rbacStore.listUsers() });
+  });
+
+  app.post('/api/rbac/users', requirePermission('rbac-admin', 'create'), (req, res) => {
+    const { username, fullName, email, roleId, department, password, isActive } = (req.body || {}) as Record<string, any>;
+    const result = rbacStore.createUser(
+      {
+        username: String(username || ''),
+        fullName: String(fullName || ''),
+        email: String(email || ''),
+        roleId: String(roleId || ''),
+        department: String(department || ''),
+        password: String(password || ''),
+        isActive: isActive !== false
+      },
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    res.status(201).json({ user: result.user });
+  });
+
+  app.put('/api/rbac/users/:userId', requirePermission('rbac-admin', 'update'), (req, res) => {
+    const { fullName, email, roleId, department, isActive, newPassword } = (req.body || {}) as Record<string, any>;
+    const result = rbacStore.updateUser(
+      req.params.userId,
+      { fullName, email, roleId, department, isActive, newPassword },
+      req.auth!.user.id,
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    res.json({ user: result.user });
+  });
+
+  app.delete('/api/rbac/users/:userId', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const result = rbacStore.deleteUser(
+      req.params.userId,
+      req.auth!.user.id,
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    res.json({ ok: true });
+  });
+
+  app.get('/api/rbac/sessions', requirePermission('rbac-admin', 'view'), (req, res) => {
+    res.json({ sessions: rbacStore.listActiveSessions(req.auth?.session.id) });
+  });
+
+  app.delete('/api/rbac/sessions/:sessionId', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const ok = rbacStore.revokeSession(
+      req.params.sessionId,
+      req.auth!.user.username,
+      req.auth!.role.id,
+      getClientIp(req)
+    );
+    if (!ok) return res.status(404).json({ error: 'SESSION_ERROR', pesan: 'Sesi tidak ditemukan.' });
+    res.json({ ok: true });
+  });
+
+  app.get('/api/rbac/audit', requirePermission('audit-trail', 'view'), (_req, res) => {
+    res.json({ logs: rbacStore.getAuditLogs(200) });
+  });
+
   // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server
-  app.get('/api/system/deployment-guides', (req, res) => {
+  app.get('/api/system/deployment-guides', requirePermission('it-traceability', 'view'), (req, res) => {
     res.json({
       caddyfile: `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis
 # Lokasi: C:\\caddy\\Caddyfile
@@ -160,7 +351,7 @@ alkes.perusahaan-anda.co.id {
   });
 
   // Kemenkes NIE format verification helper
-  app.post('/api/kemenkes/validasi-nie', (req, res) => {
+  app.post('/api/kemenkes/validasi-nie', requireAuth, (req, res) => {
     const { nomorIzinEdar } = req.body;
     if (!nomorIzinEdar || typeof nomorIzinEdar !== 'string') {
       return res.status(400).json({ valid: false, pesan: 'Nomor izin edar harus diisi' });
@@ -215,14 +406,35 @@ alkes.perusahaan-anda.co.id {
   };
 
   app.put('/api/website/published', (req, res) => {
-    if (!AMS_ADMIN_TOKEN) {
-      return res.status(503).json({ pesan: 'Publikasi situs dinonaktifkan di server: AMS_ADMIN_TOKEN belum diset. Pakai tombol Unduh Snapshot JSON, atau set AMS_ADMIN_TOKEN dan kirim header x-ams-admin-token.' });
-    }
     const token = String(req.headers['x-ams-admin-token'] || '');
-    const cocok = token.length === AMS_ADMIN_TOKEN.length &&
+    const viaAdminToken =
+      Boolean(AMS_ADMIN_TOKEN) &&
+      token.length === AMS_ADMIN_TOKEN.length &&
       crypto.timingSafeEqual(Buffer.from(token), Buffer.from(AMS_ADMIN_TOKEN));
-    if (!cocok) {
-      return res.status(401).json({ pesan: 'Token admin tidak valid.' });
+
+    if (!viaAdminToken) {
+      if (!req.auth) {
+        return res.status(401).json({
+          error: 'UNAUTHORIZED',
+          pesan: 'Sesi login atau token admin diperlukan untuk menerbitkan situs.'
+        });
+      }
+      const perms = req.auth.role.permissions.website;
+      if (!Array.isArray(perms) || !perms.includes('publish')) {
+        rbacStore.recordAudit({
+          actorUsername: req.auth.user.username,
+          actorRole: req.auth.role.id,
+          action: 'PERMISSION_DENIED',
+          resource: 'website:publish',
+          status: 'DENIED',
+          ip: getClientIp(req),
+          detail: `Permintaan PUT /api/website/published ditolak oleh RBAC server.`
+        });
+        return res.status(403).json({
+          error: 'FORBIDDEN',
+          pesan: `Akses ditolak: peran "${req.auth.role.name}" tidak memiliki izin "publish" pada modul website.`
+        });
+      }
     }
     if (!dapatPosting(req.ip ?? 'tidak-diketahui')) {
       return res.status(429).json({ pesan: 'Terlalu banyak percobaan publikasi. Coba lagi 15 menit.' });
@@ -232,15 +444,32 @@ alkes.perusahaan-anda.co.id {
       return res.status(400).json({ pesan: 'Bentuk konfigurasi situs tidak valid (identitas.nama dan hero.judul wajib ada).' });
     }
     try {
-      const isian = JSON.stringify(kandidat, null, 2);
+      const pelaku = req.auth ? req.auth.user.fullName : 'Admin Token API';
+      const terautentikasi: Record<string, any> = {
+        ...(kandidat as Record<string, any>),
+        lastModifiedBy: pelaku
+      };
+      const isian = JSON.stringify(terautentikasi, null, 2);
       fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT), { recursive: true });
       fs.writeFileSync(BERKAS_SNAPSHOT, isian, 'utf8');
       // Salinan public/ ikut terbawa ke dist/ saat build → situs tetap tayang di hosting statis.
       fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT_STATIS), { recursive: true });
       fs.writeFileSync(BERKAS_SNAPSHOT_STATIS, isian, 'utf8');
+      rbacStore.recordAudit({
+        actorUsername: req.auth ? req.auth.user.username : 'admin-token',
+        actorRole: req.auth ? req.auth.role.id : 'system',
+        action: terautentikasi.isPublished ? 'WEBSITE_PUBLISHED' : 'WEBSITE_HELD',
+        resource: 'website',
+        status: 'ALLOWED',
+        ip: getClientIp(req),
+        detail: terautentikasi.isPublished
+          ? 'Snapshot situs publik diterbitkan ke server.'
+          : 'Penayangan situs publik ditahan di server.'
+      });
       res.json({
         ok: true,
         disimpanPada: new Date().toISOString(),
+        oleh: pelaku,
         byte: Buffer.byteLength(isian)
       });
     } catch {

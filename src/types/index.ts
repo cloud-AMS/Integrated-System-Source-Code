@@ -1824,3 +1824,72 @@ export interface AksesEfektif {
   role?: RoleSistem;
 }
 
+// ==================== SERVER-SIDE RBAC TYPES ====================
+
+export type PermissionAction =
+  | 'view'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'approve'
+  | 'publish'
+  | 'export';
+
+export type RbacResourceId =
+  | ModuleId
+  | 'overview'
+  | 'website'
+  | 'rbac-admin'
+  | 'audit-trail';
+
+export type RolePermissionMatrix = Partial<Record<RbacResourceId, PermissionAction[]>>;
+
+export interface RoleDefinition {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  permissions: RolePermissionMatrix;
+  updatedAt: string;
+}
+
+export interface ServerUserPublic {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  roleId: string;
+  roleName: string;
+  department: string;
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServerSessionSummary {
+  id: string;
+  userId: string;
+  username: string;
+  fullName: string;
+  roleId: string;
+  roleName: string;
+  ip: string;
+  userAgent: string;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent?: boolean;
+}
+
+export interface ServerAuditEntry {
+  id: string;
+  timestamp: string;
+  actorUsername: string;
+  actorRole: string;
+  action: string;
+  resource: string;
+  targetId?: string;
+  status: 'ALLOWED' | 'DENIED';
+  ip: string;
+  detail: string;
+}

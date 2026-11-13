@@ -27,6 +27,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { KonfigurasiSitus, SeksiDaftar, UserRole } from '../../../types';
+import { authFetch, punyaIzin, type SesiLogin } from '../../../utils/autentikasi';
 import { db } from '../../../services/pocketbase';
 import { namaPengguna, peranPengguna } from '../../layout/Navbar';
 import {
@@ -46,6 +47,7 @@ import { Badge, Panel, Stat, tombolPrimer, tombolSekunder, chipFilter, formatTan
 
 interface PropsWebsite {
   currentRole: UserRole;
+  sesi?: SesiLogin;
 }
 
 const GRUP_RAIL: { judul: string; kunci: KunciEditorSitus[] }[] = [
@@ -99,7 +101,7 @@ const tanpaMeta = (cfg: KonfigurasiSitus) => {
   return JSON.stringify(isi);
 };
 
-export default function WebsiteModule({ currentRole }: PropsWebsite) {
+export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
   const [draf, setDraf] = useState<KonfigurasiSitus>(() => db.getWebsiteDraft());
   const [baseline, setBaseline] = useState<string>(() => tanpaMeta(db.getWebsiteDraft()));
   const [terbit, setTerbit] = useState<KonfigurasiSitus | null>(() => db.getWebsiteTerbit());
@@ -110,9 +112,11 @@ export default function WebsiteModule({ currentRole }: PropsWebsite) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeSiap = useRef(false);
 
-  const pengguna = namaPengguna(currentRole);
-  const peran = peranPengguna(currentRole);
-  const bolehTerbit = PERAN_PENERBIT.includes(currentRole);
+  const pengguna = sesi?.namaLengkap || namaPengguna(currentRole);
+  const peran = sesi?.namaPeran || peranPengguna(currentRole);
+  const bolehTerbit = sesi
+    ? punyaIzin(sesi, 'website', 'publish')
+    : PERAN_PENERBIT.includes(currentRole);
 
   useEffect(() => {
     const berhenti = db.subscribe('website_published', () => setTerbit(db.getWebsiteTerbit()));
@@ -149,16 +153,17 @@ export default function WebsiteModule({ currentRole }: PropsWebsite) {
   };
 
   /** Snapshot dikirim ke server agar /web tayang lintas perangkat; hosting statis memakai berkas unduhan. */
-  const kirimSnapshot = async (snapshot: KonfigurasiSitus) => {
+  const kirimSnapshot = async (snapshot: KonfigurasiSitus): Promise<{ ok: boolean; pesan?: string; status?: number }> => {
     try {
-      const jawaban = await fetch('/api/website/published', {
+      const jawaban = await authFetch('/api/website/published', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: snapshot })
       });
-      return jawaban.ok;
+      const data = (await jawaban.json().catch(() => ({}))) as { pesan?: string };
+      return { ok: jawaban.ok, status: jawaban.status, pesan: data.pesan };
     } catch {
-      return false;
+      return { ok: false };
     }
   };
 
@@ -167,12 +172,14 @@ export default function WebsiteModule({ currentRole }: PropsWebsite) {
     const snapshot = db.terbitkanWebsite(pengguna, peran);
     tandaiTersimpan(db.getWebsiteDraft());
     setTerbit(snapshot);
-    const terkirim = await kirimSnapshot(snapshot);
+    const hasil = await kirimSnapshot(snapshot);
     setPesan({
-      nada: terkirim ? 'ok' : 'waspada',
-      teks: terkirim
-        ? 'Konten tayang. Snapshot server diperbarui dan penerbitan tercatat di audit trail.'
-        : 'Konten tayang pada perangkat ini. Snapshot server tidak tersedia (hosting statis) — pakai Unduh Snapshot JSON lalu unggah sebagai website-published.json.'
+      nada: hasil.ok ? 'ok' : 'waspada',
+      teks: hasil.ok
+        ? 'Konten tayang. Snapshot server diperbarui (terotorisasi RBAC) dan penerbitan tercatat di audit trail.'
+        : hasil.status === 401 || hasil.status === 403
+          ? hasil.pesan || 'Ditolak oleh RBAC server: Anda tidak memiliki izin publish website.'
+          : 'Konten tayang pada perangkat ini. Snapshot server tidak tersedia (hosting statis) — pakai Unduh Snapshot JSON lalu unggah sebagai website-published.json.'
     });
   };
 

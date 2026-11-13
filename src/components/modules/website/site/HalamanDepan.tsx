@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Eye, EyeOff, LogIn, X } from 'lucide-react';
 import type { KonfigurasiSitus } from '../../../../types';
 import { db } from '../../../../services/pocketbase';
-import { cobaMasuk, type SesiLogin } from '../../../../utils/autentikasi';
+import { masukDenganServer, type SesiLogin } from '../../../../utils/autentikasi';
 import LogoAplikasi from '../../../common/LogoAplikasi';
 import PublicWebsite from './PublicWebsite';
 import { tentukanKontenTayang, useKonfigurasiOperasionalSinkron } from './PublicWebsiteApp';
@@ -102,21 +102,23 @@ export function KartuMasuk({
     return () => window.removeEventListener('keydown', tutup);
   }, [onBatal]);
 
-  const kirim = (e: FormEvent) => {
+  const kirim = async (e: FormEvent) => {
     e.preventDefault();
     if (memproses) return;
+    setGalat('');
     setMemproses(true);
-    const sesi = cobaMasuk(namaPengguna, kataSandi);
-    if (!sesi) {
-      db.logAudit('Autentikasi & Akses', 'Percobaan masuk ditolak (kredensial tidak cocok)', namaPengguna.trim() || '-', namaPengguna.trim() || '-', 'Pengguna');
-      setGalat('Nama pengguna atau kata sandi salah.');
+    const hasil = await masukDenganServer(namaPengguna, kataSandi);
+    if (!hasil.ok) {
+      db.logAudit('Autentikasi & Akses', `Percobaan masuk ditolak server: ${hasil.pesan}`, namaPengguna.trim() || '-', namaPengguna.trim() || '-', 'Pengguna');
+      setGalat(hasil.pesan);
       setMemproses(false);
       return;
     }
-    db.logAudit('Autentikasi & Akses', 'Masuk berhasil ke aplikasi', sesi.namaPengguna, sesi.namaPengguna, 'Administrator', [
-      { kolom: 'sesi', nilaiLama: 'Keluar', nilaiBaru: `Masuk ${sesi.masukPada}` }
+    db.logAudit('Autentikasi & Akses', 'Masuk berhasil (RBAC server terverifikasi)', hasil.sesi.namaPengguna, hasil.sesi.namaLengkap, hasil.sesi.namaPeran, [
+      { kolom: 'sesi', nilaiLama: 'Keluar', nilaiBaru: `Masuk ${hasil.sesi.masukPada}` }
     ]);
-    onTerima(sesi);
+    setMemproses(false);
+    onTerima(hasil.sesi);
   };
 
   const gayaBidang = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none';

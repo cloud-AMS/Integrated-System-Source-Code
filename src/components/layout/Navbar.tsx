@@ -1,3 +1,4 @@
+import type { FormEvent } from "react";
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, 
@@ -24,6 +25,8 @@ import {
   Search,
   QrCode,
   UserCheck,
+  KeyRound,
+  ShieldCheck,
   Shield,
   Crown,
   UserCog,
@@ -33,6 +36,7 @@ import {
 import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
 import LogoAplikasi from '../common/LogoAplikasi';
 import { db } from '../../services/pocketbase';
+import { gantiKataSandiServer, punyaIzin, type SesiLogin } from '../../utils/autentikasi';
 import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
 import type { ITSubTabId } from '../modules/supporting/ITModule';
 import type { SalesTab } from '../modules/commercial/SalesModule';
@@ -195,7 +199,8 @@ interface NavbarProps {
   currentTab: NavId;
   setCurrentTab: (tab: NavId) => void;
   currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
+  sesi?: SesiLogin;
+  onRoleChange?: (role: UserRole) => void;
   onOpenTraceability: () => void;
   onKeluar: () => void;
   aksesAktif?: AksesEfektif;
@@ -213,6 +218,7 @@ export default function Navbar({
   currentTab,
   setCurrentTab,
   currentRole,
+  sesi,
   onRoleChange,
   onOpenTraceability,
   onKeluar,
@@ -227,6 +233,28 @@ export default function Navbar({
   onSalesNavigate
 }: NavbarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [modalSandi, setModalSandi] = useState(false);
+  const [sandiLama, setSandiLama] = useState('');
+  const [sandiBaru, setSandiBaru] = useState('');
+  const [pesanSandi, setPesanSandi] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [simpanSandi, setSimpanSandi] = useState(false);
+
+  const kirimGantiSandi = async (e: FormEvent) => {
+    e.preventDefault();
+    if (simpanSandi) return;
+    setSimpanSandi(true);
+    const res = await gantiKataSandiServer(sandiLama, sandiBaru);
+    setSimpanSandi(false);
+    setPesanSandi({ ok: res.ok, teks: res.pesan });
+    if (res.ok) {
+      setSandiLama('');
+      setSandiBaru('');
+      setTimeout(() => {
+        setModalSandi(false);
+        setPesanSandi(null);
+      }, 1200);
+    }
+  };
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<SubMenuKey | null>(null);
   const [openGroup, setOpenGroup] = useState<SubMenuKey | null>(null);
@@ -391,10 +419,10 @@ export default function Navbar({
             <RoleAvatar peran={currentRole} />
             <div className="text-left hidden md:block">
               <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[160px]">
-                {akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole).split('-')[0].trim()}
+                {sesi?.namaLengkap || (akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole).split('-')[0].trim())}
               </div>
               <div className="text-2xs font-semibold uppercase tracking-wider text-slate-500 truncate max-w-[160px]">
-                {roleAktifObj ? roleAktifObj.nama : currentRole.replace('_', ' ')}
+                {sesi?.namaPeran || (roleAktifObj ? roleAktifObj.nama : currentRole.replace('_', ' '))}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
@@ -404,81 +432,52 @@ export default function Navbar({
             <>
               <div className="fixed inset-0 z-40 cursor-default" onClick={() => setShowUserMenu(false)} />
               <div className="absolute right-0 top-full mt-1.5 w-72 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 divide-y divide-slate-100">
-                <div className="px-3.5 py-2">
+                <div className="px-3.5 py-2.5 space-y-1">
                   <div className="text-xs font-bold text-slate-900 truncate">
-                    {akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole)}
+                    {sesi?.namaLengkap || (akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole))}
                   </div>
+                  {sesi && (
+                    <div className="text-2xs text-slate-500 truncate">
+                      @{sesi.namaPengguna} · {sesi.departemen}
+                    </div>
+                  )}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="text-2xs bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded inline-block border border-slate-200">
-                      {roleAktifObj ? roleAktifObj.nama : peranPengguna(currentRole)}
+                      {sesi?.namaPeran || (roleAktifObj ? roleAktifObj.nama : peranPengguna(currentRole))}
                     </span>
                     <span className="text-2xs text-slate-500">
                       {aksesEfektif.aksesPenuh ? 'Akses Penuh' : `${aksesEfektif.modulDiizinkan.length} modul`}
                     </span>
                   </div>
-                  <p className="text-2xs text-slate-500 mt-1">
-                    {daftarAkun && onAccountChange
-                      ? 'Pilih akun aktif untuk simulasi hak akses & otorisasi:'
-                      : 'Pilih peran aktif untuk simulasi otorisasi divisi:'}
-                  </p>
+                  <div className="inline-flex items-center gap-1 text-2xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                    <ShieldCheck className="w-3 h-3" />
+                    RBAC Server Terverifikasi
+                  </div>
                 </div>
 
-                <div className="py-1 max-h-64 overflow-y-auto">
-                  {daftarAkun && onAccountChange ? (
-                    daftarAkun
-                      .filter((a) => a.status === 'Aktif')
-                      .map((akun) => {
-                        const rObj = daftarRole?.find((r) => r.id === akun.roleId);
-                        const isSelected = akunAktifId ? akunAktifId === akun.id : false;
-                        return (
-                          <button
-                            key={akun.id}
-                            type="button"
-                            onClick={() => {
-                              onAccountChange(akun);
-                              setShowUserMenu(false);
-                            }}
-                            className={`w-full text-left px-3.5 py-1.5 text-xs flex items-center justify-between gap-2 cursor-pointer ${
-                              isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-800 hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div className="font-semibold truncate">{akun.namaLengkap}</div>
-                              <div className="text-2xs text-slate-500 truncate">
-                                @{akun.username} · {rObj?.nama || akun.roleId}
-                              </div>
-                            </div>
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                          </button>
-                        );
-                      })
-                  ) : (
-                    [
-                      { r: 'pjt', label: 'apt. Dewi Kartika (PJT Kemenkes)' },
-                      { r: 'qa_manager', label: 'Budi Utomo, S.T (QA Manager)' },
-                      { r: 'qc_officer', label: 'Hendra Setiawan (Lead QC)' },
-                      { r: 'kepala_gudang', label: 'Ahmad Fauzi (Gudang CDAKB)' },
-                      { r: 'teknisi_elektromedik', label: 'Dian Nugraha (Teknisi STR)' },
-                      { r: 'manajer_produksi', label: 'Ir. Agus Santoso (CPAKB)' },
-                      { r: 'purchasing', label: 'Dewi Anggraini (Purchasing)' },
-                      { r: 'sales_manager', label: 'Farhan Maulana (e-Katalog)' },
-                      { r: 'it_admin', label: 'Admin IT & Hub' },
-                    ].map((item) => (
-                      <button
-                        key={item.r}
-                        type="button"
-                        onClick={() => {
-                          onRoleChange(item.r as UserRole);
-                          setShowUserMenu(false);
-                        }}
-                        className={`w-full text-left px-3.5 py-1.5 text-xs font-semibold flex items-center justify-between cursor-pointer ${
-                          currentRole === item.r ? 'bg-blue-50 text-blue-700' : 'text-slate-800 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span>{item.label}</span>
-                        {currentRole === item.r && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
-                      </button>
-                    ))
+                <div className="py-1.5 px-1.5 space-y-1">
+                  {sesi && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setModalSandi(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+                      Ganti Kata Sandi
+                    </button>
+                  )}
+                  {sesi && punyaIzin(sesi, 'rbac-admin', 'view') && (
+                    <button
+                      type="button"
+                      onClick={() => goITSub('user-roles')}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 hover:bg-blue-50 cursor-pointer"
+                    >
+                      <UserCog className="w-3.5 h-3.5" />
+                      Kelola Akun &amp; Peran (RBAC)
+                    </button>
                   )}
                 </div>
 
@@ -596,7 +595,7 @@ export default function Navbar({
                             </span>
                           )}
                         </button>
-                        {isIT && (
+                        {isIT && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (
                           <button
                             type="button"
                             onClick={() => goITSub('user-roles')}
@@ -874,6 +873,72 @@ export default function Navbar({
         </button>
       </nav>
 
+      {modalSandi && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">Ganti Kata Sandi Akun</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSandi(false);
+                  setPesanSandi(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={kirimGantiSandi} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Kata Sandi Saat Ini</label>
+                <input
+                  type="password"
+                  value={sandiLama}
+                  onChange={(e) => setSandiLama(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Kata Sandi Baru (min. 6 karakter)</label>
+                <input
+                  type="password"
+                  value={sandiBaru}
+                  onChange={(e) => setSandiBaru(e.target.value)}
+                  minLength={6}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs"
+                />
+              </div>
+              {pesanSandi && (
+                <p className={`text-xs rounded-xl px-3 py-2 border ${pesanSandi.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                  {pesanSandi.teks}
+                </p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalSandi(false);
+                    setPesanSandi(null);
+                  }}
+                  className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={simpanSandi}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {simpanSandi ? 'Menyimpan…' : 'Simpan Sandi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

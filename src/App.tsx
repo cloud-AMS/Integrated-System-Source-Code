@@ -28,71 +28,106 @@ import FinanceModule from './components/modules/supporting/FinanceModule';
 import ITModule, { type ITSubTabId } from './components/modules/supporting/ITModule';
 import WebsiteModule from './components/modules/website/WebsiteModule';
 
-import type { AkunPengguna, RoleSistem, UserRole } from './types';
+import type { AksesEfektif, ModuleNavId, UserRole } from './types';
 import { Lock, ShieldCheck, X } from 'lucide-react';
-import { akhiriSesi, bacaSesi, type SesiLogin } from './utils/autentikasi';
-import { db } from './services/pocketbase';
-import { bolehAksesModul, hitungAksesEfektif } from './utils/hakAkses';
+import {
+  akhiriSesi,
+  ambilSesiServer,
+  bacaSesi,
+  bolehAksesModul as bolehAksesModulSesi,
+  EVENT_SESI_BERAKHIR,
+  keluarDariServer,
+  type SesiLogin
+} from './utils/autentikasi';
+import { SEMUA_ID_MODUL, bolehAksesModul } from './utils/hakAkses';
 
 export default function App() {
   const [sesi, setSesi] = useState<SesiLogin | null>(() => bacaSesi());
+  const [memeriksaSesi, setMemeriksaSesi] = useState<boolean>(() => Boolean(bacaSesi()));
   const identitasVisual = useIdentitasVisualAplikasi();
 
   useEffect(() => {
     terapkanFaviconAplikasi(identitasVisual.faviconUrl || identitasVisual.logoUrl);
   }, [identitasVisual.faviconUrl, identitasVisual.logoUrl]);
 
+  useEffect(() => {
+    let aktif = true;
+    const cekServer = async () => {
+      if (!bacaSesi()) {
+        if (aktif) setMemeriksaSesi(false);
+        return;
+      }
+      const segar = await ambilSesiServer();
+      if (aktif) {
+        setSesi(segar);
+        setMemeriksaSesi(false);
+      }
+    };
+    void cekServer();
+
+    const padaKedaluwarsa = () => {
+      akhiriSesi();
+      setSesi(null);
+      setMemeriksaSesi(false);
+    };
+    window.addEventListener(EVENT_SESI_BERAKHIR, padaKedaluwarsa);
+    return () => {
+      aktif = false;
+      window.removeEventListener(EVENT_SESI_BERAKHIR, padaKedaluwarsa);
+    };
+  }, []);
+
+  if (memeriksaSesi) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Memverifikasi sesi RBAC server…
+        </p>
+      </div>
+    );
+  }
+
   if (!sesi) return <HalamanDepan onMasuk={setSesi} />;
 
   return (
     <Dasbor
       sesi={sesi}
+      onSegarkanSesi={async () => {
+        const segar = await ambilSesiServer();
+        if (segar) setSesi(segar);
+      }}
       onKeluar={() => {
-        akhiriSesi();
-        setSesi(null);
+        void keluarDariServer().then(() => setSesi(null));
       }}
     />
   );
 }
 
 /** Isi dashboard; tab awal 'overview' adalah menu CDAKB & ISO. */
-function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
-  const [daftarAkun, setDaftarAkun] = useState<AkunPengguna[]>(() => db.getAkunPengguna());
-  const [daftarRole, setDaftarRole] = useState<RoleSistem[]>(() => db.getRoleSistem());
-  const [akunAktifId, setAkunAktifId] = useState<string | undefined>(() => {
-    if (sesi.akunId) return sesi.akunId;
-    const cocok = db.getAkunPengguna().find((a) => a.username === sesi.namaPengguna);
-    return cocok?.id;
-  });
-  const [currentRole, setCurrentRole] = useState<UserRole>(sesi.peran);
-
-  useEffect(() => {
-    const unsubAkun = db.subscribe('rb_akun', () => setDaftarAkun(db.getAkunPengguna()));
-    const unsubRole = db.subscribe('rb_role', () => setDaftarRole(db.getRoleSistem()));
-    return () => {
-      unsubAkun();
-      unsubRole();
+function Dasbor({
+  sesi,
+  onSegarkanSesi,
+  onKeluar
+}: {
+  sesi: SesiLogin;
+  onSegarkanSesi: () => Promise<void>;
+  onKeluar: () => void;
+}) {
+  const currentRole: UserRole = sesi.peran;
+  const aksesAktif: AksesEfektif = useMemo(() => {
+    const diizinkan: ModuleNavId[] = SEMUA_ID_MODUL.filter((id) =>
+      bolehAksesModulSesi(sesi, id)
+    );
+    return {
+      aksesPenuh: diizinkan.length === SEMUA_ID_MODUL.length,
+      modulDiizinkan: diizinkan,
+      sumber: 'role'
     };
-  }, []);
-
-  const akunAktif = useMemo(
-    () => daftarAkun.find((a) => a.id === akunAktifId),
-    [daftarAkun, akunAktifId]
-  );
-
-  const aksesAktif = useMemo(
-    () => hitungAksesEfektif(akunAktif, daftarRole, akunAktif?.roleId || currentRole),
-    [akunAktif, daftarRole, currentRole]
-  );
+  }, [sesi]);
 
   const [activeTab, setActiveTab] = useState<NavId>(() => {
-    const awalAkses = hitungAksesEfektif(
-      db.getAkunPengguna().find((a) => a.id === sesi.akunId || a.username === sesi.namaPengguna),
-      db.getRoleSistem(),
-      sesi.roleId || sesi.peran
-    );
-    if (bolehAksesModul('overview', awalAkses)) return 'overview';
-    return awalAkses.modulDiizinkan[0] || 'overview';
+    if (bolehAksesModulSesi(sesi, 'overview')) return 'overview';
+    return aksesAktif.modulDiizinkan[0] || 'overview';
   });
   const [itSubTab, setItSubTab] = useState<ITSubTabId>('traceability');
   const [salesSubTab, setSalesSubTab] = useState<SalesTab>('order');
@@ -101,21 +136,8 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
   const [showComplianceBanner, setShowComplianceBanner] = useState(true);
   const [gudangTabAwal, setGudangTabAwal] = useState<GudangTabId | undefined>(undefined);
 
-  const handleAccountChange = (akun: AkunPengguna) => {
-    setAkunAktifId(akun.id);
-    const roleObj = daftarRole.find((r) => r.id === akun.roleId);
-    const basisPeran = roleObj?.basisPeran ?? 'pjt';
-    setCurrentRole(basisPeran);
-
-    const aksesBaru = hitungAksesEfektif(akun, daftarRole, akun.roleId);
-    if (!bolehAksesModul(activeTab, aksesBaru)) {
-      setActiveTab(aksesBaru.modulDiizinkan[0] || 'overview');
-      setItSubTab('traceability');
-    }
-  };
-
   const bolehBukaTabAktif = bolehAksesModul(activeTab, aksesAktif);
-  const namaPelakuAktif = akunAktif?.namaLengkap || sesi.namaLengkap || sesi.namaPengguna;
+  const namaPelakuAktif = sesi.namaLengkap || sesi.namaPengguna;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#00AAFF] selection:text-white">
@@ -145,14 +167,10 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
         currentTab={activeTab}
         setCurrentTab={setActiveTab}
         currentRole={currentRole}
-        onRoleChange={setCurrentRole}
+        sesi={sesi}
         onOpenTraceability={() => setIsTraceabilityOpen(true)}
         onKeluar={onKeluar}
         aksesAktif={aksesAktif}
-        daftarAkun={daftarAkun}
-        daftarRole={daftarRole}
-        akunAktifId={akunAktifId}
-        onAccountChange={handleAccountChange}
         itSubTab={itSubTab}
         onITNavigate={(sub) => {
           setItSubTab(sub);
@@ -198,7 +216,7 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
             )}
 
             {/* Website */}
-            {activeTab === 'website' && <WebsiteModule currentRole={currentRole} />}
+            {activeTab === 'website' && <WebsiteModule currentRole={currentRole} sesi={sesi} />}
 
             {/* Regulatory Affairs */}
             {activeTab === 'ra-pjt' && <RegulatoryModule />}
@@ -243,9 +261,11 @@ function Dasbor({ sesi, onKeluar }: { sesi: SesiLogin; onKeluar: () => void }) {
                 currentRole={currentRole}
                 currentUserName={namaPelakuAktif}
                 aksesAktif={aksesAktif}
-                akunAktifId={akunAktifId}
+                akunAktifId={sesi.userId}
                 activeTab={itSubTab}
                 onTabChange={setItSubTab}
+                sesi={sesi}
+                onPermissionsUpdated={onSegarkanSesi}
               />
             )}
           </>

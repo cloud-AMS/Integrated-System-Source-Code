@@ -31,7 +31,16 @@ export function useIdentitasVisualAplikasi(): IdentitasVisualAplikasi {
   );
 
   useEffect(() => {
-    const segarkan = () => setIdentitas(bacaIdentitasVisualAplikasi());
+    const segarkan = () => {
+      const baru = bacaIdentitasVisualAplikasi();
+      setIdentitas((lama) =>
+        lama.nama === baru.nama &&
+        lama.logoUrl === baru.logoUrl &&
+        lama.faviconUrl === baru.faviconUrl
+          ? lama
+          : baru
+      );
+    };
     const unsubDraft = db.subscribe('website_draft', segarkan);
     const unsubPublished = db.subscribe('website_published', segarkan);
     const unsubStorage = (e: StorageEvent) => {
