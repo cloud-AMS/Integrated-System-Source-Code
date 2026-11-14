@@ -2,6 +2,10 @@ if (typeof (globalThis as any).__dirname !== 'undefined') {
   delete (globalThis as any).__dirname;
 }
 
+import 'dotenv/config';
+import { readServerConfig } from './backend/config';
+import { createDatabasePool } from './backend/database';
+import { createHealthRouter } from './backend/health';
 import http from 'http';
 import crypto from 'crypto';
 import express from 'express';
@@ -80,10 +84,11 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
 }
 
 async function startServer() {
+  const config = readServerConfig();
+  const database = createDatabasePool(config.database);
   const app = express();
+  app.disable('x-powered-by');
   const httpServer = http.createServer(app);
-  // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
-  const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
 
   // Semai benih dummy (bertanda provenance) + seed sistem sekali di server agar
   // seluruh user membaca salinan data yang sama. Tidak menyemai lagi setelah go-live purge.
@@ -277,7 +282,7 @@ async function startServer() {
     next(err);
   }) as express.ErrorRequestHandler);
 
-  // Status and regulatory compliance info
+  // Status and regulatory compliance info (RBAC + sync real-time)
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'aktif',
@@ -293,6 +298,8 @@ async function startServer() {
       waktuServer: new Date().toISOString()
     });
   });
+  // Router PostgreSQL menambah /api/ready (cek koneksi DB). /api/health sudah ditangani di atas.
+  app.use('/api', createHealthRouter(database));
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
   app.get('/api/auth/setup-status', (_req, res) => {
@@ -891,8 +898,8 @@ alkes.perusahaan-anda.co.id {
     }
   });
 
-  // Vite middleware in dev or static files in production
-  if (process.env.NODE_ENV === 'production') {
+  let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
+  if (config.nodeEnv === 'production') {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('/web', (req, res) => {
       const html = fs.readFileSync(path.resolve(__dirname, 'dist', 'index.html'), 'utf8');
@@ -902,23 +909,24 @@ alkes.perusahaan-anda.co.id {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
-    const vite = await createViteServer({
+    const devServer = await createViteServer({
       server: {
         middlewareMode: true,
         ws: { server: httpServer },
       },
       appType: 'spa',
     });
+    vite = devServer;
     app.get('/web', async (req, res, next) => {
       try {
         const mentah = fs.readFileSync(BERKAS_INDEKS, 'utf8');
-        const html = await vite.transformIndexHtml(req.originalUrl, mentah);
+        const html = await devServer.transformIndexHtml(req.originalUrl, mentah);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(suntikSeo(html, bacaSnapshot()));
       } catch (e) {
         next(e);
       }
     });
-    app.use(vite.middlewares);
+    app.use(devServer.middlewares);
   }
 
   // Isolasi WebSocket /api/sync/ws agar tidak bentrok dengan listener upgrade Vite HMR
@@ -937,9 +945,43 @@ alkes.perusahaan-anda.co.id {
     }
   });
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`AMS Integrated System Backend aktif di port ${PORT}`);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      httpServer.once('error', reject);
+      httpServer.listen(config.port, config.host, () => {
+        httpServer.off('error', reject);
+        resolve();
+      });
+    });
+  } catch (error) {
+    await vite?.close();
+    await database.end();
+    throw error;
+  }
+
+  let closing = false;
+  const shutdown = async () => {
+    if (closing) return;
+    closing = true;
+    const deadline = setTimeout(() => process.exit(1), 10_000).unref();
+    try {
+      await Promise.all([
+        new Promise<void>((resolve, reject) => {
+          httpServer.close((error) => error ? reject(error) : resolve());
+        }),
+        vite?.close()
+      ]);
+      await database.end();
+      clearTimeout(deadline);
+      console.log('Server dan koneksi PostgreSQL ditutup.');
+    } catch {
+      console.error('Gagal menutup server dengan bersih.');
+      process.exit(1);
+    }
+  };
+  process.once('SIGINT', () => void shutdown());
+  process.once('SIGTERM', () => void shutdown());
+  console.log(`AMS Integrated System aktif di http://${config.host}:${config.port}`);
 }
 
 startServer().catch((err) => {
