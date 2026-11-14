@@ -85,6 +85,13 @@ async function startServer() {
   // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
   const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
 
+  // Semai benih dummy (bertanda provenance) + seed sistem sekali di server agar
+  // seluruh user membaca salinan data yang sama. Tidak menyemai lagi setelah go-live purge.
+  const hasilSemai = dataSyncStore.bootstrapSeed();
+  if (hasilSemai.disemai > 0) {
+    console.log(`[seed] ${hasilSemai.disemai} koleksi benih disemai ke server (dummy bertanda, siap dipurge saat go-live).`);
+  }
+
   // Bootstrap website_published ke dataSyncStore jika sudah ada snapshot di disk
   if (!dataSyncStore.hasKey('website_published')) {
     const initialSnapshot = bacaSnapshot();
@@ -622,7 +629,10 @@ async function startServer() {
   });
 
   app.post('/api/sync/reset', requirePermission('rbac-admin', 'delete'), (req, res) => {
-    const revision = dataSyncStore.resetAll();
+    dataSyncStore.resetAll();
+    // Semai ulang benih demo hanya bila belum go-live (purged); setelah purge reset tetap bersih.
+    dataSyncStore.bootstrapSeed();
+    const revision = dataSyncStore.getRevision();
     const sourceClientId =
       typeof (req.body as { clientId?: string } | undefined)?.clientId === 'string'
         ? (req.body as { clientId?: string }).clientId
@@ -638,6 +648,53 @@ async function startServer() {
       detail: 'Reset seluruh state sinkronisasi server ke bawaan awal.'
     });
     res.json({ ok: true, revision });
+  });
+
+  // Go-Live: bersihkan seluruh data dummy dari server, data input user tetap utuh.
+  app.post('/api/sync/purge-dummy', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const hasil = dataSyncStore.purgeDummy();
+    const sourceClientId =
+      typeof (req.body as { clientId?: string } | undefined)?.clientId === 'string'
+        ? (req.body as { clientId?: string }).clientId
+        : typeof req.headers['x-sync-client-id'] === 'string'
+          ? req.headers['x-sync-client-id']
+          : undefined;
+    const state = dataSyncStore.getAllState();
+    for (const key of hasil.kunci) {
+      const entry = state.entries[key];
+      if (entry) broadcastSyncUpdate(key, entry, hasil.revision, sourceClientId);
+    }
+    rbacStore.recordAudit({
+      actorUsername: req.auth!.user.username,
+      actorRole: req.auth!.role.id,
+      action: 'SYNC_PURGE_DUMMY',
+      resource: 'sync',
+      status: 'ALLOWED',
+      ip: getClientIp(req),
+      detail: `Purge data dummy go-live: ${hasil.dihapus} rekaman dihapus dari ${hasil.kunci.length} koleksi; data user dipertahankan.`
+    });
+    res.json({
+      ok: true,
+      removed: hasil.dihapus,
+      keys: hasil.kunci.length,
+      revision: hasil.revision,
+      seedState: dataSyncStore.getSeedState()
+    });
+  });
+
+  // Status benih & ringkasan provenance untuk panel go-live di modul IT.
+  app.get('/api/sync/seed-status', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    const state = dataSyncStore.getAllState();
+    let dummy = 0;
+    let user = 0;
+    for (const entry of Object.values(state.entries)) {
+      if (!Array.isArray(entry.value)) continue;
+      for (const rec of entry.value) {
+        if (rec && typeof rec === 'object' && (rec as Record<string, unknown>).__sumberData === 'dummy') dummy += 1;
+        else user += 1;
+      }
+    }
+    res.json({ seedState: dataSyncStore.getSeedState(), dummy, user, revision: state.revision });
   });
 
   // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server

@@ -1,6 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import type { RbacResourceId, RoleDefinition } from '../src/types/index';
+import {
+  SEED_DUMMY,
+  SEED_SISTEM,
+  SEED_IDS_DUMMY,
+  adalahDummy,
+  PENANDA_SUMBER
+} from '../src/data/seedRegistry';
 
 export interface SyncEntry {
   value: unknown;
@@ -12,6 +19,8 @@ export interface SyncEntry {
 interface AppStateDatabase {
   version: number;
   revision: number;
+  /** 'seeded' = benih dummy sudah disemai; 'purged' = dummy dibersihkan (go-live), jangan semai lagi. */
+  seedState?: 'seeded' | 'purged';
   entries: Record<string, SyncEntry>;
 }
 
@@ -107,6 +116,7 @@ export class ServerDataSyncStore {
           return {
             version: typeof parsed.version === 'number' ? parsed.version : 1,
             revision: typeof parsed.revision === 'number' ? parsed.revision : 0,
+            seedState: parsed.seedState === 'purged' || parsed.seedState === 'seeded' ? parsed.seedState : undefined,
             entries: parsed.entries as Record<string, SyncEntry>
           };
         }
@@ -191,8 +201,97 @@ export class ServerDataSyncStore {
 
   public resetAll(): number {
     this.state.entries = {};
+    // Setelah go-live (purged) reset tidak boleh menghidupkan kembali data dummy.
+    if (this.state.seedState !== 'purged') this.state.seedState = undefined;
     this.state.revision += 1;
     this.persist();
     return this.state.revision;
+  }
+
+  /**
+   * Semai benih dummy (bertanda provenance) + seed sistem sekali saat basis data kosong.
+   * Menjadi sumber tunggal data dummy di server sehingga semua user membaca salinan yang sama.
+   * Setelah purge (seedState 'purged') tidak pernah menyemai dummy lagi.
+   */
+  public bootstrapSeed(): { disemai: number; kunci: string[] } {
+    if (this.state.seedState === 'purged') return { disemai: 0, kunci: [] };
+    const sekarang = new Date().toISOString();
+    const kunciBaru: string[] = [];
+    const gabung: Record<string, unknown[]> = { ...SEED_SISTEM, ...SEED_DUMMY };
+    for (const [key, value] of Object.entries(gabung)) {
+      if (this.hasKey(key)) {
+        // Rekonsiliasi data lama: tandai rekaman ber-id benih yang belum bertanda provenance.
+        const ids = SEED_IDS_DUMMY[key];
+        const entry = this.state.entries[key];
+        if (ids && Array.isArray(entry.value)) {
+          let berubah = false;
+          const diratakan = entry.value.map((rec) => {
+            if (
+              rec &&
+              typeof rec === 'object' &&
+              (rec as Record<string, unknown>)[PENANDA_SUMBER] === undefined &&
+              ids.has((rec as { id?: string }).id ?? '')
+            ) {
+              berubah = true;
+              return { ...(rec as object), [PENANDA_SUMBER]: 'dummy' };
+            }
+            return rec;
+          });
+          if (berubah) {
+            entry.value = diratakan;
+            entry.version += 1;
+            entry.updatedAt = sekarang;
+            entry.updatedBy = 'system-seed';
+            this.state.revision += 1;
+          }
+        }
+        continue;
+      }
+      this.state.entries[key] = { value, version: 1, updatedAt: sekarang, updatedBy: 'system-seed' };
+      this.state.revision += 1;
+      kunciBaru.push(key);
+    }
+    this.state.seedState = 'seeded';
+    this.persist();
+    return { disemai: kunciBaru.length, kunci: kunciBaru };
+  }
+
+  /**
+   * Buang seluruh rekaman dummy dari semua koleksi array; data input user tetap utuh.
+   * Menandai seedState 'purged' agar bootstrap tidak menyemai dummy lagi setelah go-live.
+   */
+  public purgeDummy(): { revision: number; dihapus: number; kunci: string[] } {
+    const sekarang = new Date().toISOString();
+    let dihapus = 0;
+    const kunciBerubah: string[] = [];
+    for (const [key, entry] of Object.entries(this.state.entries)) {
+      if (!Array.isArray(entry.value)) continue;
+      const ids = SEED_IDS_DUMMY[key];
+      const sebelum = entry.value.length;
+      const tersisa = entry.value.filter((rec) => {
+        if (adalahDummy(rec)) return false;
+        // Jaring pengaman rekaman lama tanpa penanda yang id-nya cocok benih dummy.
+        if (ids && rec && typeof rec === 'object' && ids.has((rec as { id?: string }).id ?? '')) return false;
+        return true;
+      });
+      const gone = sebelum - tersisa.length;
+      if (gone > 0) {
+        entry.value = tersisa;
+        entry.version += 1;
+        entry.updatedAt = sekarang;
+        entry.updatedBy = 'system-purge';
+        this.state.revision += 1;
+        dihapus += gone;
+        kunciBerubah.push(key);
+      }
+    }
+    this.state.seedState = 'purged';
+    this.persist();
+    return { revision: this.state.revision, dihapus, kunci: kunciBerubah };
+  }
+
+  /** Status benih untuk tampilan UI go-live. */
+  public getSeedState(): 'seeded' | 'purged' | 'pending' {
+    return this.state.seedState ?? 'pending';
   }
 }

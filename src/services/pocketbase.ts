@@ -899,16 +899,21 @@ class AMSDatabaseManager {
   }
 
   private getCollection<T>(key: string, initial: T[]): T[] {
+    // Node/SSR/uji: tanpa localStorage, kembalikan benih sebagai fallback baca-saja.
+    if (typeof localStorage === 'undefined') return initial;
+    let stored: string | null = null;
     try {
-      if (typeof localStorage === 'undefined') return initial;
-      const stored = localStorage.getItem(STORAGE_PREFIX + key);
-      if (!stored) {
-        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(initial));
-        return initial;
-      }
-      return JSON.parse(stored);
+      stored = localStorage.getItem(STORAGE_PREFIX + key);
     } catch {
-      return initial;
+      return initial; // mode privat / akses storage ditolak: fallback benih baca-saja
+    }
+    // Server-authoritative: browser tidak lagi menyuntik data dummy. Kunci absen
+    // berarti server belum menyediakan atau sudah dipurge — kembalikan kosong.
+    if (!stored) return [];
+    try {
+      return JSON.parse(stored) as T[];
+    } catch {
+      return []; // data korup: jangan hidupkan dummy, biarkan server menimpa
     }
   }
 
@@ -3228,6 +3233,55 @@ class AMSDatabaseManager {
       pelaku,
       'Administrator'
     );
+  }
+
+  // ============================ GO-LIVE: ISOLASI & PURGE DATA DUMMY ============================
+
+  /** Status benih server (jumlah rekaman dummy vs user) untuk panel go-live modul IT. */
+  public async ambilStatusBenih(): Promise<{ seedState: string; dummy: number; user: number } | null> {
+    const token = this.getAuthTokenFromStorage();
+    if (!token || typeof fetch !== 'function') return null;
+    try {
+      const res = await fetch('/api/sync/seed-status', {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as { seedState: string; dummy: number; user: number };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Purge seluruh data dummy di server lalu tarik ulang state agar semua user melihat data seragam.
+   *  Data yang diinput user (tanpa penanda dummy) tetap utuh. */
+  public async purgeDataDummy(): Promise<{ berhasil: boolean; dihapus: number; pesan: string }> {
+    const token = this.getAuthTokenFromStorage();
+    if (!token) return { berhasil: false, dihapus: 0, pesan: 'Sesi tidak ditemukan. Masuk kembali terlebih dahulu.' };
+    if (typeof fetch !== 'function') return { berhasil: false, dihapus: 0, pesan: 'Fetch tidak tersedia di lingkungan ini.' };
+    try {
+      const res = await fetch('/api/sync/purge-dummy', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientId: this.clientTabId })
+      });
+      if (res.status === 401) {
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+        return { berhasil: false, dihapus: 0, pesan: 'Sesi kedaluwarsa. Masuk kembali.' };
+      }
+      if (!res.ok) {
+        const galat = (await res.json().catch(() => null)) as { pesan?: string } | null;
+        return { berhasil: false, dihapus: 0, pesan: galat?.pesan || 'Purge ditolak server (izin rbac-admin diperlukan).' };
+      }
+      const data = (await res.json()) as { removed?: number };
+      await this.syncFromServer(false);
+      const dihapus = typeof data.removed === 'number' ? data.removed : 0;
+      return { berhasil: true, dihapus, pesan: `${dihapus} rekaman data dummy dihapus dari server. Data input user tetap utuh.` };
+    } catch {
+      return { berhasil: false, dihapus: 0, pesan: 'Gagal terhubung ke server untuk purge.' };
+    }
   }
 
   // Reset defaults for testing
