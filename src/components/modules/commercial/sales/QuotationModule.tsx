@@ -41,8 +41,10 @@ import {
   tombolSekunder
 } from '../../../ui';
 
-const KUNCI_IDENTITAS_QUOTATION = 'ams_quotation_company_profile';
-const KUNCI_RIWAYAT_QUOTATION = 'ams_quotation_history';
+const KUNCI_IDENTITAS_LEGACY = 'ams_quotation_company_profile';
+const KUNCI_RIWAYAT_LEGACY = 'ams_quotation_history';
+const KUNCI_IDENTITAS_SYNC = 'quotation_identitas_v1';
+const KUNCI_RIWAYAT_SYNC = 'quotation_riwayat_v1';
 
 interface ProdukSistemOption {
   id: string;
@@ -70,13 +72,19 @@ function parseHargaNumerik(hargaTayang?: string): number {
 function buatIdentitasDefault(role: UserRole): IdentitasPerusahaanQuotation {
   const draf = db.getWebsiteDraft();
   try {
-    const tersimpan = localStorage.getItem(KUNCI_IDENTITAS_QUOTATION);
+    let tersimpan = db.getSettingJson<IdentitasPerusahaanQuotation>(KUNCI_IDENTITAS_SYNC);
+    if (!tersimpan && typeof localStorage !== 'undefined') {
+      const legacy = localStorage.getItem(KUNCI_IDENTITAS_LEGACY);
+      if (legacy) {
+        tersimpan = JSON.parse(legacy) as IdentitasPerusahaanQuotation;
+        db.setSettingJson(KUNCI_IDENTITAS_SYNC, tersimpan);
+      }
+    }
     if (tersimpan) {
-      const parsed = JSON.parse(tersimpan) as IdentitasPerusahaanQuotation;
-      const logoLegacy = !parsed.logoUrl || parsed.logoUrl === '/site/logo-remedi-new-bw.png';
+      const logoLegacy = !tersimpan.logoUrl || tersimpan.logoUrl === '/site/logo-remedi-new-bw.png';
       return {
-        ...parsed,
-        logoUrl: logoLegacy ? draf.identitas.logoUrl || '' : parsed.logoUrl
+        ...tersimpan,
+        logoUrl: logoLegacy ? draf.identitas.logoUrl || '' : tersimpan.logoUrl
       };
     }
   } catch {
@@ -128,10 +136,19 @@ function tambahHariIso(iso: string, hari: number): string {
 
 function bacaRiwayatQuotation(): DokumenQuotation[] {
   try {
-    const mentah = localStorage.getItem(KUNCI_RIWAYAT_QUOTATION);
-    if (!mentah) return [];
-    const parsed = JSON.parse(mentah);
-    return Array.isArray(parsed) ? parsed : [];
+    const tersimpan = db.getSettingJson<DokumenQuotation[]>(KUNCI_RIWAYAT_SYNC);
+    if (Array.isArray(tersimpan)) return tersimpan;
+    if (typeof localStorage !== 'undefined') {
+      const legacy = localStorage.getItem(KUNCI_RIWAYAT_LEGACY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) {
+          db.setSettingJson(KUNCI_RIWAYAT_SYNC, parsed);
+          return parsed;
+        }
+      }
+    }
+    return [];
   } catch {
     return [];
   }
@@ -195,6 +212,20 @@ export default function QuotationModule({
   const [subPanelKiri, setSubPanelKiri] = useState<'konten' | 'identitas' | 'riwayat'>('konten');
   const [sedangUnduh, setSedangUnduh] = useState(false);
   const [pesanStatus, setPesanStatus] = useState('');
+
+  useEffect(() => {
+    const lepas = db.subscribeKoleksi(
+      [KUNCI_RIWAYAT_SYNC, KUNCI_IDENTITAS_SYNC, 'website_draft', 'website_media_v1'],
+      (kunci) => {
+        if (kunci === KUNCI_RIWAYAT_SYNC) {
+          setRiwayat(bacaRiwayatQuotation());
+        } else {
+          setIdentitas(buatIdentitasDefault(currentRole));
+        }
+      }
+    );
+    return lepas;
+  }, [currentRole]);
 
   const [modalProdukTerbuka, setModalProdukTerbuka] = useState(false);
   const [modalManualTerbuka, setModalManualTerbuka] = useState(false);
@@ -433,16 +464,19 @@ export default function QuotationModule({
 
   const simpanIdentitasDefault = () => {
     try {
-      localStorage.setItem(KUNCI_IDENTITAS_QUOTATION, JSON.stringify(identitas));
-      tampilkanInfo('Identitas perusahaan untuk quotation disimpan sebagai default.');
+      db.setSettingJson(KUNCI_IDENTITAS_SYNC, identitas);
+      tampilkanInfo('Identitas perusahaan untuk quotation disimpan & disinkronkan ke server.');
     } catch {
-      tampilkanInfo('Gagal menyimpan identitas ke penyimpanan lokal.');
+      tampilkanInfo('Gagal menyimpan identitas quotation.');
     }
   };
 
   const resetIdentitasDariCms = () => {
     try {
-      localStorage.removeItem(KUNCI_IDENTITAS_QUOTATION);
+      db.removeSettingJson(KUNCI_IDENTITAS_SYNC);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(KUNCI_IDENTITAS_LEGACY);
+      }
     } catch {
       /* ignore */
     }
@@ -463,7 +497,7 @@ export default function QuotationModule({
     setRiwayat(baru);
     setQuotation(dokumenSimpan);
     try {
-      localStorage.setItem(KUNCI_RIWAYAT_QUOTATION, JSON.stringify(baru));
+      db.setSettingJson(KUNCI_RIWAYAT_SYNC, baru);
     } catch {
       /* ignore */
     }
@@ -1319,7 +1353,7 @@ export default function QuotationModule({
                               const sisa = riwayat.filter((x) => x.id !== q.id);
                               setRiwayat(sisa);
                               try {
-                                localStorage.setItem(KUNCI_RIWAYAT_QUOTATION, JSON.stringify(sisa));
+                                db.setSettingJson(KUNCI_RIWAYAT_SYNC, sisa);
                               } catch {
                                 /* ignore */
                               }

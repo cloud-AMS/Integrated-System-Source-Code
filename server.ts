@@ -10,13 +10,23 @@ import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { WebSocketServer, WebSocket } from 'ws';
 import { RBAC_RESOURCES, ServerRbacStore } from './server/rbacStore';
 import {
   clearSessionCookie,
   createRbacMiddleware,
   getClientIp,
+  SESSION_COOKIE_NAME,
   setSessionCookie
 } from './server/rbacMiddleware';
+import {
+  canDeleteSyncKey,
+  canWriteSyncKey,
+  isValidSyncKey,
+  mapSyncKeyToResource,
+  PUBLIC_SYNC_KEYS,
+  ServerDataSyncStore
+} from './server/dataSyncStore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +35,7 @@ const BERKAS_SNAPSHOT = path.resolve(__dirname, 'data', 'website-published.json'
 const BERKAS_SNAPSHOT_STATIS = path.resolve(__dirname, 'public', 'website-published.json');
 const BERKAS_INDEKS = path.resolve(__dirname, 'index.html');
 const rbacStore = new ServerRbacStore(path.resolve(__dirname, 'data'));
+const dataSyncStore = new ServerDataSyncStore(path.resolve(__dirname, 'data'));
 const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
 
 /** Snapshot harus berbentuk KonfigurasiSitus; penolakan melindungi berkas data dari muatan sembarangan. */
@@ -73,6 +84,162 @@ async function startServer() {
   // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
   const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
 
+  // Bootstrap website_published ke dataSyncStore jika sudah ada snapshot di disk
+  if (!dataSyncStore.hasKey('website_published')) {
+    const initialSnapshot = bacaSnapshot();
+    if (initialSnapshot) {
+      dataSyncStore.setKey('website_published', initialSnapshot, 'system');
+    }
+  }
+
+  // Real-time WebSocket hub (/api/sync/ws) untuk sinkronisasi lintas user & perangkat
+  interface SyncWsClient {
+    ws: WebSocket;
+    isAuthenticated: boolean;
+    userId?: string;
+    username?: string;
+    isAlive: boolean;
+  }
+  const syncClients = new Set<SyncWsClient>();
+  const syncWss = new WebSocketServer({ noServer: true });
+
+  const extractWsToken = (req: http.IncomingMessage): string | null => {
+    try {
+      const parsed = new URL(req.url || '/', 'http://localhost');
+      const qp = parsed.searchParams.get('token');
+      if (qp && qp.trim()) return qp.trim();
+    } catch {
+      /* ignore */
+    }
+    const rawCookie = req.headers.cookie || '';
+    for (const part of rawCookie.split(';')) {
+      const eq = part.indexOf('=');
+      if (eq <= 0) continue;
+      if (part.slice(0, eq).trim() === SESSION_COOKIE_NAME) {
+        try {
+          return decodeURIComponent(part.slice(eq + 1).trim());
+        } catch {
+          return part.slice(eq + 1).trim();
+        }
+      }
+    }
+    return null;
+  };
+
+  syncWss.on('connection', (ws, req) => {
+    const token = extractWsToken(req);
+    const resolved = token ? rbacStore.resolveToken(token) : null;
+    const client: SyncWsClient = {
+      ws,
+      isAuthenticated: Boolean(resolved),
+      userId: resolved?.user.id,
+      username: resolved?.user.username,
+      isAlive: true
+    };
+    syncClients.add(client);
+
+    ws.on('pong', () => {
+      client.isAlive = true;
+    });
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(String(raw)) as { type?: string; token?: string };
+        if (msg?.type === 'sync:auth' && typeof msg.token === 'string') {
+          const auth = rbacStore.resolveToken(msg.token);
+          client.isAuthenticated = Boolean(auth);
+          client.userId = auth?.user.id;
+          client.username = auth?.user.username;
+          ws.send(JSON.stringify({
+            type: 'sync:hello',
+            authenticated: client.isAuthenticated,
+            revision: dataSyncStore.getRevision()
+          }));
+        }
+      } catch {
+        /* abaikan frame tidak valid */
+      }
+    });
+    ws.on('close', () => {
+      syncClients.delete(client);
+    });
+    ws.on('error', () => {
+      syncClients.delete(client);
+    });
+
+    ws.send(JSON.stringify({
+      type: 'sync:hello',
+      authenticated: client.isAuthenticated,
+      revision: dataSyncStore.getRevision()
+    }));
+  });
+
+  const heartbeatInterval = setInterval(() => {
+    for (const client of syncClients) {
+      if (!client.isAlive) {
+        client.ws.terminate();
+        syncClients.delete(client);
+        continue;
+      }
+      client.isAlive = false;
+      try {
+        client.ws.ping();
+      } catch {
+        syncClients.delete(client);
+      }
+    }
+  }, 30_000);
+  httpServer.on('close', () => clearInterval(heartbeatInterval));
+
+  const broadcastMessage = (payload: Record<string, unknown>, publicAllowed: boolean) => {
+    const serialized = JSON.stringify(payload);
+    for (const client of syncClients) {
+      if (client.ws.readyState !== WebSocket.OPEN) continue;
+      if (!publicAllowed && !client.isAuthenticated) continue;
+      try {
+        client.ws.send(serialized);
+      } catch {
+        /* abaikan socket gagal kirim */
+      }
+    }
+  };
+
+  const broadcastSyncUpdate = (
+    key: string,
+    entry: { value: unknown; version: number; updatedAt: string; updatedBy: string },
+    revision: number,
+    sourceClientId?: string
+  ) => {
+    broadcastMessage(
+      {
+        type: 'sync:update',
+        key,
+        value: entry.value,
+        version: entry.version,
+        updatedAt: entry.updatedAt,
+        updatedBy: entry.updatedBy,
+        revision,
+        sourceClientId: sourceClientId || null
+      },
+      PUBLIC_SYNC_KEYS.has(key)
+    );
+  };
+
+  const broadcastSyncDelete = (key: string, revision: number, sourceClientId?: string) => {
+    broadcastMessage(
+      {
+        type: 'sync:delete',
+        key,
+        revision,
+        sourceClientId: sourceClientId || null
+      },
+      PUBLIC_SYNC_KEYS.has(key)
+    );
+  };
+
+  const broadcastRbacUpdated = () => {
+    broadcastMessage({ type: 'rbac:updated', at: new Date().toISOString() }, false);
+  };
+
   // PocketBase AMS (C:\pocketbase-ams, port 8091) hanya diekspos seperlunya:
   // GET /api/health, GET /api/realtime (SSE), GET /api/collections/<nama>/records.
   // Admin UI, superuser, pengaturan, dan tulis/hapus sengaja ditolak di sini —
@@ -109,8 +276,11 @@ async function startServer() {
       sistem: 'AMS Integrated System - PT Anugrahmitra Selaras',
       versi: '2.4.0-cdakb',
       standar: ['CDAKB Permenkes 4/2014', 'CPAKB Permenkes 20/2017', 'SDAK OSS-RBA', 'ISO 13485:2016'],
-      basisData: 'PocketBase 0.28.1 (Real-time Kanal Terhubung) + Cache Lokal + Server RBAC',
+      basisData: 'Server Persistent Sync (app-state.json + WebSocket) + RBAC Server',
       rbacAktif: true,
+      realtimeSyncAktif: true,
+      syncRevision: dataSyncStore.getRevision(),
+      klienTerhubung: syncClients.size,
       waktuServer: new Date().toISOString()
     });
   });
@@ -199,6 +369,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.status(201).json({ role: result.role });
   });
 
@@ -212,6 +383,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.json({ role: result.role });
   });
 
@@ -223,6 +395,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'ROLE_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.json({ ok: true });
   });
 
@@ -247,6 +420,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.status(201).json({ user: result.user });
   });
 
@@ -261,6 +435,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.json({ user: result.user });
   });
 
@@ -273,6 +448,7 @@ async function startServer() {
       getClientIp(req)
     );
     if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
+    broadcastRbacUpdated();
     res.json({ ok: true });
   });
 
@@ -288,11 +464,144 @@ async function startServer() {
       getClientIp(req)
     );
     if (!ok) return res.status(404).json({ error: 'SESSION_ERROR', pesan: 'Sesi tidak ditemukan.' });
+    broadcastRbacUpdated();
     res.json({ ok: true });
   });
 
   app.get('/api/rbac/audit', requirePermission('audit-trail', 'view'), (_req, res) => {
     res.json({ logs: rbacStore.getAuditLogs(200) });
+  });
+
+  // ================= REAL-TIME SERVER DATA & SETTINGS SYNC =================
+  app.get('/api/sync/public-settings', (_req, res) => {
+    res.set('Cache-Control', 'no-store').json(dataSyncStore.getPublicState());
+  });
+
+  app.get('/api/sync/state', requireAuth, (req, res) => {
+    let sinceMap: Record<string, number> | undefined;
+    const rawVersions = req.query.versions;
+    if (typeof rawVersions === 'string' && rawVersions.trim()) {
+      try {
+        const parsed = JSON.parse(rawVersions) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          sinceMap = {};
+          for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              sinceMap[k] = v;
+            }
+          }
+        }
+      } catch {
+        /* abaikan parameter versions tidak valid dan kembalikan snapshot penuh */
+      }
+    }
+    res.set('Cache-Control', 'no-store').json(dataSyncStore.getAllState(sinceMap));
+  });
+
+  app.put('/api/sync/keys/:key', requireAuth, (req, res) => {
+    const { key } = req.params;
+    if (!isValidSyncKey(key)) {
+      return res.status(400).json({ error: 'INVALID_KEY', pesan: 'Kunci sinkronisasi tidak valid.' });
+    }
+    if (!canWriteSyncKey(req.auth!.role, key)) {
+      const resource = mapSyncKeyToResource(key);
+      rbacStore.recordAudit({
+        actorUsername: req.auth!.user.username,
+        actorRole: req.auth!.role.id,
+        action: 'PERMISSION_DENIED',
+        resource: `${resource}:${key}`,
+        status: 'DENIED',
+        ip: getClientIp(req),
+        detail: `Permintaan PUT /api/sync/keys/${key} ditolak oleh RBAC server.`
+      });
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        pesan: `Akses ditolak: peran "${req.auth!.role.name}" tidak memiliki izin menulis data "${key}".`
+      });
+    }
+
+    const body = (req.body || {}) as { value?: unknown; clientId?: string };
+    if (!('value' in body) || body.value === undefined) {
+      return res.status(400).json({ error: 'BAD_REQUEST', pesan: 'Field "value" wajib disertakan.' });
+    }
+
+    // Jika situs publik diperbarui via key sync, cerminkan ke snapshot disk bila valid
+    if (key === 'website_published' && adalahKonfigurasiSitus(body.value)) {
+      try {
+        const serialized = JSON.stringify(body.value, null, 2);
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT, serialized, 'utf8');
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT_STATIS), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT_STATIS, serialized, 'utf8');
+      } catch {
+        /* tetap lanjutkan penyimpanan sync store */
+      }
+    }
+
+    const synced = dataSyncStore.setKey(key, body.value, req.auth!.user.username);
+    const sourceClientId =
+      typeof body.clientId === 'string' && body.clientId
+        ? body.clientId
+        : typeof req.headers['x-sync-client-id'] === 'string'
+          ? req.headers['x-sync-client-id']
+          : undefined;
+    broadcastSyncUpdate(key, synced.entry, synced.revision, sourceClientId);
+    res.json({
+      ok: true,
+      key,
+      version: synced.entry.version,
+      revision: synced.revision,
+      updatedAt: synced.entry.updatedAt,
+      updatedBy: synced.entry.updatedBy
+    });
+  });
+
+  app.delete('/api/sync/keys/:key', requireAuth, (req, res) => {
+    const { key } = req.params;
+    if (!isValidSyncKey(key)) {
+      return res.status(400).json({ error: 'INVALID_KEY', pesan: 'Kunci sinkronisasi tidak valid.' });
+    }
+    if (!canDeleteSyncKey(req.auth!.role, key)) {
+      const resource = mapSyncKeyToResource(key);
+      rbacStore.recordAudit({
+        actorUsername: req.auth!.user.username,
+        actorRole: req.auth!.role.id,
+        action: 'PERMISSION_DENIED',
+        resource: `${resource}:${key}`,
+        status: 'DENIED',
+        ip: getClientIp(req),
+        detail: `Permintaan DELETE /api/sync/keys/${key} ditolak oleh RBAC server.`
+      });
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        pesan: `Akses ditolak: peran "${req.auth!.role.name}" tidak memiliki izin menghapus data "${key}".`
+      });
+    }
+    const result = dataSyncStore.deleteKey(key);
+    const sourceClientId = typeof req.headers['x-sync-client-id'] === 'string' ? req.headers['x-sync-client-id'] : undefined;
+    if (result.deleted) {
+      broadcastSyncDelete(key, result.revision, sourceClientId);
+    }
+    res.json({ ok: true, key, deleted: result.deleted, revision: result.revision });
+  });
+
+  app.post('/api/sync/reset', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const revision = dataSyncStore.resetAll();
+    const sourceClientId =
+      typeof (req.body as { clientId?: string } | undefined)?.clientId === 'string'
+        ? (req.body as { clientId?: string }).clientId
+        : undefined;
+    broadcastMessage({ type: 'sync:reset', revision, sourceClientId: sourceClientId || null }, true);
+    rbacStore.recordAudit({
+      actorUsername: req.auth!.user.username,
+      actorRole: req.auth!.role.id,
+      action: 'SYNC_RESET',
+      resource: 'sync',
+      status: 'ALLOWED',
+      ip: getClientIp(req),
+      detail: 'Reset seluruh state sinkronisasi server ke bawaan awal.'
+    });
+    res.json({ ok: true, revision });
   });
 
   // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server
@@ -455,6 +764,17 @@ alkes.perusahaan-anda.co.id {
       // Salinan public/ ikut terbawa ke dist/ saat build → situs tetap tayang di hosting statis.
       fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT_STATIS), { recursive: true });
       fs.writeFileSync(BERKAS_SNAPSHOT_STATIS, isian, 'utf8');
+      const synced = dataSyncStore.setKey(
+        'website_published',
+        terautentikasi,
+        req.auth ? req.auth.user.username : 'admin-token'
+      );
+      broadcastSyncUpdate(
+        'website_published',
+        synced.entry,
+        synced.revision,
+        typeof req.headers['x-sync-client-id'] === 'string' ? req.headers['x-sync-client-id'] : undefined
+      );
       rbacStore.recordAudit({
         actorUsername: req.auth ? req.auth.user.username : 'admin-token',
         actorRole: req.auth ? req.auth.role.id : 'system',
@@ -470,6 +790,7 @@ alkes.perusahaan-anda.co.id {
         ok: true,
         disimpanPada: new Date().toISOString(),
         oleh: pelaku,
+        revision: synced.revision,
         byte: Buffer.byteLength(isian)
       });
     } catch {
@@ -506,6 +827,22 @@ alkes.perusahaan-anda.co.id {
     });
     app.use(vite.middlewares);
   }
+
+  // Isolasi WebSocket /api/sync/ws agar tidak bentrok dengan listener upgrade Vite HMR
+  const existingUpgradeListeners = httpServer.listeners('upgrade').slice();
+  httpServer.removeAllListeners('upgrade');
+  httpServer.on('upgrade', (req, socket, head) => {
+    const pathname = (req.url || '/').split('?')[0];
+    if (pathname === '/api/sync/ws') {
+      syncWss.handleUpgrade(req, socket, head, (ws) => {
+        syncWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    for (const fn of existingUpgradeListeners) {
+      (fn as (...args: unknown[]) => void).call(httpServer, req, socket, head);
+    }
+  });
 
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`AMS Integrated System Backend aktif di port ${PORT}`);

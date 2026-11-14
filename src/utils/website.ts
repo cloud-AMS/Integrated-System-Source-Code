@@ -1256,6 +1256,7 @@ export interface MediaWebsite {
 
 export function daftarMediaWebsite(): MediaWebsite[] {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const tersimpan = localStorage.getItem(WEBSITE_MEDIA_KEY);
     return tersimpan ? (JSON.parse(tersimpan) as MediaWebsite[]) : [];
   } catch {
@@ -1268,7 +1269,16 @@ export function simpanMediaWebsite(media: MediaWebsite): MediaWebsite[] {
   const daftar = daftarMediaWebsite().filter((m) => m.id !== media.id);
   const baru = [media, ...daftar];
   try {
-    localStorage.setItem(WEBSITE_MEDIA_KEY, JSON.stringify(baru));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(WEBSITE_MEDIA_KEY, JSON.stringify(baru));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('ams:local-setting-write', {
+          detail: { key: 'website_media_v1', value: baru }
+        })
+      );
+    }
   } catch {
     return daftar;
   }

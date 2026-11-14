@@ -23,6 +23,7 @@ import type {
   ServerUserPublic
 } from '../../../../types';
 import { authFetch, punyaIzin, type SesiLogin } from '../../../../utils/autentikasi';
+import { db } from '../../../../services/pocketbase';
 
 interface RbacResourceMeta {
   id: RbacResourceId;
@@ -140,6 +141,10 @@ export default function RbacManagementTab({
 
   useEffect(() => {
     void loadAll();
+    const unsub = db.subscribeRbacUpdated(() => {
+      void loadAll();
+    });
+    return unsub;
   }, [loadAll]);
 
   useEffect(() => {

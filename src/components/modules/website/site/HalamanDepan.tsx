@@ -32,8 +32,11 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
       });
     };
 
-    muat();
-    const berhentiTerbit = db.subscribe('website_published', muat);
+    void db.hydratePublicSettingsFromServer().finally(() => {
+      if (!batal) muat();
+    });
+    db.connectRealtimeSync(null);
+    const berhentiTerbit = db.subscribeKoleksi(['website_published', 'website_media_v1'], muat);
     return () => {
       batal = true;
       berhentiTerbit();

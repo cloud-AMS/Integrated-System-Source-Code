@@ -28,8 +28,8 @@ import FinanceModule from './components/modules/supporting/FinanceModule';
 import ITModule, { type ITSubTabId } from './components/modules/supporting/ITModule';
 import WebsiteModule from './components/modules/website/WebsiteModule';
 
-import type { AksesEfektif, ModuleNavId, UserRole } from './types';
-import { Lock, ShieldCheck, X } from 'lucide-react';
+import type { AksesEfektif, ModuleNavId, RbacResourceId, UserRole } from './types';
+import { Lock, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import {
   akhiriSesi,
   ambilSesiServer,
@@ -40,6 +40,41 @@ import {
   type SesiLogin
 } from './utils/autentikasi';
 import { SEMUA_ID_MODUL, bolehAksesModul } from './utils/hakAkses';
+import { db } from './services/pocketbase';
+
+function modulUntukKunciSync(key: string): RbacResourceId | 'all' {
+  if (key === 'all') return 'all';
+  if (key.startsWith('website_')) return 'website';
+  if (key === 'izin_edar' || key === 'sertifikat') return 'ra-pjt';
+  if (key === 'dokumen_mutu' || key === 'capa' || key === 'produk_kembalian' || key === 'audit_internal_iso') {
+    return 'qa-mutu';
+  }
+  if (key === 'inspeksi_qc') return 'qc-inspeksi';
+  if (key === 'laporan_ktd' || key === 'penarikan_produk') return 'pms-vigilance';
+  if (key === 'stok_gudang' || key === 'log_suhu' || key === 'pest_control' || key.startsWith('gudang_')) {
+    return 'gudang-logistik';
+  }
+  if (key === 'layanan_teknis') return 'teknisi-service';
+  if (key === 'bets_produksi') return 'produksi-cpakb';
+  if (key === 'pemasok' || key === 'purchase_order') return 'purchasing-procurement';
+  if (
+    key === 'penjualan' ||
+    key.startsWith('sales_') ||
+    key.startsWith('surat_') ||
+    key.startsWith('listmonk_') ||
+    key.startsWith('quotation_')
+  ) {
+    return 'sales-marketing';
+  }
+  if (key === 'pelatihan' || key === 'pelatihan_personil' || key === 'sertifikasi_pegawai' || key.startsWith('hris_')) {
+    return 'hrd-pelatihan';
+  }
+  if (key === 'transaksi' || key === 'transaksi_keuangan' || key.startsWith('keuangan_')) {
+    return 'finance-akuntansi';
+  }
+  if (key === 'audit_trail') return 'audit-trail';
+  return 'overview';
+}
 
 export default function App() {
   const [sesi, setSesi] = useState<SesiLogin | null>(() => bacaSesi());
@@ -54,10 +89,16 @@ export default function App() {
     let aktif = true;
     const cekServer = async () => {
       if (!bacaSesi()) {
+        await db.hydratePublicSettingsFromServer();
         if (aktif) setMemeriksaSesi(false);
         return;
       }
       const segar = await ambilSesiServer();
+      if (segar) {
+        await db.syncFromServer(false);
+      } else {
+        await db.hydratePublicSettingsFromServer();
+      }
       if (aktif) {
         setSesi(segar);
         setMemeriksaSesi(false);
@@ -77,17 +118,39 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    db.connectRealtimeSync(sesi?.token || null);
+  }, [sesi?.token]);
+
+  useEffect(() => {
+    if (!sesi?.token) return;
+    const unsubRbac = db.subscribeRbacUpdated(() => {
+      void ambilSesiServer().then((segar) => {
+        setSesi(segar);
+      });
+    });
+    return unsubRbac;
+  }, [sesi?.token]);
+
+  const tanganiMasuk = async (sesiBaru: SesiLogin) => {
+    setMemeriksaSesi(true);
+    await db.syncFromServer(false);
+    db.connectRealtimeSync(sesiBaru.token || null);
+    setSesi(sesiBaru);
+    setMemeriksaSesi(false);
+  };
+
   if (memeriksaSesi) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Memverifikasi sesi RBAC server…
+          Menyelaraskan sesi RBAC &amp; data real-time server…
         </p>
       </div>
     );
   }
 
-  if (!sesi) return <HalamanDepan onMasuk={setSesi} />;
+  if (!sesi) return <HalamanDepan onMasuk={(s) => void tanganiMasuk(s)} />;
 
   return (
     <Dasbor
@@ -97,7 +160,10 @@ export default function App() {
         if (segar) setSesi(segar);
       }}
       onKeluar={() => {
-        void keluarDariServer().then(() => setSesi(null));
+        void keluarDariServer().then(() => {
+          setSesi(null);
+          db.connectRealtimeSync(null);
+        });
       }}
     />
   );
@@ -135,6 +201,39 @@ function Dasbor({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [showComplianceBanner, setShowComplianceBanner] = useState(true);
   const [gudangTabAwal, setGudangTabAwal] = useState<GudangTabId | undefined>(undefined);
+  const [remoteModuleVersion, setRemoteModuleVersion] = useState(0);
+  const [pendingRemoteSync, setPendingRemoteSync] = useState(false);
+
+  useEffect(() => {
+    setPendingRemoteSync(false);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const unsub = db.subscribeRemoteUpdate((keys, reason) => {
+      if (reason === 'hydrate' || reason === 'hydrate-public') return;
+      // Modul yang sudah mengelola state sinkronisasinya sendiri tidak perlu remount penuh
+      if (activeTab === 'website' || activeTab === 'it-traceability') return;
+
+      const relevan = keys.some((k) => {
+        if (k === 'all') return true;
+        if (k === 'audit_trail') return activeTab === 'overview';
+        const target = modulUntukKunciSync(k);
+        return activeTab === 'overview' || target === activeTab || target === 'all';
+      });
+      if (!relevan) return;
+
+      const elAktif = typeof document !== 'undefined' ? document.activeElement : null;
+      const tag = elAktif?.tagName?.toUpperCase() || '';
+      const sedangMengetik = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (sedangMengetik) {
+        setPendingRemoteSync(true);
+        return;
+      }
+      setRemoteModuleVersion((v) => v + 1);
+      setPendingRemoteSync(false);
+    });
+    return unsub;
+  }, [activeTab]);
 
   const bolehBukaTabAktif = bolehAksesModul(activeTab, aksesAktif);
   const namaPelakuAktif = sesi.namaLengkap || sesi.namaPengguna;
@@ -183,6 +282,27 @@ function Dasbor({
         }}
       />
 
+      {pendingRemoteSync && (
+        <div className="no-print bg-blue-50 border-b border-blue-200 px-3 sm:px-5 py-2">
+          <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3">
+            <span className="text-xs text-blue-900 font-medium">
+              Ada pembaruan data real-time dari pengguna lain pada modul ini.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setRemoteModuleVersion((v) => v + 1);
+                setPendingRemoteSync(false);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Muat Data Terbaru
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Application Content Container */}
       <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-5 py-4 sm:py-6 pb-24 lg:pb-8">
         {!bolehBukaTabAktif ? (
@@ -205,7 +325,7 @@ function Dasbor({
             )}
           </div>
         ) : (
-          <>
+          <div key={`${activeTab}-${remoteModuleVersion}`}>
             {activeTab === 'overview' && (
               <ExecutiveOverview
                 onSelectModule={(mod) => setActiveTab(mod)}
@@ -268,7 +388,7 @@ function Dasbor({
                 onPermissionsUpdated={onSegarkanSesi}
               />
             )}
-          </>
+          </div>
         )}
       </main>
 

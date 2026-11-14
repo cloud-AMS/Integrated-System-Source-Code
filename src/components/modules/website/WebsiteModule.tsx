@@ -104,6 +104,9 @@ const tanpaMeta = (cfg: KonfigurasiSitus) => {
 export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
   const [draf, setDraf] = useState<KonfigurasiSitus>(() => db.getWebsiteDraft());
   const [baseline, setBaseline] = useState<string>(() => tanpaMeta(db.getWebsiteDraft()));
+  const baselineRef = useRef(baseline);
+  baselineRef.current = baseline;
+  const [drafRemoteTerbaru, setDrafRemoteTerbaru] = useState(false);
   const [terbit, setTerbit] = useState<KonfigurasiSitus | null>(() => db.getWebsiteTerbit());
   const [kunci, setKunci] = useState<KunciEditorSitus>('identitas');
   const [mode, setMode] = useState<Mode>('sunting');
@@ -119,8 +122,25 @@ export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
     : PERAN_PENERBIT.includes(currentRole);
 
   useEffect(() => {
-    const berhenti = db.subscribe('website_published', () => setTerbit(db.getWebsiteTerbit()));
-    return berhenti;
+    const berhentiTerbit = db.subscribe('website_published', () => setTerbit(db.getWebsiteTerbit()));
+    const berhentiDraf = db.subscribe('website_draft', () => {
+      const terbaru = db.getWebsiteDraft();
+      const metaBaru = tanpaMeta(terbaru);
+      if (metaBaru === baselineRef.current) return;
+      setDraf((cur) => {
+        if (tanpaMeta(cur) === baselineRef.current) {
+          setBaseline(metaBaru);
+          setDrafRemoteTerbaru(false);
+          return terbaru;
+        }
+        setDrafRemoteTerbaru(true);
+        return cur;
+      });
+    });
+    return () => {
+      berhentiTerbit();
+      berhentiDraf();
+    };
   }, []);
 
   useEffect(() => {
@@ -135,11 +155,12 @@ export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
   const tandaiTersimpan = useCallback((cfg: KonfigurasiSitus) => {
     setDraf(cfg);
     setBaseline(tanpaMeta(cfg));
+    setDrafRemoteTerbaru(false);
   }, []);
 
   const simpan = () => {
     tandaiTersimpan(db.simpanWebsiteDraft(draf, pengguna, peran));
-    setPesan({ nada: 'ok', teks: 'Draf konten tersimpan. Jejak perubahan tercatat pada audit trail.' });
+    setPesan({ nada: 'ok', teks: 'Draf konten tersimpan & tersinkronisasi ke server. Jejak perubahan tercatat pada audit trail.' });
   };
 
   const sinkron = () => {
@@ -157,7 +178,10 @@ export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
     try {
       const jawaban = await authFetch('/api/website/published', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Sync-Client-Id': db.getClientId()
+        },
         body: JSON.stringify({ config: snapshot })
       });
       const data = (await jawaban.json().catch(() => ({}))) as { pesan?: string };
@@ -408,6 +432,21 @@ export default function WebsiteModule({ currentRole, sesi }: PropsWebsite) {
               Peran {peran} dapat menyunting dan menyimpan draf; penerbitan konten tayang dikhususkan untuk PJT dan Admin IT
               dan tercatat dengan nama pengguna pada jejak audit.
             </p>
+          </div>
+        )}
+
+        {drafRemoteTerbaru && (
+          <div className="px-5 py-2.5 border-t bg-blue-50 border-blue-100 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-blue-900">
+              Draf website di server baru saja diperbarui oleh pengguna lain. Anda memiliki suntingan lokal yang belum disimpan.
+            </p>
+            <button
+              type="button"
+              onClick={() => tandaiTersimpan(db.getWebsiteDraft())}
+              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer"
+            >
+              Muat Versi Server Terbaru
+            </button>
           </div>
         )}
 

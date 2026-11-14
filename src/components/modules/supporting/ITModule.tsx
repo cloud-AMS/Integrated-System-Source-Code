@@ -66,7 +66,7 @@ export default function ITModule({
     sumber: 'akses-penuh'
   };
   const [auditList, setAuditList] = useState<LogAuditTrail[]>(db.getAuditTrail());
-  const [connStatus] = useState(db.getConnectionStatus());
+  const [connStatus, setConnStatus] = useState(db.getConnectionStatus());
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   // Filter & Search Audit Trail
@@ -151,7 +151,13 @@ alkes.perusahaan-anda.co.id {
     const unsub = db.subscribe('audit_trail', () => {
       setAuditList(db.getAuditTrail());
     });
-    return unsub;
+    const unsubConn = db.subscribe('connection_status', () => {
+      setConnStatus(db.getConnectionStatus());
+    });
+    return () => {
+      unsub();
+      unsubConn();
+    };
   }, []);
 
   const handleCopy = (text: string, section: string) => {
@@ -457,11 +463,11 @@ alkes.perusahaan-anda.co.id {
 
               <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-900">2. PocketBase 0.28.1 Realtime Connector</span>
+                  <span className="font-bold text-blue-900">2. Server Real-Time WebSocket &amp; State Sync</span>
                   <Server className="w-4 h-4 text-blue-600" />
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Menghubungkan aplikasi ke server PocketBase pada <code>{connStatus.url}</code> untuk sinkronisasi multi-pengguna dan notifikasi instan perubahan batch.
+                  Menghubungkan seluruh sesi pengguna ke server sinkronisasi pada <code>{connStatus.url}</code> agar pengaturan dan data modul tersinkronisasi real-time (revisi server #{connStatus.revision ?? 0}).
                 </p>
                 <div className="text-2xs text-blue-800 font-mono">Konektor: {connStatus.statusLabel}</div>
               </div>

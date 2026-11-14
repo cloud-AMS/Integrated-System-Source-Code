@@ -242,20 +242,63 @@ export const KOLEKSI_OPERASIONAL_SITUS = [
 export type KunciKoleksiOperasionalSitus = (typeof KOLEKSI_OPERASIONAL_SITUS)[number];
 
 const KANAL_REALTIME_AMS = 'ams_alkes_realtime_v1';
+const KUNCI_SESI_AUTH = 'ams_alkes_sesi_login_v2';
+
+type SyncOp = { type: 'put'; value: unknown } | { type: 'delete' };
 
 class AMSDatabaseManager {
   private listeners: Map<string, Set<() => void>> = new Map();
+  private remoteListeners: Set<(keys: string[], reason: string) => void> = new Set();
+  private rbacListeners: Set<() => void> = new Set();
   private isOnlinePocketBase: boolean = false;
   private pbRealtimeTerpasang: boolean = false;
   private kanalSiaran: BroadcastChannel | null = null;
-  private connectionStatusText: string = 'Penyimpanan Lokal Aktif (Offline-First)';
+  private connectionStatusText: string = 'Menghubungkan ke Server Real-Time Sync...';
   private migrasiDraftAktif: boolean = false;
+  private isApplyingRemote: boolean = false;
+  private readonly clientTabId: string =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  private serverVersions: Record<string, number> = {};
+  private serverRevision: number = 0;
+  private lastSyncedAt: string | null = null;
+  private ws: WebSocket | null = null;
+  private wsConnected: boolean = false;
+  private wsShouldConnect: boolean = false;
+  private wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private fallbackPollTimer: ReturnType<typeof setInterval> | null = null;
+  private currentWsToken: string | null = null;
+  private latestSyncOp: Map<string, SyncOp> = new Map();
+  private activeSyncKeys: Set<string> = new Set();
 
   constructor() {
     this.ratakanNamaPerusahaan();
     this.ratakanIstilahBatch();
     this.pasangPendengarLintasTab();
-    this.checkPBConnection();
+    if (typeof window !== 'undefined') {
+      this.checkPBConnection();
+    }
+  }
+
+  public getClientId(): string {
+    return this.clientTabId;
+  }
+
+  private getAuthTokenFromStorage(): string | null {
+    try {
+      if (typeof localStorage === 'undefined') return null;
+      const raw = localStorage.getItem(KUNCI_SESI_AUTH);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { token?: string; expiresAt?: string } | null;
+      if (!parsed?.token) return null;
+      if (parsed.expiresAt && new Date(parsed.expiresAt).getTime() <= Date.now()) {
+        return null;
+      }
+      return parsed.token;
+    } catch {
+      return null;
+    }
   }
 
   /** Pantau perubahan koleksi dari tab/jendela/iframe lain agar situs publik & modul operasional selalu sinkron. */
@@ -273,6 +316,16 @@ class AMSDatabaseManager {
       if (e.key.startsWith(STORAGE_PREFIX)) {
         const kunciKoleksi = e.key.slice(STORAGE_PREFIX.length);
         this.notifyLocal(kunciKoleksi);
+      }
+    });
+
+    // Tangkap penulisan pengaturan lokal yang tidak memanggil db secara langsung (mis. utilitas website.ts)
+    window.addEventListener('ams:local-setting-write', (ev: Event) => {
+      const detail = (ev as CustomEvent<{ key?: string; value?: unknown }>).detail;
+      if (!detail?.key) return;
+      this.notify(detail.key);
+      if (!this.isApplyingRemote && detail.value !== undefined) {
+        this.enqueueKeySync(detail.key, { type: 'put', value: detail.value });
       }
     });
 
@@ -348,29 +401,43 @@ class AMSDatabaseManager {
     }
   }
 
-  private async checkPBConnection() {
-    try {
-      const health = await pb.health.check();
-      if (health && health.code === 200) {
-        this.isOnlinePocketBase = true;
-        this.connectionStatusText = 'PocketBase 0.28.1 Terhubung (Real-time)';
-        this.pasangRealtimePocketBase();
-      } else {
-        this.isOnlinePocketBase = false;
-        this.connectionStatusText = 'Penyimpanan Lokal Aktif (Offline-First)';
-      }
-    } catch {
-      this.isOnlinePocketBase = false;
+  private updateConnectionStatusLabel() {
+    if (this.wsConnected) {
+      this.connectionStatusText = 'Server Real-Time Sync Aktif (WebSocket Terhubung)';
+    } else if (this.isOnlinePocketBase) {
+      this.connectionStatusText = 'PocketBase Terhubung (Real-time)';
+    } else if (this.wsShouldConnect) {
+      this.connectionStatusText = 'Server Sync Mode Polling HTTP (Menunggu WebSocket)';
+    } else {
       this.connectionStatusText = 'Penyimpanan Lokal Aktif (Offline-First)';
     }
     this.notifyLocal('connection_status');
   }
 
+  private async checkPBConnection() {
+    try {
+      const health = await pb.health.check();
+      this.isOnlinePocketBase = Boolean(health && health.code === 200);
+      if (this.isOnlinePocketBase) {
+        this.pasangRealtimePocketBase();
+      }
+    } catch {
+      this.isOnlinePocketBase = false;
+    }
+    this.updateConnectionStatusLabel();
+  }
+
   public getConnectionStatus() {
+    const originUrl =
+      typeof window !== 'undefined' ? `${window.location.origin}/api/sync/ws` : PB_URL;
     return {
-      isPocketBaseConnected: this.isOnlinePocketBase,
+      isPocketBaseConnected: this.wsConnected || this.isOnlinePocketBase,
+      isRealtimeSyncConnected: this.wsConnected,
+      revision: this.serverRevision,
+      lastSyncedAt: this.lastSyncedAt,
+      clientId: this.clientTabId,
       statusLabel: this.connectionStatusText,
-      url: PB_URL
+      url: this.wsConnected || this.wsShouldConnect ? originUrl : PB_URL
     };
   }
 
@@ -382,6 +449,411 @@ class AMSDatabaseManager {
     return () => {
       this.listeners.get(collectionKey)?.delete(callback);
     };
+  }
+
+  public subscribeRemoteUpdate(callback: (keys: string[], reason: string) => void): () => void {
+    this.remoteListeners.add(callback);
+    return () => {
+      this.remoteListeners.delete(callback);
+    };
+  }
+
+  public subscribeRbacUpdated(callback: () => void): () => void {
+    this.rbacListeners.add(callback);
+    return () => {
+      this.rbacListeners.delete(callback);
+    };
+  }
+
+  private emitRemoteUpdate(keys: string[], reason: string) {
+    if (keys.length === 0) return;
+    this.remoteListeners.forEach((cb) => {
+      try {
+        cb(keys, reason);
+      } catch (e) {
+        console.error('Error in remote listener callback', e);
+      }
+    });
+  }
+
+  private enqueueKeySync(key: string, op: SyncOp) {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return;
+    if (!this.getAuthTokenFromStorage()) return;
+    this.latestSyncOp.set(key, op);
+    if (this.activeSyncKeys.has(key)) return;
+    void this.drainKeySync(key);
+  }
+
+  private async drainKeySync(key: string) {
+    this.activeSyncKeys.add(key);
+    try {
+      while (this.latestSyncOp.has(key)) {
+        const op = this.latestSyncOp.get(key)!;
+        this.latestSyncOp.delete(key);
+        const token = this.getAuthTokenFromStorage();
+        if (!token) break;
+
+        try {
+          const url = `/api/sync/keys/${encodeURIComponent(key)}`;
+          const headers: Record<string, string> = {
+            Authorization: `Bearer ${token}`,
+            'X-Sync-Client-Id': this.clientTabId
+          };
+          let res: Response;
+          if (op.type === 'put') {
+            headers['Content-Type'] = 'application/json';
+            res = await fetch(url, {
+              method: 'PUT',
+              credentials: 'include',
+              headers,
+              body: JSON.stringify({ value: op.value, clientId: this.clientTabId })
+            });
+          } else {
+            res = await fetch(url, {
+              method: 'DELETE',
+              credentials: 'include',
+              headers
+            });
+          }
+          if (res.status === 401 && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+            break;
+          }
+          if (res.ok) {
+            const payload = (await res.json().catch(() => null)) as {
+              version?: number;
+              revision?: number;
+            } | null;
+            if (typeof payload?.version === 'number') {
+              this.serverVersions[key] = Math.max(this.serverVersions[key] ?? 0, payload.version);
+            }
+            if (typeof payload?.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, payload.revision);
+            }
+            this.lastSyncedAt = new Date().toISOString();
+          }
+        } catch {
+          /* tetap bertahan offline-first tanpa menghentikan antrean lokal */
+        }
+      }
+    } finally {
+      this.activeSyncKeys.delete(key);
+    }
+  }
+
+  private applyRemoteEntry(
+    key: string,
+    value: unknown,
+    version?: number,
+    notifyIndividual = true
+  ): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    if (typeof version === 'number' && (this.serverVersions[key] ?? 0) >= version) {
+      return false;
+    }
+    if (typeof version === 'number') {
+      this.serverVersions[key] = version;
+    }
+    const serialized = JSON.stringify(value);
+    const prevRaw = localStorage.getItem(STORAGE_PREFIX + key);
+    if (prevRaw === serialized) {
+      return false;
+    }
+    this.isApplyingRemote = true;
+    try {
+      localStorage.setItem(STORAGE_PREFIX + key, serialized);
+      if (notifyIndividual) {
+        this.notify(key);
+      }
+    } finally {
+      this.isApplyingRemote = false;
+    }
+    return true;
+  }
+
+  private applyRemoteDelete(key: string, reason = 'ws'): boolean {
+    delete this.serverVersions[key];
+    if (typeof localStorage === 'undefined') return false;
+    const hadKey = localStorage.getItem(STORAGE_PREFIX + key) !== null;
+    this.isApplyingRemote = true;
+    try {
+      localStorage.removeItem(STORAGE_PREFIX + key);
+      this.notify(key);
+    } finally {
+      this.isApplyingRemote = false;
+    }
+    if (hadKey) {
+      this.emitRemoteUpdate([key], reason);
+    }
+    return hadKey;
+  }
+
+  public async hydratePublicSettingsFromServer(): Promise<string[]> {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return [];
+    try {
+      const res = await fetch('/api/sync/public-settings', { cache: 'no-store' });
+      if (!res.ok) return [];
+      const data = (await res.json()) as {
+        revision?: number;
+        entries?: Record<string, { value: unknown; version: number }>;
+      };
+      if (typeof data.revision === 'number') {
+        this.serverRevision = Math.max(this.serverRevision, data.revision);
+      }
+      const changed: string[] = [];
+      for (const [key, entry] of Object.entries(data.entries || {})) {
+        if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
+          changed.push(key);
+        }
+      }
+      if (changed.length > 0) {
+        this.lastSyncedAt = new Date().toISOString();
+        this.emitRemoteUpdate(changed, 'hydrate-public');
+      }
+      return changed;
+    } catch {
+      return [];
+    }
+  }
+
+  public async syncFromServer(deltaOnly = false): Promise<string[]> {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return [];
+    const token = this.getAuthTokenFromStorage();
+    if (!token) {
+      return this.hydratePublicSettingsFromServer();
+    }
+    try {
+      const hasKnown = deltaOnly && Object.keys(this.serverVersions).length > 0;
+      const url = hasKnown
+        ? `/api/sync/state?versions=${encodeURIComponent(JSON.stringify(this.serverVersions))}`
+        : '/api/sync/state';
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+        return [];
+      }
+      if (!res.ok) return [];
+      const data = (await res.json()) as {
+        revision?: number;
+        entries?: Record<string, { value: unknown; version: number }>;
+      };
+      if (typeof data.revision === 'number') {
+        this.serverRevision = Math.max(this.serverRevision, data.revision);
+      }
+      const changed: string[] = [];
+      for (const [key, entry] of Object.entries(data.entries || {})) {
+        if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
+          changed.push(key);
+        }
+      }
+      this.lastSyncedAt = new Date().toISOString();
+      if (changed.length > 0) {
+        this.emitRemoteUpdate(changed, deltaOnly ? 'delta' : 'hydrate');
+      }
+      return changed;
+    } catch {
+      return [];
+    }
+  }
+
+  private startFallbackPolling() {
+    if (typeof window === 'undefined' || this.fallbackPollTimer) return;
+    this.fallbackPollTimer = setInterval(() => {
+      if (this.wsConnected || !this.wsShouldConnect) return;
+      void this.syncFromServer(true);
+    }, 5000);
+  }
+
+  private stopFallbackPolling() {
+    if (this.fallbackPollTimer) {
+      clearInterval(this.fallbackPollTimer);
+      this.fallbackPollTimer = null;
+    }
+  }
+
+  public connectRealtimeSync(token?: string | null): void {
+    if (typeof window === 'undefined' || typeof WebSocket === 'undefined') return;
+    const effectiveToken = token !== undefined ? token : this.getAuthTokenFromStorage();
+    this.currentWsToken = effectiveToken || null;
+    this.wsShouldConnect = true;
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({ type: 'sync:auth', token: this.currentWsToken || '' }));
+      } catch {
+        /* abaikan bila socket baru putus */
+      }
+      void this.syncFromServer(true);
+      return;
+    }
+
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+
+    if (this.wsReconnectTimer) {
+      clearTimeout(this.wsReconnectTimer);
+      this.wsReconnectTimer = null;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/sync/ws${
+      this.currentWsToken ? `?token=${encodeURIComponent(this.currentWsToken)}` : ''
+    }`;
+
+    try {
+      const socket = new WebSocket(wsUrl);
+      this.ws = socket;
+
+      socket.onopen = () => {
+        if (this.ws !== socket) return;
+        this.wsConnected = true;
+        this.stopFallbackPolling();
+        this.updateConnectionStatusLabel();
+        void this.syncFromServer(true);
+      };
+
+      socket.onmessage = (ev: MessageEvent) => {
+        try {
+          const msg = JSON.parse(String(ev.data)) as {
+            type?: string;
+            key?: string;
+            value?: unknown;
+            version?: number;
+            revision?: number;
+            sourceClientId?: string | null;
+          };
+          if (!msg || typeof msg.type !== 'string') return;
+
+          if (msg.type === 'sync:hello') {
+            if (typeof msg.revision === 'number' && msg.revision > this.serverRevision) {
+              void this.syncFromServer(true);
+            }
+            return;
+          }
+
+          if (msg.type === 'sync:update' && typeof msg.key === 'string') {
+            if (typeof msg.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, msg.revision);
+            }
+            if (msg.sourceClientId === this.clientTabId) {
+              if (typeof msg.version === 'number') {
+                this.serverVersions[msg.key] = Math.max(this.serverVersions[msg.key] ?? 0, msg.version);
+              }
+              return;
+            }
+            if (this.applyRemoteEntry(msg.key, msg.value, msg.version, true)) {
+              this.lastSyncedAt = new Date().toISOString();
+              this.emitRemoteUpdate([msg.key], 'ws');
+            }
+            return;
+          }
+
+          if (msg.type === 'sync:delete' && typeof msg.key === 'string') {
+            if (typeof msg.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, msg.revision);
+            }
+            if (msg.sourceClientId === this.clientTabId) return;
+            this.applyRemoteDelete(msg.key, 'ws');
+            return;
+          }
+
+          if (msg.type === 'sync:reset') {
+            this.serverVersions = {};
+            if (typeof msg.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, msg.revision);
+            }
+            if (msg.sourceClientId === this.clientTabId) return;
+            this.isApplyingRemote = true;
+            try {
+              if (typeof localStorage !== 'undefined') {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const k = localStorage.key(i);
+                  if (k && k.startsWith(STORAGE_PREFIX) && k !== KUNCI_SESI_AUTH) {
+                    localStorage.removeItem(k);
+                  }
+                }
+              }
+              this.notifyLocal('all');
+              Array.from(this.listeners.keys()).forEach((k) => {
+                if (k !== 'all') this.notifyLocal(k);
+              });
+            } finally {
+              this.isApplyingRemote = false;
+            }
+            this.emitRemoteUpdate(['all'], 'reset');
+            return;
+          }
+
+          if (msg.type === 'rbac:updated') {
+            this.rbacListeners.forEach((cb) => {
+              try {
+                cb();
+              } catch {
+                /* abaikan */
+              }
+            });
+          }
+        } catch {
+          /* abaikan pesan tidak dikenal */
+        }
+      };
+
+      socket.onclose = () => {
+        if (this.ws === socket) {
+          this.ws = null;
+        }
+        this.wsConnected = false;
+        this.updateConnectionStatusLabel();
+        if (this.wsShouldConnect) {
+          this.startFallbackPolling();
+          if (!this.wsReconnectTimer) {
+            this.wsReconnectTimer = setTimeout(() => {
+              this.wsReconnectTimer = null;
+              if (this.wsShouldConnect) {
+                this.connectRealtimeSync(this.currentWsToken);
+              }
+            }, 3000);
+          }
+        }
+      };
+
+      socket.onerror = () => {
+        try {
+          socket.close();
+        } catch {
+          /* abaikan */
+        }
+      };
+    } catch {
+      this.wsConnected = false;
+      this.startFallbackPolling();
+      this.updateConnectionStatusLabel();
+    }
+  }
+
+  public disconnectRealtimeSync(): void {
+    this.wsShouldConnect = false;
+    this.stopFallbackPolling();
+    if (this.wsReconnectTimer) {
+      clearTimeout(this.wsReconnectTimer);
+      this.wsReconnectTimer = null;
+    }
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        /* abaikan */
+      }
+      this.ws = null;
+    }
+    this.wsConnected = false;
+    this.updateConnectionStatusLabel();
   }
 
   /** Daftarkan satu pendengar ke beberapa koleksi sekaligus; mengembalikan fungsi pelepas tunggal. */
@@ -448,6 +920,9 @@ class AMSDatabaseManager {
       }
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
       this.notify(key);
+      if (!this.isApplyingRemote && !this.migrasiDraftAktif) {
+        this.enqueueKeySync(key, { type: 'put', value: data });
+      }
     } catch (e) {
       console.error(`Gagal menyimpan data ${key}:`, e);
     }
@@ -2394,6 +2869,7 @@ class AMSDatabaseManager {
 
   private getJson<T>(key: string): T | null {
     try {
+      if (typeof localStorage === 'undefined') return null;
       const tersimpan = localStorage.getItem(STORAGE_PREFIX + key);
       if (!tersimpan) return null;
       return JSON.parse(tersimpan) as T;
@@ -2404,10 +2880,39 @@ class AMSDatabaseManager {
 
   private setJson<T>(key: string, data: T): void {
     try {
+      if (typeof localStorage === 'undefined') {
+        this.notify(key);
+        return;
+      }
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
       this.notify(key);
+      if (!this.isApplyingRemote && !this.migrasiDraftAktif) {
+        this.enqueueKeySync(key, { type: 'put', value: data });
+      }
     } catch (e) {
       console.error(`Gagal menyimpan konfigurasi ${key}:`, e);
+    }
+  }
+
+  public getSettingJson<T>(key: string): T | null {
+    return this.getJson<T>(key);
+  }
+
+  public setSettingJson<T>(key: string, data: T): void {
+    this.setJson<T>(key, data);
+  }
+
+  public removeSettingJson(key: string): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_PREFIX + key);
+      }
+      this.notify(key);
+      if (!this.isApplyingRemote && !this.migrasiDraftAktif) {
+        this.enqueueKeySync(key, { type: 'delete' });
+      }
+    } catch (e) {
+      console.error(`Gagal menghapus konfigurasi ${key}:`, e);
     }
   }
 
@@ -2726,10 +3231,35 @@ class AMSDatabaseManager {
   }
 
   // Reset defaults for testing
-  public resetToDefaults() {
-    localStorage.clear();
+  public async resetToDefaults() {
+    const token = this.getAuthTokenFromStorage();
+    if (token && typeof fetch === 'function') {
+      try {
+        await fetch('/api/sync/reset', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ clientId: this.clientTabId })
+        });
+      } catch {
+        /* lanjutkan reset lokal */
+      }
+    }
+    this.serverVersions = {};
+    if (typeof localStorage !== 'undefined') {
+      const sesiTersimpan = localStorage.getItem(KUNCI_SESI_AUTH);
+      localStorage.clear();
+      if (sesiTersimpan) {
+        localStorage.setItem(KUNCI_SESI_AUTH, sesiTersimpan);
+      }
+    }
     this.notify('all');
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   }
 }
 

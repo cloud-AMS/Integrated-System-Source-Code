@@ -43,6 +43,7 @@ export function useIdentitasVisualAplikasi(): IdentitasVisualAplikasi {
     };
     const unsubDraft = db.subscribe('website_draft', segarkan);
     const unsubPublished = db.subscribe('website_published', segarkan);
+    const unsubMedia = db.subscribe('website_media_v1', segarkan);
     const unsubStorage = (e: StorageEvent) => {
       if (!e.key || e.key.includes('website')) segarkan();
     };
@@ -50,6 +51,7 @@ export function useIdentitasVisualAplikasi(): IdentitasVisualAplikasi {
     return () => {
       unsubDraft();
       unsubPublished();
+      unsubMedia();
       window.removeEventListener('storage', unsubStorage);
     };
   }, []);
