@@ -6,6 +6,7 @@ import 'dotenv/config';
 import { readServerConfig } from './backend/config';
 import { createDatabasePool } from './backend/database';
 import { createHealthRouter } from './backend/health';
+import { createAttendanceRouter } from './server/attendance';
 import http from 'http';
 import crypto from 'crypto';
 import express from 'express';
@@ -300,6 +301,15 @@ async function startServer() {
   });
   // Router PostgreSQL menambah /api/ready (cek koneksi DB). /api/health sudah ditangani di atas.
   app.use('/api', createHealthRouter(database));
+  app.use(
+    '/api',
+    createAttendanceRouter({
+      syncStore: dataSyncStore,
+      requireAuth,
+      broadcastSyncUpdate,
+      photoDir: path.join(DATA_DIR, 'attendance-photos')
+    })
+  );
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
   app.get('/api/auth/setup-status', (_req, res) => {
