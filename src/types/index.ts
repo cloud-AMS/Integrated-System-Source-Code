@@ -915,6 +915,18 @@ export interface LogAbsensi {
   sumber: SumberAbsensi;
   status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Mangkir';
   lokasi: string;
+  // Ekstensi mobile (geo-tagging + foto); opsional agar rekaman lama tetap kompatibel.
+  koordinat?: { lat: number; lon: number };
+  akurasiMeter?: number;
+  geofence?: { lokasiId: string; radiusMeter: number; jarakMeter: number; dalamPagar: boolean };
+  fotoMasukUrl?: string;
+  fotoMasukHash?: string;
+  fotoKeluarUrl?: string;
+  fotoKeluarHash?: string;
+  deviceId?: string;
+  waktuServer?: string;
+  flagAntiSpoof?: string;
+  idempotencyKey?: string;
 }
 
 export interface PerhitunganLembur {

@@ -2,6 +2,11 @@ if (typeof (globalThis as any).__dirname !== 'undefined') {
   delete (globalThis as any).__dirname;
 }
 
+import 'dotenv/config';
+import { readServerConfig } from './backend/config';
+import { createDatabasePool } from './backend/database';
+import { createHealthRouter } from './backend/health';
+import { createAttendanceRouter } from './server/attendance';
 import http from 'http';
 import crypto from 'crypto';
 import express from 'express';
@@ -80,10 +85,18 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
 }
 
 async function startServer() {
+  const config = readServerConfig();
+  const database = createDatabasePool(config.database);
   const app = express();
+  app.disable('x-powered-by');
   const httpServer = http.createServer(app);
-  // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
-  const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
+
+  // Semai benih dummy (bertanda provenance) + seed sistem sekali di server agar
+  // seluruh user membaca salinan data yang sama. Tidak menyemai lagi setelah go-live purge.
+  const hasilSemai = dataSyncStore.bootstrapSeed();
+  if (hasilSemai.disemai > 0) {
+    console.log(`[seed] ${hasilSemai.disemai} koleksi benih disemai ke server (dummy bertanda, siap dipurge saat go-live).`);
+  }
 
   // Bootstrap website_published ke dataSyncStore jika sudah ada snapshot di disk
   if (!dataSyncStore.hasKey('website_published')) {
@@ -270,7 +283,7 @@ async function startServer() {
     next(err);
   }) as express.ErrorRequestHandler);
 
-  // Status and regulatory compliance info
+  // Status and regulatory compliance info (RBAC + sync real-time)
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'aktif',
@@ -286,6 +299,17 @@ async function startServer() {
       waktuServer: new Date().toISOString()
     });
   });
+  // Router PostgreSQL menambah /api/ready (cek koneksi DB). /api/health sudah ditangani di atas.
+  app.use('/api', createHealthRouter(database));
+  app.use(
+    '/api',
+    createAttendanceRouter({
+      syncStore: dataSyncStore,
+      requireAuth,
+      broadcastSyncUpdate,
+      photoDir: path.join(DATA_DIR, 'attendance-photos')
+    })
+  );
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
   app.get('/api/auth/setup-status', (_req, res) => {
@@ -622,7 +646,10 @@ async function startServer() {
   });
 
   app.post('/api/sync/reset', requirePermission('rbac-admin', 'delete'), (req, res) => {
-    const revision = dataSyncStore.resetAll();
+    dataSyncStore.resetAll();
+    // Semai ulang benih demo hanya bila belum go-live (purged); setelah purge reset tetap bersih.
+    dataSyncStore.bootstrapSeed();
+    const revision = dataSyncStore.getRevision();
     const sourceClientId =
       typeof (req.body as { clientId?: string } | undefined)?.clientId === 'string'
         ? (req.body as { clientId?: string }).clientId
@@ -638,6 +665,53 @@ async function startServer() {
       detail: 'Reset seluruh state sinkronisasi server ke bawaan awal.'
     });
     res.json({ ok: true, revision });
+  });
+
+  // Go-Live: bersihkan seluruh data dummy dari server, data input user tetap utuh.
+  app.post('/api/sync/purge-dummy', requirePermission('rbac-admin', 'delete'), (req, res) => {
+    const hasil = dataSyncStore.purgeDummy();
+    const sourceClientId =
+      typeof (req.body as { clientId?: string } | undefined)?.clientId === 'string'
+        ? (req.body as { clientId?: string }).clientId
+        : typeof req.headers['x-sync-client-id'] === 'string'
+          ? req.headers['x-sync-client-id']
+          : undefined;
+    const state = dataSyncStore.getAllState();
+    for (const key of hasil.kunci) {
+      const entry = state.entries[key];
+      if (entry) broadcastSyncUpdate(key, entry, hasil.revision, sourceClientId);
+    }
+    rbacStore.recordAudit({
+      actorUsername: req.auth!.user.username,
+      actorRole: req.auth!.role.id,
+      action: 'SYNC_PURGE_DUMMY',
+      resource: 'sync',
+      status: 'ALLOWED',
+      ip: getClientIp(req),
+      detail: `Purge data dummy go-live: ${hasil.dihapus} rekaman dihapus dari ${hasil.kunci.length} koleksi; data user dipertahankan.`
+    });
+    res.json({
+      ok: true,
+      removed: hasil.dihapus,
+      keys: hasil.kunci.length,
+      revision: hasil.revision,
+      seedState: dataSyncStore.getSeedState()
+    });
+  });
+
+  // Status benih & ringkasan provenance untuk panel go-live di modul IT.
+  app.get('/api/sync/seed-status', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    const state = dataSyncStore.getAllState();
+    let dummy = 0;
+    let user = 0;
+    for (const entry of Object.values(state.entries)) {
+      if (!Array.isArray(entry.value)) continue;
+      for (const rec of entry.value) {
+        if (rec && typeof rec === 'object' && (rec as Record<string, unknown>).__sumberData === 'dummy') dummy += 1;
+        else user += 1;
+      }
+    }
+    res.json({ seedState: dataSyncStore.getSeedState(), dummy, user, revision: state.revision });
   });
 
   // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server
@@ -834,8 +908,8 @@ alkes.perusahaan-anda.co.id {
     }
   });
 
-  // Vite middleware in dev or static files in production
-  if (process.env.NODE_ENV === 'production') {
+  let vite: Awaited<ReturnType<typeof createViteServer>> | undefined;
+  if (config.nodeEnv === 'production') {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('/web', (req, res) => {
       const html = fs.readFileSync(path.resolve(__dirname, 'dist', 'index.html'), 'utf8');
@@ -845,23 +919,24 @@ alkes.perusahaan-anda.co.id {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   } else {
-    const vite = await createViteServer({
+    const devServer = await createViteServer({
       server: {
         middlewareMode: true,
         ws: { server: httpServer },
       },
       appType: 'spa',
     });
+    vite = devServer;
     app.get('/web', async (req, res, next) => {
       try {
         const mentah = fs.readFileSync(BERKAS_INDEKS, 'utf8');
-        const html = await vite.transformIndexHtml(req.originalUrl, mentah);
+        const html = await devServer.transformIndexHtml(req.originalUrl, mentah);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(suntikSeo(html, bacaSnapshot()));
       } catch (e) {
         next(e);
       }
     });
-    app.use(vite.middlewares);
+    app.use(devServer.middlewares);
   }
 
   // Isolasi WebSocket /api/sync/ws agar tidak bentrok dengan listener upgrade Vite HMR
@@ -880,9 +955,43 @@ alkes.perusahaan-anda.co.id {
     }
   });
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`AMS Integrated System Backend aktif di port ${PORT}`);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      httpServer.once('error', reject);
+      httpServer.listen(config.port, config.host, () => {
+        httpServer.off('error', reject);
+        resolve();
+      });
+    });
+  } catch (error) {
+    await vite?.close();
+    await database.end();
+    throw error;
+  }
+
+  let closing = false;
+  const shutdown = async () => {
+    if (closing) return;
+    closing = true;
+    const deadline = setTimeout(() => process.exit(1), 10_000).unref();
+    try {
+      await Promise.all([
+        new Promise<void>((resolve, reject) => {
+          httpServer.close((error) => error ? reject(error) : resolve());
+        }),
+        vite?.close()
+      ]);
+      await database.end();
+      clearTimeout(deadline);
+      console.log('Server dan koneksi PostgreSQL ditutup.');
+    } catch {
+      console.error('Gagal menutup server dengan bersih.');
+      process.exit(1);
+    }
+  };
+  process.once('SIGINT', () => void shutdown());
+  process.once('SIGTERM', () => void shutdown());
+  console.log(`AMS Integrated System aktif di http://${config.host}:${config.port}`);
 }
 
 startServer().catch((err) => {

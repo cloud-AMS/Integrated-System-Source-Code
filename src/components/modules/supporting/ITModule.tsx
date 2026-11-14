@@ -138,7 +138,34 @@ alkes.perusahaan-anda.co.id {
     ]
   });
 
+  // Go-live: isolasi & purge data dummy (server-authoritative)
+  const [statusBenih, setStatusBenih] = useState<{ seedState: string; dummy: number; user: number } | null>(null);
+  const [purgeBerjalan, setPurgeBerjalan] = useState(false);
+  const [hasilPurge, setHasilPurge] = useState<{ berhasil: boolean; pesan: string } | null>(null);
+  const bolehPurge = sesiAktif ? punyaIzin(sesiAktif, 'rbac-admin', 'delete') : true;
+
+  const muatStatusBenih = () => {
+    void db.ambilStatusBenih().then((s) => setStatusBenih(s));
+  };
+
+  const handlePurgeDummy = async () => {
+    if (!bolehPurge) return;
+    const yakin = window.confirm(
+      'GO-LIVE: Purge seluruh data dummy dari server?\n\n' +
+        'Semua rekaman demo (benih development) akan dihapus permanen dari server dan diselaraskan ke seluruh perangkat user. ' +
+        'Data yang diinput user tetap utuh. Tindakan ini tidak dapat dibatalkan.\n\nLanjutkan?'
+    );
+    if (!yakin) return;
+    setPurgeBerjalan(true);
+    setHasilPurge(null);
+    const hasil = await db.purgeDataDummy();
+    setPurgeBerjalan(false);
+    setHasilPurge({ berhasil: hasil.berhasil, pesan: hasil.pesan });
+    muatStatusBenih();
+  };
+
   useEffect(() => {
+    muatStatusBenih();
     authFetch('/api/system/deployment-guides')
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
@@ -709,7 +736,92 @@ alkes.perusahaan-anda.co.id {
       {/* Tab 3: Caddy + NSSM Deployment */}
       {activeTab === 'deployment' && (
         <div className="space-y-6">
-          
+
+          {/* Go-Live: Isolasi & Purge Data Dummy */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                <Database className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-sm text-slate-900">Go-Live: Isolasi &amp; Purge Data Dummy</h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Seluruh data dummy (benih development) ditandai provenance{' '}
+                  <code className="font-mono text-2xs bg-slate-100 px-1 rounded">__sumberData: dummy</code>{' '}
+                  dan disimpan terpisah dari data input user di server. Saat beralih ke production, purge menghapus
+                  semua rekaman dummy dari server dan menyelaraskan seluruh user ke data yang sama. Data yang diinput user tetap utuh.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
+                <span className="text-slate-500 block text-2xs">Status Benih Server:</span>
+                <span className="font-semibold text-slate-800">
+                  {statusBenih
+                    ? statusBenih.seedState === 'purged'
+                      ? 'Sudah Go-Live (purged)'
+                      : statusBenih.seedState === 'seeded'
+                        ? 'Development (seeded)'
+                        : 'Belum disemai'
+                    : 'Memuat…'}
+                </span>
+              </div>
+              <div className="bg-amber-50 rounded-xl border border-amber-200 p-3">
+                <span className="text-amber-700 block text-2xs">Rekaman Dummy:</span>
+                <span className="font-bold text-amber-900">{statusBenih ? statusBenih.dummy : '—'}</span>
+              </div>
+              <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-3">
+                <span className="text-emerald-700 block text-2xs">Rekaman User / Sistem:</span>
+                <span className="font-bold text-emerald-900">{statusBenih ? statusBenih.user : '—'}</span>
+              </div>
+            </div>
+
+            {hasilPurge && (
+              <div
+                className={`px-4 py-3 rounded-xl text-xs flex items-center gap-2 ${
+                  hasilPurge.berhasil
+                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+                    : 'bg-rose-50 border border-rose-300 text-rose-900'
+                }`}
+              >
+                {hasilPurge.berhasil ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <Info className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span className="font-medium">{hasilPurge.pesan}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => void handlePurgeDummy()}
+                disabled={purgeBerjalan || !bolehPurge || statusBenih?.seedState === 'purged'}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                title="Hapus permanen seluruh data dummy dari server (go-live). Data user tetap utuh."
+              >
+                <Database className="w-4 h-4" />
+                {purgeBerjalan
+                  ? 'Memproses purge…'
+                  : statusBenih?.seedState === 'purged'
+                    ? 'Data Dummy Sudah Dipurge'
+                    : 'Purge Data Dummy (Go-Live)'}
+              </button>
+              <button
+                onClick={muatStatusBenih}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Segarkan Status
+              </button>
+              {!bolehPurge && (
+                <span className="text-2xs text-slate-500">
+                  Hanya peran dengan izin <strong>rbac-admin: delete</strong> yang dapat mempurge.
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* Caddyfile Box */}
           <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xs space-y-3">
             <div className="flex items-center justify-between">

@@ -56,22 +56,32 @@ Aplikasi ini mencakup **13 Modul Fungsional Utama**:
 ## 🚀 Memulai (Getting Started)
 
 ### Prasyarat
-- Node.js versi 18 atau 22 (disarankan Node 22).
+- Node.js >=22; gunakan versi LTS yang masih didukung.
 - npm (Node Package Manager).
+- PostgreSQL 16 untuk setup lokal berikut.
 
 ### Instalasi & Menjalankan Development Server
 
-1. Install dependensi:
+1. Pasang dependensi dengan `npm ci`.
+2. Untuk Windows, unduh [binary PostgreSQL dari EDB](https://www.enterprisedb.com/download-postgresql-binaries), lalu ekstrak sehingga tersedia `data/postgres/pgsql/bin/initdb.exe`. Binary 16.16 dipakai untuk setup ini. Jika binary berada di lokasi lain, tetapkan environment `POSTGRES_BIN` ke direktori `bin` sebelum menjalankan perintah berikut.
+3. Inisialisasi instance lokal terisolasi:
    ```bash
-   npm install
+   npm run db:local:init
+   npm run db:check
+   npm run test:db
    ```
+   Skrip membuat cluster khusus proyek pada `127.0.0.1:5433`, database `ams_local`, schema kosong `ams`, dan akun runtime `ams_app` tanpa hak superuser/DDL. Password acak disimpan di `.env`; kredensial pemilik cluster hanya di `data/postgres/credentials.json`. Keduanya diabaikan Git: jangan unggah, kirim lewat chat, atau pakai sebagai secret frontend. Batasi akses folder pada akun lokal Anda. Tidak ada service Windows atau firewall global yang diubah.
 
-2. Jalankan server pengembangan (Development Server di port 3000):
+   Jangan menyalin `.env.example` sebelum bootstrap otomatis ini: skrip tidak menimpa `.env` existing yang berbeda. Bila sudah memakai PostgreSQL sendiri, gunakan `.env.example` sebagai referensi konfigurasi dan siapkan database/schema serta akun terbatas secara terpisah. Skrip lokal tidak menghapus atau mereset database.
+4. Jalankan aplikasi:
    ```bash
    npm run dev
    ```
+5. Buka `http://localhost:3002`. `GET /api/health` memeriksa proses Express; `GET /api/ready` memeriksa koneksi PostgreSQL sungguhan dan mengembalikan 503 ketika koneksi gagal. Keduanya tidak membuktikan kesiapan produksi.
 
-3. Buka browser dan akses: `http://localhost:3000`
+Setelah komputer di-restart, jalankan `npm run db:local:start` lalu `npm run dev`. `db:local:status` memeriksa cluster proyek, sedangkan `db:local:stop` menghentikan cluster tersebut dengan membatalkan transaksi yang belum selesai. Jangan menjalankan stop saat ada pekerjaan database yang ingin dipertahankan.
+
+**Batas implementasi:** setup ini baru fondasi koneksi Express–PostgreSQL dan hak akses database, bukan autentikasi pengguna atau migrasi ERP. Data formulir tetap localStorage; tidak ada tabel bisnis/seed yang dibuat. `docs/erd-postgresql.sql` masih blueprint dan tidak dijalankan otomatis. `npm run test:db` hanya membuat tabel uji bernama acak, memverifikasi transaksi/izin, lalu membersihkan tabel miliknya sendiri.
 
 ---
 
@@ -79,7 +89,9 @@ Aplikasi ini mencakup **13 Modul Fungsional Utama**:
 
 - `npm run dev` — Menjalankan server pengembangan (Vite + Express).
 - `npm run build` — Melakukan build produksi (frontend bundler + backend server bundle).
-- `npm run start` — Menjalankan server pada mode produksi (`node server.js`).
+- `npm run start` — Menjalankan hasil build (`node server.js`); tetapkan `NODE_ENV=production` melalui environment sebelum memulai agar Vite development tidak ikut berjalan.
+- `npm run db:check` — Memeriksa koneksi PostgreSQL, schema, dan batas hak akun runtime.
+- `npm run test:db` — Menguji CRUD/transaksi berparameter dan penolakan DDL pada cluster lokal terisolasi.
 - `npm run lint` — Memeriksa tipe TypeScript secara ketat (`tsc --noEmit`).
 
 ---
@@ -93,7 +105,7 @@ Aplikasi ini mencakup **13 Modul Fungsional Utama**:
   ```
 
 - Proxy `/api/ams-pb/*` hanya meneruskan `GET /api/health`, `GET /api/realtime` (SSE), dan `GET /api/collections/<nama>/records`. Admin UI, superuser, pengaturan, serta tulis/hapus PocketBase dijawab `403`.
-- `server.ts` **tidak membaca `.env`** — `PORT`, `NODE_ENV`, `AMS_ADMIN_TOKEN` diset lewat environment (NSSM/Caddy/PowerShell).
+- `server.ts` membaca `.env` melalui dotenv tanpa menimpa environment proses. `DATABASE_URL` wajib; `HOST` default `127.0.0.1`, `PORT` default 3000, dan `NODE_ENV` default development. Bootstrap lokal mengatur port 3002. `DATABASE_POOL_MAX` membatasi koneksi dan `DATABASE_TIMEOUT_MS` membatasi waktu koneksi/query; database remote wajib TLS terverifikasi melalui `DATABASE_SSL=verify-full`. Jangan menaruh credential atau token di variabel `VITE_*`. Untuk VPS, injeksikan secret melalui service dan tetapkan `NODE_ENV=production` secara eksplisit.
 
 ## Developer Notes
 

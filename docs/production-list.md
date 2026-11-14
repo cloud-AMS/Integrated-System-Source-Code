@@ -1,4 +1,4 @@
-> **Status dokumen (2026-11): FAKTA TERVERIFIKASI (checklist jujur)** — tetapi **Fase A belum terpenuhi**: aplikasi belum persist ke server, sehingga Fase B–K belum bisa dicentang tanpa membangun persistensi lebih dulu. Jangan centang satu pun item tanpa bukti.
+> **Status 12 November 2026: NO-GO untuk input data asli.** Snapshot GitHub `3979f45` lulus build, 198 unit test, dan typecheck lokal, tetapi autentikasi serta persistensi operasional server belum tersedia. Hasil lokal bukan verifikasi VPS dan tidak menutup Fase A–K. Lihat **Lampiran — Checklist Setup VPS dan Pembukaan Input Data Asli** untuk persiapan server, informasi yang dibutuhkan, dan gerbang peluncuran.
 
 ## Developer Notes
 
@@ -29,7 +29,7 @@ Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia n
 > Catatan kejujuran: aplikasi ini saat ini menyimpan data di `localStorage` per browser dan **tidak menulis ke PocketBase**. Checklist ini hanya bermakna bila persistensi sisi server sudah berjalan. Jika belum, seluruh fase di bawah dianggap **belum bisa dimulai**.
 
 - [ ] **A1**: Persistensi data di server terverifikasi — data yang disimpan satu pengguna terbaca oleh pengguna lain (bukan hanya `localStorage` browser). Bukti: tulis uji di satu perangkat, baca dari perangkat lain.
-- [ ] **A2**: **Data seed/demo dipurge.** Seluruh isi `src/data/initialData.ts`, `salesMarketingData.ts`, `seedKeuangan.ts`, `websiteRujukan.ts` ( ±280 KB data karangan: karyawan, jurnal, stok, suhu, dst.) diganti atau dinonaktifkan di build produksi. Bukti: pencarian string seed di bundle hasil build = 0 temuan.
+- [ ] **A2**: Bootstrap produksi dimulai tanpa data contoh operasional dan tanpa fallback ke seed saat baca/simpan gagal. Inventaris `src/data/initialData.ts`, `salesMarketingData.ts`, `seedKeuangan.ts`, dan `websiteRujukan.ts`; pisahkan referensi yang disetujui dari data karangan. Jangan menghapus data browser/server yang sudah ada sebelum backup dan klasifikasi demo versus asli. Bukti: database baru dan browser baru tidak memunculkan karyawan, saldo, atau stok contoh; kesalahan server terlihat sebagai kegagalan, bukan sukses lokal.
 - [ ] **A3**: Lingkungan **staging** tersedia dengan struktur yang sama dengan produksi (boleh data kecil, wajib skema sama).
 - [ ] **A4**: Backup data yang sudah ada (bila ada) diambil **sebelum** migrasi apa pun.
 
@@ -71,7 +71,7 @@ Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia n
 
 - [ ] **F1**: Basis data produksi diprovisi (Managed PocketBase / PostgreSQL), kapasitas dan kredensial terpisah dari staging.
 - [ ] **F2**: Migrasi skema dijalankan; skema tervalidasi terhadap aplikasi.
-- [ ] **F3**: Backup otomatis harian + *point-in-time recovery* dikonfigurasi.
+- [ ] **F3**: Backup konsisten database + lampiran dijadwalkan sesuai RPO yang disetujui, terenkripsi, dan disalin offsite. Bila memakai PostgreSQL dan memerlukan *point-in-time recovery*, konfigurasikan base backup + arsip WAL dan uji pemulihan ke waktu tertentu; backup harian saja bukan PITR. Untuk PocketBase, gunakan prosedur backup konsisten yang didukung versi terpilih, bukan menyalin database aktif secara sembarang.
 - [ ] **F4**: **Restore diuji di staging** dari backup produksi — aplikasi hidup kembali dari snapshot. (Bukan sekadar "backup berhasil dijadwalkan".)
 - [ ] **F5**: Jadwal drill pemulihan bencana masuk kalender (6 bulan sekali, dimulai setelah 2 minggu pasca go-live).
 
@@ -101,7 +101,7 @@ Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia n
 - [ ] **H10 (SRV)**: Unit terpasang di fasyankes + masa garansi + jadwal kalibrasi.
 - [ ] **H11 (PMS)**: Eskalasi KTD, SOP recall.
 - [ ] **H12 (FIN-2/3)**: Saldo awal buku besar, AR/AP — **saat cut-off**, setelah transaksi di sistem lama dibekukan.
-- [ ] **H13 (FIN-4)**: Tarif PPN 11% & PPh potong-pungut dikonfigurasi.
+- [ ] **H13 (FIN-4)**: Tarif, dasar pengenaan, pengecualian, pembulatan, dan tanggal efektif PPN/PPh dikonfigurasi sesuai transaksi serta ketentuan yang berlaku, lalu diverifikasi Finance; jangan langsung memakai angka pada seed.
 - [ ] **H-RECON (wajib)**: **Rekonsiliasi pasca-migrasi** — jumlah record, total saldo CoA, total nilai persediaan, jumlah karyawan, jumlah NIE: semuanya **sama persis dengan sumber**. Selisih dilaporkan dan ditandatangani PJT + Finance. Toleransi selisih: nol untuk saldo, ≤ 0,01% untuk jumlah record (dengan penjelasan tertulis).
 - [ ] **H-IT2**: Uji endpoint API Gateway + SatuSehat + LKPP dari lingkungan **staging**, bukan produksi.
 
@@ -169,3 +169,114 @@ Aturan keras:
 3. **Dokumentasikan perubahan**: setiap penyesuaian konfigurasi produksi dicatat dalam log pembaharuan sistem.
 4. **Developer Notes — label**: status apa pun yang belum terukur tidak boleh ditulis sebagai "aktif/terhubung" di UI atau dokumen; tulis "belum dikonfigurasi".
 5. Berkas ini ditulis ulang pada 2026-11. Perubahan berikutnya wajib melalui review PJT + QA.
+
+---
+
+## Lampiran — Checklist Setup VPS dan Pembukaan Input Data Asli
+
+Disiapkan 12 November 2026. Ini runbook persiapan, **bukan catatan bahwa VPS telah dikonfigurasi**. Belum ada IP, OS, domain, ataupun akses SSH target. Checklist infrastruktur dapat disiapkan paralel dengan pengembangan fondasi; input data asli tetap menunggu gerbang aplikasi dan operasional lulus. Kolom bukti, penanggung jawab, dan tanggal wajib dicatat untuk setiap item yang ditutup.
+
+### V0 — Baseline dan keputusan target
+
+| Pemeriksaan | Status yang terbukti |
+|---|---|
+| Sumber yang diuji | GitHub `cloud-AMS/Integrated-System-Source-Code`, `main`, commit `3979f45` |
+| Lingkungan pengujian | Salinan sementara lokal; Node `26.13.1`, npm `11.20.0` |
+| `npm ci` | Berhasil; ada peringatan dependensi deprecated dan lifecycle script |
+| `npm run build` | Frontend dan server berhasil; peringatan bundle JS sekitar 1,8 MB |
+| `npm test` | 198/198 test lulus dalam 12 file |
+| `npm run lint` | Typecheck berhasil |
+| `npm run cek:semua` / `npm run verifikasi` | Belum dijalankan sebagai rangkaian lengkap |
+| Browser | Beranda lokal berhasil dimuat; belum uji transaksi multiuser atau produksi |
+| VPS, TLS, database produksi, backup | Belum diprovisi atau diverifikasi |
+
+- [ ] **V0.1**: Konfirmasi commit kandidat rilis dan lokasi sumber permanen. Jangan deploy direktori sementara atau menganggap folder kerja lokal identik dengan snapshot yang diuji.
+- [ ] **V0.2**: Tentukan modul yang akan dibuka pertama, jumlah pengguna serentak, perkiraan lampiran, dan jam operasional. Modul di luar cakupan tidak boleh menerima input; pembatasannya ditegakkan server.
+- [x] **V0.3 — Keputusan backend**: PostgreSQL + API Express disetujui pengguna pada 12 November 2026 untuk persistensi operasional dan transaksi database. Bukti: persetujuan eksplisit dalam percakapan. Persetujuan ini bukan sign-off produksi; fondasi koneksi Express–PostgreSQL lokal telah ditambahkan, tetapi CRUD ERP, autentikasi server, dan provisioning VPS belum selesai. `docs/erd-postgresql.sql` masih blueprint, bukan migrasi siap produksi. Koneksi PocketBase yang ada tidak menjadi backend operasional target; transisinya harus diuji tanpa menghapus data yang sudah ada.
+- [ ] **V0.4**: Usulan awal bila VPS belum dipilih: Ubuntu Server 24.04 LTS, 2 vCPU, RAM 4 GB, SSD 60 GB untuk pilot kecil. Ukuran final bergantung uji beban, kebutuhan database/media, dan retensi; bukan jaminan kapasitas.
+- [ ] **V0.5**: Pilih Node LTS yang masih didukung dan memenuhi `engines` (`>=22`), pin versi runtime/package manager, lalu ulangi verifikasi pada versi tersebut di Linux target.
+
+### V1 — Informasi dan akses yang diperlukan
+
+Isi bersama administrator sebelum menjalankan perubahan remote:
+
+| Informasi | Nilai |
+|---|---|
+| Provider, IP/hostname VPS, OS dan versi | Belum diberikan |
+| CPU/RAM/disk serta layanan yang sudah berjalan | Belum diberikan |
+| Domain aplikasi dan domain staging | Belum diberikan |
+| Pengelola DNS dan penggunaan proxy CDN | Belum diberikan |
+| Alias SSH atau user + host + port; akses sudo | Belum diberikan |
+| Akses console/recovery dari provider | Belum dikonfirmasi |
+| Backend | PostgreSQL + Express; fondasi koneksi, konfigurasi, dan health/readiness lokal tersedia; CRUD ERP dan autentikasi server belum diimplementasikan |
+| Lokasi backup offsite dan penanggung jawab | Belum diputuskan |
+| Modul pilot, pengguna/peran, cut-off, RPO/RTO | Belum disetujui |
+
+- [ ] **V1.1**: Akses melalui SSH key/agent yang sudah tersedia secara lokal; jangan menaruh password, private key, recovery code, atau token di chat/repo.
+- [ ] **V1.2**: Verifikasi fingerprint host melalui sumber tepercaya; jangan menonaktifkan pemeriksaan host key.
+- [ ] **V1.3**: Inventaris layanan, port, firewall, disk, dan konfigurasi existing dengan pemeriksaan read-only. Backup konfigurasi sebelum perubahan; jangan menghentikan aplikasi lain atau mengganti reverse proxy tanpa persetujuan.
+- [ ] **V1.4**: Konfirmasi lingkup perubahan: instalasi paket, service, firewall, DNS, database, backup, dan waktu maintenance. Jangan menimpa konfigurasi existing secara menyeluruh.
+
+### V2 — Fondasi aplikasi sebelum data asli (penghambat utama)
+
+- [ ] **V2.1**: Ganti login klien dengan akun individual dan autentikasi server; hash password yang sesuai, pembatasan percobaan login, logout/revokasi sesi, serta cookie aman dan perlindungan CSRF bila menggunakan sesi cookie.
+- [ ] **V2.2**: RBAC server melindungi baca maupun tulis per modul/record, terutama HR/payroll, finance, dan dokumen legal. Pengguna tidak bisa menaikkan peran lewat UI/localStorage.
+- [ ] **V2.3**: Implementasikan CRUD bersama di database, validasi server, constraint, kontrol perubahan bersamaan, dan transaksi atomik untuk stok/jurnal. Tampilkan berhasil hanya setelah server mengonfirmasi commit.
+- [ ] **V2.4**: Uji dua akun di browser/perangkat berbeda: tulis, baca, edit, konflik edit, serta hak akses ditolak. Data tetap ada setelah aplikasi/server restart dan cache browser dikosongkan.
+- [ ] **V2.5**: Hentikan seed otomatis/fallback data contoh di produksi; bedakan database kosong dari database gagal diakses. Uji formulir dan dashboard dengan koleksi kosong.
+- [ ] **V2.6**: Buat migrasi skema versioned dan bootstrap administrator pertama yang aman; jangan menjalankan DDL blueprint langsung terhadap database berisi data.
+- [ ] **V2.7**: Simpan lampiran di volume/object storage persisten dengan pembatasan akses, ukuran/jenis berkas, dan validasi upload. Jangan mengandalkan URL `media:` atau data browser sebagai satu-satunya salinan.
+- [ ] **V2.8**: Audit server mencatat aktor terautentikasi, waktu, objek, dan perubahan; pengguna biasa tidak dapat mengubahnya. Audit browser yang dipangkas menjadi 100 entri bukan arsip operasional.
+- [ ] **V2.9**: Jika PocketBase dipakai, periksa aturan akses koleksi di server aktual. Dokumentasi saat ini menyebut baca publik/tulis superuser; jangan masukkan HR, finance, atau data pribadi ke koleksi publik. Jangan membuka seluruh proxy untuk membuat CRUD/realtime terlihat bekerja.
+- [ ] **V2.10**: Pisahkan konten website publik dari data ERP internal. Review field yang diterbitkan, gambar, izin publikasi, serta proses menahan situs; UI CMS saat ini belum mengirim otorisasi yang diminta endpoint server.
+- [ ] **V2.11**: Integrasikan izin publikasi dengan autentikasi/RBAC server; jangan memasukkan `AMS_ADMIN_TOKEN` ke frontend. Menetapkan token runtime saja belum menyelesaikan alur tombol CMS.
+- [ ] **V2.12**: Uji update PWA, logout, offline, dan pergantian akun: respons privat/secret tidak tertinggal di cache; kegagalan jaringan tidak berubah menjadi transaksi lokal yang dianggap tersimpan server.
+
+### V3 — Setup OS, jaringan, dan runtime
+
+Target Linux berikut adalah usulan sampai OS dikonfirmasi; bila VPS Windows, siapkan padanan service dan hardening yang sesuai, bukan menjalankan perintah Linux.
+
+- [ ] **V3.1**: Pasang pembaruan OS, sinkronisasi waktu, dan akun deploy/service non-root dengan izin minimum. Tetapkan UTC untuk waktu server/database dan konversi zona waktu di aplikasi.
+- [ ] **V3.2**: Pastikan akses SSH baru dan console recovery berfungsi sebelum membatasi login/password. Firewall mengizinkan SSH dari sumber yang disetujui dan HTTP/HTTPS publik, bukan menutup akses administrator tanpa uji.
+- [ ] **V3.3**: Sediakan reverse proxy HTTPS (usulan Caddy) di depan Node. Port aplikasi, database, PocketBase, dan panel admin tidak boleh terbuka ke internet; verifikasi dari luar VPS, termasuk IPv6 dan aturan jaringan container bila digunakan.
+- [ ] **V3.4**: Buat service systemd dengan working directory yang jelas, `NODE_ENV=production`, port internal yang tidak bentrok, restart-on-failure, start-on-boot, dan log terpantau. Jangan memakai `npm run dev`, terminal SSH, atau Quick Tunnel sebagai runtime produksi.
+- [ ] **V3.5**: Simpan environment/secret di luar repo dengan permission minimum dan injeksikan lewat service. Server kini memuat `.env` tanpa menimpa environment proses; untuk VPS tetap injeksikan `NODE_ENV=production`, `HOST`, `PORT`, `APP_URL`, `DATABASE_URL`, serta secret yang benar-benar dipakai melalui service saat runtime, bukan hanya build.
+- [ ] **V3.6**: Bind Node default `127.0.0.1`; `HOST`/`PORT` kini tervalidasi dan `PORT=8080` dihormati. Bootstrap lokal memakai port 3002; tentukan port VPS sesuai layanan existing. Proxy PocketBase lama masih dipatok ke `127.0.0.1:8091` dan belum dihapus saat fondasi PostgreSQL ditambahkan. Tutup akses langsung memakai firewall dan sesuaikan topologi sebelum rilis; jangan mengikuti contoh lama PB8090 tanpa peninjauan.
+- [ ] **V3.7**: Buat database/staging dengan akun dan storage terpisah. Aplikasi memakai akun DB terbatas; akun migrasi/administrasi tidak disebarkan ke frontend.
+- [ ] **V3.8**: Tempatkan database, lampiran, dan snapshot CMS di penyimpanan persisten di luar direktori rilis. Kode sekarang menulis snapshot relatif terhadap server ke `data/website-published.json` dan `public/website-published.json`; siapkan path/volume yang teruji dan jangan kehilangan isinya saat pergantian rilis.
+- [ ] **V3.9**: Arahkan DNS ke target yang disepakati, periksa A/AAAA, terbitkan TLS otomatis, redirect HTTP, dan uji pembaruan sertifikat. Aktifkan HSTS setelah HTTPS stabil; jangan langsung preload/includeSubDomains tanpa meninjau subdomain lain.
+- [ ] **V3.10**: Konfigurasikan security headers, batas body/upload, timeout, serta rate limit sesuai alur aplikasi. Jika di belakang proxy, batasi trust proxy ke topologi aktual agar IP, HTTPS, cookie, dan rate limit tidak salah.
+- [ ] **V3.11**: Jika realtime dipakai, uji koneksi dan perubahan lintas perangkat sungguhan melalui proxy. Respons health 200 atau teks "terhubung" bukan bukti database maupun realtime bekerja.
+
+### V4 — Rilis staging, backup, dan pemulihan
+
+Urutan verifikasi paket pada kandidat rilis yang dipin:
+
+```bash
+npm ci
+npm run verifikasi
+```
+
+`verifikasi` menjalankan typecheck, unit test, pemeriksaan gudang/FEFO, dan build. Jalankan di build/staging dengan devDependencies tersedia, bukan menginstal ulang langsung pada rilis live yang sedang dipakai. Runtime memerlukan `dist/`, `server.js`, dependencies eksternal, dan file runtime terkait; menyalin `dist/` saja menghilangkan backend. Jalankan hasil build melalui service dengan `NODE_ENV=production`.
+
+- [ ] **V4.1**: Seluruh verifikasi lulus pada OS/Node target; tinjau kerentanan dependensi dan bundle besar. Jangan menjalankan pembaruan paksa dependency tanpa uji regresi.
+- [ ] **V4.2**: Terapkan rilis pada staging terisolasi yang hanya memakai data sintetis sampai perlindungan data dan akses lulus; jangan mengunggah dump data asli untuk sekadar menguji deployment.
+- [ ] **V4.3**: Uji login salah/benar/logout, akses tanpa login, peran salah, restart service/VPS, persistensi multiuser, upload, input kosong/tidak valid, transaksi bersamaan, dan alur modul pilot. Database tidak tersedia harus menghasilkan kegagalan yang jelas.
+- [ ] **V4.4**: Catat RPO (kehilangan data maksimum) dan RTO (waktu pemulihan maksimum) yang disetujui. Usulan awal untuk dibahas: RPO 1 jam, RTO 4 jam; jadwal dan mekanisme backup harus benar-benar mampu memenuhinya.
+- [ ] **V4.5**: Backup konsisten mencakup database, lampiran, snapshot CMS, dan konfigurasi pemulihan; terenkripsi, kredensial terpisah, offsite, dengan retensi harian/mingguan/bulanan sesuai kebijakan. Snapshot VPS saja bukan satu-satunya backup.
+- [ ] **V4.6**: Restore ke instance terpisah, buka aplikasi, baca record dan lampiran, periksa saldo/stok/audit, lalu ukur waktu pemulihan. Verifikasi kunci dekripsi tersedia bagi petugas yang berwenang dan alert backup gagal benar-benar terkirim.
+- [ ] **V4.7**: Pantau uptime, readiness koneksi database/storage yang nyata, 5xx, restart berulang, CPU/RAM/disk, usia backup, dan masa berlaku TLS; log tidak memuat password/token atau payload pribadi lengkap. Endpoint health yang ada belum memeriksa database.
+- [ ] **V4.8**: Simpan rilis sebelumnya dan latih rollback aplikasi beserta kompatibilitas migrasi. Bila database harus dipulihkan, hentikan penulisan sesuai persetujuan, backup keadaan terbaru, dan rekonsiliasi transaksi setelah backup; jangan menimpa transaksi baru secara diam-diam.
+
+### V5 — Pembukaan input data asli
+
+- [ ] **V5.1**: PJT/QA, penanggung jawab modul, dan administrator menandatangani bahwa V2–V4 serta fase A–K yang relevan untuk cakupan pilot telah lulus. Pengecualian cakupan harus tertulis; kontrol keamanan, persistensi, dan restore tidak boleh dikecualikan.
+- [ ] **V5.2**: Buat akun staf individual dan matriks peran; verifikasi daftar pengguna, dasar pemrosesan data pribadi, retensi, serta prosedur penonaktifan akun.
+- [ ] **V5.3**: Inventaris data yang pernah diinput di setiap browser/origin, termasuk localhost. Domain baru tidak membawa localStorage lama; ekspor browser yang tersedia belum mencakup semua koleksi/lampiran dan bukan backup penuh. Jangan membersihkan browser lama sebelum migrasi direkonsiliasi.
+- [ ] **V5.4**: Sediakan impor tervalidasi dengan ID stabil, pencegahan duplikasi, laporan error, dan dry-run. Data demo dipisahkan dari data asli tanpa menghapus sumber sebelum backup.
+- [ ] **V5.5**: Input bertahap: organisasi/peran → referensi CoA/pajak/satuan/gudang → produk/NIE/pemasok/pelanggan → karyawan sesuai izin → stok batch dan saldo awal pada cut-off → transaksi harian. Sesuaikan cakupan dan dependensi dengan Fase H.
+- [ ] **V5.6**: Rekonsiliasi jumlah record, batch/expiry/kuantitas, nilai stok, saldo awal, AR/AP, dan lampiran terhadap sumber. Untuk batch migrasi, tidak boleh ada record hilang atau duplikat yang tidak dijelaskan; saldo harus tepat.
+- [ ] **V5.7**: Mulai pilot dengan kelompok kecil, pantau hasil setiap hari, dan tetapkan kontak eskalasi serta mekanisme kembali ke prosedur lama tanpa membuat dua sumber transaksi yang saling bertentangan.
+- [ ] **V5.8**: Buka pengguna/modul berikutnya hanya setelah pilot disetujui dan bukti tersimpan. Integrasi pemerintah yang belum benar-benar terhubung tidak boleh ditampilkan sebagai pengiriman sukses.
+
+**Keputusan saat checklist ini disiapkan:** lanjut persiapan infrastruktur dan fondasi aplikasi; **jangan mulai input data asli atau membuka dashboard tanpa kontrol akses di internet**. Backend PostgreSQL + Express telah disetujui; eksekusi VPS masih menunggu detail target, akses aman, serta cakupan pilot dari pemilik sistem.
