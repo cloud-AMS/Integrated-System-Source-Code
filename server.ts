@@ -31,11 +31,12 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BERKAS_SNAPSHOT = path.resolve(__dirname, 'data', 'website-published.json');
+const DATA_DIR = path.resolve(process.env.AMS_DATA_DIR?.trim() || path.resolve(__dirname, 'data'));
+const BERKAS_SNAPSHOT = path.join(DATA_DIR, 'website-published.json');
 const BERKAS_SNAPSHOT_STATIS = path.resolve(__dirname, 'public', 'website-published.json');
 const BERKAS_INDEKS = path.resolve(__dirname, 'index.html');
-const rbacStore = new ServerRbacStore(path.resolve(__dirname, 'data'));
-const dataSyncStore = new ServerDataSyncStore(path.resolve(__dirname, 'data'));
+const rbacStore = new ServerRbacStore(DATA_DIR);
+const dataSyncStore = new ServerDataSyncStore(DATA_DIR);
 const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
 
 /** Snapshot harus berbentuk KonfigurasiSitus; penolakan melindungi berkas data dari muatan sembarangan. */
@@ -279,6 +280,7 @@ async function startServer() {
       basisData: 'Server Persistent Sync (app-state.json + WebSocket) + RBAC Server',
       rbacAktif: true,
       realtimeSyncAktif: true,
+      needsInitialSetup: rbacStore.needsInitialSetup(),
       syncRevision: dataSyncStore.getRevision(),
       klienTerhubung: syncClients.size,
       waktuServer: new Date().toISOString()
@@ -286,6 +288,40 @@ async function startServer() {
   });
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
+  app.get('/api/auth/setup-status', (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({
+      needsSetup: rbacStore.needsInitialSetup(),
+      requiresSetupToken: Boolean((process.env.INITIAL_SETUP_TOKEN || '').trim())
+    });
+  });
+
+  app.post('/api/auth/setup', (req, res) => {
+    const { username, password, fullName, email, setupToken } = (req.body || {}) as Record<string, string | undefined>;
+    const result = rbacStore.bootstrapFirstDeveloper(
+      {
+        username: String(username || ''),
+        password: String(password || ''),
+        fullName: String(fullName || ''),
+        email,
+        setupToken
+      },
+      getClientIp(req),
+      String(req.headers['user-agent'] || '')
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'SETUP_FAILED', pesan: result.message });
+    }
+    setSessionCookie(req, res, result.token);
+    broadcastRbacUpdated();
+    res.status(201).json({
+      user: result.user,
+      role: result.role,
+      permissions: result.role.permissions,
+      token: result.token,
+      expiresAt: result.session.expiresAt
+    });
+  });
+
   app.post('/api/auth/login', (req, res) => {
     const { username, password } = (req.body || {}) as { username?: string; password?: string };
     if (!username || !password) {

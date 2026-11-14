@@ -203,7 +203,7 @@ export default function UserAccountRolesModule({
       namaLengkap: akun.namaLengkap,
       username: akun.username,
       email: akun.email,
-      kataSandi: akun.kataSandi,
+      kataSandi: '',
       roleId: akun.roleId,
       status: akun.status,
       aksesKustom: fokusKustom ? true : akun.aksesKustom,
@@ -232,8 +232,12 @@ export default function UserAccountRolesModule({
     if (!punyaAksesPenuh) return;
 
     const usernameBersih = formAkun.username.trim().toLowerCase();
-    if (!formAkun.namaLengkap.trim() || !usernameBersih || !formAkun.kataSandi.trim()) {
-      tampilNotifGalat('Nama lengkap, username, dan kata sandi wajib diisi.');
+    if (!formAkun.namaLengkap.trim() || !usernameBersih || (!modeEditAkun && !formAkun.kataSandi.trim())) {
+      tampilNotifGalat(
+        modeEditAkun
+          ? 'Nama lengkap dan username wajib diisi.'
+          : 'Nama lengkap, username, dan kata sandi wajib diisi.'
+      );
       return;
     }
 
@@ -255,7 +259,11 @@ export default function UserAccountRolesModule({
       namaLengkap: formAkun.namaLengkap.trim(),
       username: usernameBersih,
       email: formAkun.email.trim() || `${usernameBersih}@anugrahmitraselaras.co.id`,
-      kataSandi: formAkun.kataSandi,
+      ...(formAkun.kataSandi.trim()
+        ? { kataSandi: formAkun.kataSandi }
+        : modeEditAkun?.kataSandi
+          ? { kataSandi: modeEditAkun.kataSandi }
+          : {}),
       roleId: formAkun.roleId,
       status: formAkun.status,
       aksesKustom: formAkun.aksesKustom,
@@ -1002,10 +1010,10 @@ export default function UserAccountRolesModule({
                 <div className="relative">
                   <input
                     type={tampilSandi ? 'text' : 'password'}
-                    required
+                    required={!modeEditAkun}
                     value={formAkun.kataSandi}
                     onChange={(e) => setFormAkun({ ...formAkun, kataSandi: e.target.value })}
-                    placeholder="Minimal 6 karakter"
+                    placeholder={modeEditAkun ? 'Kosongkan jika tidak mengubah sandi' : 'Minimal 8 karakter'}
                     className={`${inputClass} pr-9`}
                   />
                   <button

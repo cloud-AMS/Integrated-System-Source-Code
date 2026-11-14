@@ -1807,7 +1807,7 @@ export interface AkunPengguna {
   namaLengkap: string;
   username: string;
   email: string;
-  kataSandi: string;
+  kataSandi?: string;
   roleId: string;
   status: 'Aktif' | 'Nonaktif';
   aksesKustom: boolean;
@@ -1862,6 +1862,7 @@ export interface ServerUserPublic {
   roleName: string;
   department: string;
   isActive: boolean;
+  isHiddenDeveloper?: boolean;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;

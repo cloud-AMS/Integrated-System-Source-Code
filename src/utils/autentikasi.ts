@@ -21,6 +21,7 @@ export interface SesiLogin {
   peran: UserRole;
   namaPeran: string;
   permissions: RolePermissionMatrix;
+  isHiddenDeveloper?: boolean;
   masukPada: string;
   expiresAt: string;
   token?: string;
@@ -45,6 +46,7 @@ function petakanPayloadKeSesi(payload: AuthResponsePayload, tokenSebelumnya?: st
     peran: payload.user.roleId as UserRole,
     namaPeran: payload.role?.name || payload.user.roleName || payload.user.roleId,
     permissions: payload.permissions || payload.role?.permissions || {},
+    isHiddenDeveloper: Boolean(payload.user.isHiddenDeveloper),
     masukPada: new Date().toISOString(),
     expiresAt: payload.expiresAt,
     token: payload.token || tokenSebelumnya
@@ -101,6 +103,69 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
     window.dispatchEvent(new CustomEvent(EVENT_SESI_BERAKHIR));
   }
   return response;
+}
+
+export interface StatusSetupServer {
+  needsSetup: boolean;
+  requiresSetupToken: boolean;
+}
+
+export async function ambilStatusSetupServer(): Promise<StatusSetupServer> {
+  try {
+    const res = await fetch('/api/auth/setup-status', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store'
+    });
+    if (!res.ok) {
+      return { needsSetup: false, requiresSetupToken: false };
+    }
+    const data = (await res.json()) as Partial<StatusSetupServer>;
+    return {
+      needsSetup: Boolean(data.needsSetup),
+      requiresSetupToken: Boolean(data.requiresSetupToken)
+    };
+  } catch {
+    return { needsSetup: false, requiresSetupToken: false };
+  }
+}
+
+export async function buatAkunDeveloperAwalServer(payload: {
+  username: string;
+  password: string;
+  fullName: string;
+  email?: string;
+  setupToken?: string;
+}): Promise<{ ok: true; sesi: SesiLogin } | { ok: false; pesan: string }> {
+  try {
+    const res = await fetch('/api/auth/setup', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: payload.username.trim(),
+        password: payload.password,
+        fullName: payload.fullName.trim(),
+        email: payload.email?.trim() || undefined,
+        setupToken: payload.setupToken?.trim() || undefined
+      })
+    });
+    const data = (await res.json().catch(() => ({}))) as Partial<AuthResponsePayload> & { pesan?: string };
+    if (!res.ok || !data.user || !data.role) {
+      return {
+        ok: false,
+        pesan: data.pesan || 'Gagal membuat akun developer awal.'
+      };
+    }
+    const sesi = petakanPayloadKeSesi(data as AuthResponsePayload);
+    simpanSesi(sesi);
+    return { ok: true, sesi };
+  } catch {
+    return {
+      ok: false,
+      pesan: 'Tidak dapat terhubung ke server untuk Setup Wizard awal.'
+    };
+  }
 }
 
 export async function masukDenganServer(

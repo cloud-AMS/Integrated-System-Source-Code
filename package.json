@@ -19,6 +19,8 @@
     "cek:fefo": "tsx scripts/cek-jalur-fefo.ts",
     "cek:gudang": "tsx scripts/cek-m6-gudang.ts",
     "cek:semua": "npm run cek:benih && npm run cek:fefo && npm run cek:gudang",
+    "auth:bootstrap": "tsx scripts/bootstrap-dev.ts",
+    "auth:hash": "tsx scripts/bootstrap-dev.ts --hash-only",
     "verifikasi": "npm run lint && npm run test && npm run cek:semua && npm run build"
   },
   "dependencies": {

