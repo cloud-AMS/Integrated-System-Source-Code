@@ -204,6 +204,26 @@ export const ROLE_BAWAAN_SISTEM: RoleSistem[] = [
     modulDiizinkan: ['overview', 'ra-pjt', 'qa-mutu', 'qc-inspeksi', 'pms-vigilance', 'gudang-logistik', 'produksi-cpakb', 'hrd-pelatihan', 'it-traceability'],
     bawaanSistem: true,
     diperbaruiPada: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'sales_medrep',
+    nama: 'Sales & MedRep (Lapangan)',
+    deskripsi: 'Akses mobile CRM & Sales: prospek, pelanggan, kunjungan GPS, pre-order, tender e-Katalog LKPP, katalog produk, dan HRIS pribadi.',
+    basisPeran: 'sales_medrep',
+    aksesPenuh: false,
+    modulDiizinkan: ['overview', 'sales-marketing', 'gudang-logistik', 'ra-pjt', 'hrd-pelatihan'],
+    bawaanSistem: true,
+    diperbaruiPada: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'karyawan',
+    nama: 'Karyawan (HRIS Mobile)',
+    deskripsi: 'Akses layanan mandiri HRIS Mobile: absensi GPS, jadwal shift, pengajuan cuti, slip gaji, dan profil karyawan.',
+    basisPeran: 'karyawan',
+    aksesPenuh: false,
+    modulDiizinkan: ['hrd-pelatihan'],
+    bawaanSistem: true,
+    diperbaruiPada: '2026-01-01T00:00:00.000Z'
   }
 ];
 

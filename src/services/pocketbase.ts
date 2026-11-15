@@ -32,6 +32,7 @@ import {
   RiwayatMutasi,
   JadwalShift,
   LogAbsensi,
+  PengajuanCuti,
   PerhitunganLembur,
   SlipGaji,
   KandidatATS,
@@ -164,6 +165,7 @@ import {
   INITIAL_RIWAYAT_MUTASI,
   INITIAL_JADWAL_SHIFT,
   INITIAL_ABSENSI,
+  INITIAL_CUTI,
   INITIAL_LEMBUR,
   INITIAL_SLIP_GAJI,
   INITIAL_KANDIDAT_ATS,
@@ -533,6 +535,7 @@ class AMSDatabaseManager {
       typeof window !== 'undefined' ? `${window.location.origin}/api/sync/ws` : PB_URL;
     return {
       isPocketBaseConnected: this.wsConnected || this.isOnlinePocketBase,
+      isPocketBaseServerReachable: this.isOnlinePocketBase,
       isRealtimeSyncConnected: this.wsConnected,
       isServerSyncActive: Boolean(this.getAuthTokenFromStorage()) && this.isOnlineBrowser,
       revision: this.serverRevision,
@@ -543,8 +546,71 @@ class AMSDatabaseManager {
       pendingCount: this.pendingSyncKeys.size,
       pendingKeys: Array.from(this.pendingSyncKeys),
       syncState: this.syncStateStatus,
-      lastSyncError: this.lastSyncError
+      lastSyncError: this.lastSyncError,
+      pocketbaseUrl: PB_URL
     };
+  }
+
+  /**
+   * Tarik koleksi HRIS & CRM langsung dari Server PocketBase AMS (/api/ams-pb -> port 8091).
+   * Bila instance PocketBase lokal belum dijalankan, aplikasi tetap aman memakai Server Real-Time Sync + Cache Offline.
+   */
+  public async syncFromPocketBaseAMS(): Promise<{
+    pocketbaseOnline: boolean;
+    updatedCollections: string[];
+    syncedAt: string;
+  }> {
+    const KOLEKSI_MOBILE_PB = [
+      'hris_karyawan',
+      'hris_shift',
+      'hris_absensi',
+      'hris_cuti',
+      'hris_slip_gaji',
+      'sales_pelanggan',
+      'sales_prospek',
+      'sales_kunjungan',
+      'sales_pra_order',
+      'penjualan',
+      'sales_tender',
+      'sales_pengetahuan_produk'
+    ] as const;
+
+    const syncedAt = new Date().toISOString();
+    try {
+      const health = await pb.health.check();
+      const online = Boolean(health && health.code === 200);
+      this.isOnlinePocketBase = online;
+      if (!online) {
+        this.updateConnectionStatusLabel();
+        return { pocketbaseOnline: false, updatedCollections: [], syncedAt };
+      }
+      this.pasangRealtimePocketBase();
+      const updatedCollections: string[] = [];
+      await Promise.all(
+        KOLEKSI_MOBILE_PB.map(async (coll) => {
+          try {
+            const records = await pb.collection(coll).getFullList({ requestKey: null });
+            if (Array.isArray(records) && records.length > 0) {
+              if (this.applyRemoteEntry(coll, records, undefined, true)) {
+                updatedCollections.push(coll);
+              }
+            }
+          } catch {
+            /* koleksi belum tersedia atau akses koleksi terkunci di PocketBase */
+          }
+        })
+      );
+      if (updatedCollections.length > 0) {
+        this.lastSyncedAt = syncedAt;
+        this.emitRemoteUpdate(updatedCollections, 'pocketbase-ams');
+      }
+      this.updateConnectionStatusLabel();
+      return { pocketbaseOnline: true, updatedCollections, syncedAt };
+    } catch {
+      this.isOnlinePocketBase = false;
+      this.updateConnectionStatusLabel();
+      return { pocketbaseOnline: false, updatedCollections: [], syncedAt };
+    }
   }
 
   public subscribe(collectionKey: string, callback: () => void): () => void {
@@ -1686,6 +1752,50 @@ class AMSDatabaseManager {
   public addAbsensi(item: LogAbsensi) {
     const current = this.getAbsensi();
     this.saveAbsensi([item, ...current]);
+  }
+  public checkOutAbsensi(id: string, jamKeluar: string, lokasiKeluar?: string) {
+    const current = this.getAbsensi();
+    const updated = current.map((a) =>
+      a.id === id
+        ? {
+            ...a,
+            jamKeluar,
+            lokasi: lokasiKeluar ? `${a.lokasi} | Out: ${lokasiKeluar}` : a.lokasi
+          }
+        : a
+    );
+    this.saveAbsensi(updated);
+  }
+
+  public getCuti(): PengajuanCuti[] {
+    return this.getCollection<PengajuanCuti>('hris_cuti', INITIAL_CUTI);
+  }
+  public saveCuti(items: PengajuanCuti[]) {
+    this.setCollection('hris_cuti', items);
+  }
+  public addCuti(item: PengajuanCuti) {
+    const current = this.getCuti();
+    this.saveCuti([item, ...current]);
+    this.logAudit('HRIS — Cuti & Izin', `Pengajuan ${item.jenis} (${item.jumlahHari} hari)`, item.id, item.namaKaryawan, 'Karyawan');
+  }
+  public ubahStatusCuti(id: string, status: PengajuanCuti['status'], penyetuju: string) {
+    const current = this.getCuti();
+    const lama = current.find((c) => c.id === id);
+    if (!lama || lama.status === status) return;
+    this.saveCuti(
+      current.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status,
+              disetujuiOleh: status === 'Disetujui' || status === 'Ditolak' ? penyetuju : c.disetujuiOleh
+            }
+          : c
+      )
+    );
+    this.logAudit('HRIS — Cuti & Izin', `Keputusan cuti ${status} oleh ${penyetuju}`, id, penyetuju, 'Manajemen HRIS', [
+      { kolom: 'status', nilaiLama: lama.status, nilaiBaru: status }
+    ]);
   }
 
   public getLembur(): PerhitunganLembur[] {
@@ -3725,6 +3835,7 @@ class AMSDatabaseManager {
       case 'hris_mutasi': return this.getRiwayatMutasi();
       case 'hris_shift': return this.getJadwalShift();
       case 'hris_absensi': return this.getAbsensi();
+      case 'hris_cuti': return this.getCuti();
       case 'hris_lembur': return this.getLembur();
       case 'hris_slip_gaji': return this.getSlipGaji();
       case 'hris_ats': return this.getKandidatATS();

@@ -10,7 +10,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'url';
 
-/** Hosting statis Sites hanya melayani `/web/`, jadi `/web` tanpa garis miring dibuat explisit. */
+/** Hosting statis Sites hanya melayani `/web/`, jadi `/web` dan `/mobile` dibuat explisit. */
 function salinHalamanWeb() {
   return {
     name: 'situs-web-index',
@@ -19,6 +19,8 @@ function salinHalamanWeb() {
       const out = fileURLToPath(new URL('./dist/', import.meta.url));
       mkdirSync(`${out}web`, { recursive: true });
       writeFileSync(`${out}web/index.html`, readFileSync(`${out}index.html`));
+      mkdirSync(`${out}mobile`, { recursive: true });
+      writeFileSync(`${out}mobile/index.html`, readFileSync(`${out}index.html`));
     }
   };
 }
@@ -31,26 +33,46 @@ export default defineConfig(() => {
       salinHalamanWeb(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         workbox: {
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          navigateFallbackDenylist: [/^\/api\//]
         },
         manifest: {
-          id: '/',
-          name: 'AMS Integrated System - PT Anugrahmitra Selaras',
-          short_name: 'AMS ERP',
-          description: 'Sistem Informasi Manajemen Terintegrasi Perusahaan Alat Kesehatan Indonesia berbasis standar CDAKB, CPAKB, SDAK, dan ISO 13485 Kemenkes RI.',
-          theme_color: '#0ea5e9',
+          id: '/mobile',
+          name: 'AMS Mobile — HRIS & CRM Lapangan',
+          short_name: 'AMS Mobile',
+          description: 'Aplikasi Mobile HRIS & CRM Lapangan PT Anugrahmitra Selaras terkoneksi PocketBase AMS.',
+          theme_color: '#0d9488',
           background_color: '#f8fafc',
           display: 'standalone',
-          start_url: '/',
+          orientation: 'portrait',
+          start_url: '/mobile',
           scope: '/',
           icons: [
             {
+              src: '/pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
+            },
+            {
               src: '/icon.svg',
-              sizes: '192x192 512x512',
+              sizes: 'any',
               type: 'image/svg+xml',
-              purpose: 'any maskable'
+              purpose: 'any'
             }
           ]
         },

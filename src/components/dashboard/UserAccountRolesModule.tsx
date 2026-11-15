@@ -59,6 +59,8 @@ const BASIS_PERAN_OPS: { value: UserRole; label: string }[] = [
   { value: 'manajer_produksi', label: 'Manajer Produksi (CPAKB)' },
   { value: 'purchasing', label: 'Purchasing & Procurement' },
   { value: 'sales_manager', label: 'Sales & e-Katalog LKPP' },
+  { value: 'sales_medrep', label: 'Sales & MedRep (Lapangan)' },
+  { value: 'karyawan', label: 'Karyawan (HRIS Mobile)' },
   { value: 'auditor_internal', label: 'Auditor Internal ISO 13485' }
 ];
 

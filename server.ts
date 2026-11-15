@@ -1046,6 +1046,9 @@ alkes.perusahaan-anda.co.id {
       const html = fs.readFileSync(path.resolve(__dirname, 'dist', 'index.html'), 'utf8');
       res.status(200).type('html').send(suntikSeo(html, bacaSnapshot()));
     });
+    app.get(['/mobile', '/mobile/*'], (_req, res) => {
+      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    });
     app.get('*', (req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
@@ -1062,6 +1065,15 @@ alkes.perusahaan-anda.co.id {
         const mentah = fs.readFileSync(BERKAS_INDEKS, 'utf8');
         const html = await vite.transformIndexHtml(req.originalUrl, mentah);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(suntikSeo(html, bacaSnapshot()));
+      } catch (e) {
+        next(e);
+      }
+    });
+    app.get(['/mobile', '/mobile/*'], async (req, res, next) => {
+      try {
+        const mentah = fs.readFileSync(BERKAS_INDEKS, 'utf8');
+        const html = await vite.transformIndexHtml(req.originalUrl, mentah);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (e) {
         next(e);
       }
