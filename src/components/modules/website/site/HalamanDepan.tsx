@@ -3,7 +3,7 @@
  * sebelum pengguna masuk. Dashboard hanya dirender setelah sesi login tersimpan.
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Eye, EyeOff, KeyRound, LogIn, ShieldCheck, X } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, LogIn, ShieldCheck, Smartphone, X } from 'lucide-react';
 import type { KonfigurasiSitus } from '../../../../types';
 import { db } from '../../../../services/pocketbase';
 import {
@@ -13,6 +13,7 @@ import {
   type SesiLogin
 } from '../../../../utils/autentikasi';
 import LogoAplikasi from '../../../common/LogoAplikasi';
+import { MobilePreviewModal } from '../../../mobile/MobilePreviewModal';
 import PublicWebsite from './PublicWebsite';
 import { tentukanKontenTayang, useKonfigurasiOperasionalSinkron } from './PublicWebsiteApp';
 
@@ -23,6 +24,9 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
   const [statusTayang, setStatusTayang] = useState<'tayang' | 'belum' | 'tahan'>('belum');
   const [status, setStatus] = useState<StatusMuat>('memuat');
   const [formTerbuka, setFormTerbuka] = useState(() => new URLSearchParams(window.location.search).get('masuk') === '1');
+  const [previewMobileTerbuka, setPreviewMobileTerbuka] = useState(
+    () => new URLSearchParams(window.location.search).get('preview') === 'mobile'
+  );
 
   const konfigurasi = useKonfigurasiOperasionalSinkron(konfigurasiDasar);
 
@@ -71,9 +75,21 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
   if (!konfigurasi || statusTayang !== 'tayang') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md space-y-3">
           <KartuMasuk onTerima={terima} onBatal={() => window.location.href = '/web/'} />
+          <button
+            type="button"
+            onClick={() => setPreviewMobileTerbuka(true)}
+            className="w-full min-h-[44px] rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-xs font-bold text-teal-800 inline-flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            <Smartphone className="w-4 h-4" />
+            Tampilkan Preview Aplikasi Mobile (/mobile)
+          </button>
         </div>
+        <MobilePreviewModal
+          isOpen={previewMobileTerbuka}
+          onClose={() => setPreviewMobileTerbuka(false)}
+        />
       </div>
     );
   }
@@ -81,6 +97,14 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
   return (
     <div className="relative">
       <PublicWebsite konfigurasi={konfigurasi} landasan="/" padaMasuk={() => setFormTerbuka(true)} />
+      <button
+        type="button"
+        onClick={() => setPreviewMobileTerbuka(true)}
+        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border border-teal-500 bg-teal-700 hover:bg-teal-800 px-4 py-2.5 text-xs font-bold text-white shadow-lg transition cursor-pointer"
+      >
+        <Smartphone className="w-4 h-4" />
+        Preview Mobile App
+      </button>
       {formTerbuka && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto">
           <div className="absolute inset-0 bg-slate-900/60" onClick={() => setFormTerbuka(false)} />
@@ -89,6 +113,10 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
           </div>
         </div>
       )}
+      <MobilePreviewModal
+        isOpen={previewMobileTerbuka}
+        onClose={() => setPreviewMobileTerbuka(false)}
+      />
     </div>
   );
 }

@@ -31,7 +31,8 @@ import {
   Crown,
   UserCog,
   LogOut,
-  FileText
+  FileText,
+  Smartphone
 } from 'lucide-react';
 import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
 import LogoAplikasi from '../common/LogoAplikasi';
@@ -41,6 +42,7 @@ import { bolehAksesModul, SEMUA_ID_MODUL } from '../../utils/hakAkses';
 import type { ITSubTabId } from '../modules/supporting/ITModule';
 import type { SalesTab } from '../modules/commercial/SalesModule';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
+import { MobilePreviewModal } from '../mobile/MobilePreviewModal';
 
 export type Tone = 'slate' | 'amber' | 'indigo' | 'blue' | 'emerald' | 'rose';
 export type SubMenuKey = 'Regulatory Affairs' | 'Operations & Technical' | 'Sales & Marketing' | 'Supporting System';
@@ -136,6 +138,8 @@ export const namaPengguna = (r: UserRole) => {
     case 'manajer_produksi': return 'Ir. Agus Santoso - Manufaktur CPAKB';
     case 'purchasing': return 'Dewi Anggraini - Purchasing Alkes';
     case 'sales_manager': return 'Farhan Maulana - Sales e-Katalog';
+    case 'sales_medrep': return 'Sales & Medical Representative';
+    case 'karyawan': return 'Karyawan AMS';
     case 'it_admin': return 'Admin IT & Traceability Hub';
     default: return 'Pengguna Terdaftar';
   }
@@ -152,6 +156,8 @@ export const peranPengguna = (r: UserRole) => {
     case 'manajer_produksi': return 'Manufaktur CPAKB';
     case 'purchasing': return 'Purchasing & Pemasok';
     case 'sales_manager': return 'Sales e-Katalog LKPP';
+    case 'sales_medrep': return 'Sales & MedRep Lapangan';
+    case 'karyawan': return 'Karyawan (HRIS Mobile)';
     case 'it_admin': return 'IT & Traceability Hub';
     default: return 'Staff';
   }
@@ -233,6 +239,9 @@ export default function Navbar({
   onSalesNavigate
 }: NavbarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'mobile'
+  );
   const [modalSandi, setModalSandi] = useState(false);
   const [sandiLama, setSandiLama] = useState('');
   const [sandiBaru, setSandiBaru] = useState('');
@@ -405,6 +414,17 @@ export default function Navbar({
           <span className="text-xs">{connStatus.isPocketBaseConnected ? 'PocketBase Realtime' : 'Mode Cache Lokal'}</span>
         </div>
 
+        {/* Tombol Preview Aplikasi Mobile */}
+        <button
+          type="button"
+          onClick={() => setShowMobilePreview(true)}
+          title="Tampilkan Preview Aplikasi Mobile (Android/iOS) di Browser"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition cursor-pointer shrink-0"
+        >
+          <Smartphone className="w-3.5 h-3.5 text-teal-700" />
+          <span className="hidden sm:inline">Preview Mobile</span>
+        </button>
+
         {/* PWA Install Button */}
         <PWAInstallButton />
 
@@ -456,6 +476,25 @@ export default function Navbar({
                 </div>
 
                 <div className="py-1.5 px-1.5 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowMobilePreview(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-700 hover:bg-teal-50 cursor-pointer"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    Preview Frame HP (HRIS &amp; CRM)
+                  </button>
+                  <a
+                    href="/mobile"
+                    onClick={() => setShowUserMenu(false)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-teal-700" />
+                    Buka Fullscreen (/mobile)
+                  </a>
                   {sesi && (
                     <button
                       type="button"
@@ -819,6 +858,14 @@ export default function Navbar({
 
             {/* Footer Drawer */}
             <div className="border-t border-slate-200 p-3 space-y-2">
+              <a
+                href="/mobile"
+                onClick={() => setDrawerOpen(false)}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-left text-teal-800 bg-teal-50 border border-teal-200 active:bg-teal-100 text-xs font-semibold"
+              >
+                <Smartphone className="w-4 h-4 text-teal-700 shrink-0" />
+                <span>Aplikasi Mobile (HRIS &amp; CRM)</span>
+              </a>
               <button
                 type="button"
                 onClick={() => {
@@ -939,6 +986,10 @@ export default function Navbar({
           </div>
         </div>
       )}
+      <MobilePreviewModal
+        isOpen={showMobilePreview}
+        onClose={() => setShowMobilePreview(false)}
+      />
     </header>
   );
 }

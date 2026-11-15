@@ -264,6 +264,29 @@ function buildDefaultRoles(now: string): RoleDefinition[] {
         'it-traceability': ['view', 'export'],
         'audit-trail': ['view', 'export']
       }
+    },
+    {
+      id: 'sales_medrep',
+      name: 'Sales & Medical Representative (Lapangan)',
+      description: 'Tenaga penjualan lapangan / MedRep: prospek CRM, check-in kunjungan GPS, pre-order mobile, tender e-Katalog LKPP, dan katalog alkes.',
+      isSystem: true,
+      updatedAt: now,
+      permissions: {
+        overview: ['view'],
+        'sales-marketing': ['view', 'create', 'update', 'export'],
+        'gudang-logistik': ['view'],
+        'ra-pjt': ['view']
+      }
+    },
+    {
+      id: 'karyawan',
+      name: 'Karyawan (HRIS Self-Service)',
+      description: 'Akses aplikasi mobile karyawan: absensi geofencing GPS, jadwal shift, pengajuan cuti, slip gaji, dan profil kompetensi.',
+      isSystem: true,
+      updatedAt: now,
+      permissions: {
+        'hrd-pelatihan': ['view']
+      }
     }
   ];
 }
@@ -377,7 +400,17 @@ export class ServerRbacStore {
       if (fs.existsSync(this.dbPath)) {
         const parsed = JSON.parse(fs.readFileSync(this.dbPath, 'utf8')) as Partial<RbacDatabaseState>;
         if (Array.isArray(parsed.roles) && Array.isArray(parsed.users)) {
-          const roles = parsed.roles.length > 0 ? parsed.roles : buildDefaultRoles(now);
+          const defaultRolesList = buildDefaultRoles(now);
+          let roles = parsed.roles.length > 0 ? parsed.roles : defaultRolesList;
+          let rolesBackfilled = false;
+          if (parsed.roles.length > 0) {
+            const existingRoleIds = new Set(roles.map((r) => r.id));
+            const missingRoles = defaultRolesList.filter((r) => !existingRoleIds.has(r.id));
+            if (missingRoles.length > 0) {
+              roles = [...roles, ...missingRoles];
+              rolesBackfilled = true;
+            }
+          }
           let users = parsed.users;
           const auditLogs = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
           if (users.length === 0) {
@@ -409,13 +442,17 @@ export class ServerRbacStore {
               return updated;
             }
           }
-          return {
+          const loadedState: RbacDatabaseState = {
             version: parsed.version ?? 1,
             roles,
             users,
             sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
             auditLogs
           };
+          if (rolesBackfilled) {
+            this.persistState(loadedState);
+          }
+          return loadedState;
         }
       }
     } catch {

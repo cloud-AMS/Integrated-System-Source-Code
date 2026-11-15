@@ -70,6 +70,8 @@ export function mapSyncKeyToResource(key: string): RbacResourceId {
 export function canWriteSyncKey(role: RoleDefinition, key: string): boolean {
   // Log audit operasional dicatat otomatis saat user sah beraktivitas di modulnya
   if (key === 'audit_trail') return true;
+  // Self-service mobile HRIS: absensi GPS & pengajuan cuti pribadi oleh karyawan/sales aktif
+  if (key === 'hris_absensi' || key === 'hris_cuti') return true;
 
   const resource = mapSyncKeyToResource(key);
   const perms = role.permissions[resource];

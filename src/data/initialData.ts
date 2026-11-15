@@ -24,6 +24,7 @@ import {
   RiwayatMutasi,
   JadwalShift,
   LogAbsensi,
+  PengajuanCuti,
   PerhitunganLembur,
   SlipGaji,
   KandidatATS,
@@ -5891,3 +5892,45 @@ export const KONFIGURASI_SURAT_AWAL: KonfigurasiSurat = {
   lacakTautan: true,
   urlInstance: 'http://127.0.0.1:9000'
 };
+
+export const INITIAL_CUTI: PengajuanCuti[] = [
+  {
+    id: 'CUTI-2026-001',
+    karyawanId: 'EMP-08',
+    namaKaryawan: 'Farhan Maulana',
+    jenis: 'Cuti Tahunan',
+    tanggalMulai: '2026-11-24',
+    tanggalSelesai: '2026-11-25',
+    jumlahHari: 2,
+    alasan: 'Urusan keluarga di Bandung setelah kunjungan tender Jawa Barat selesai.',
+    status: 'Menunggu',
+    tanggalPengajuan: '2026-11-12'
+  },
+  {
+    id: 'CUTI-2026-002',
+    karyawanId: 'EMP-09',
+    namaKaryawan: 'Siti Rahma',
+    jenis: 'Izin Khusus',
+    tanggalMulai: '2026-11-18',
+    tanggalSelesai: '2026-11-18',
+    jumlahHari: 1,
+    alasan: 'Jadwal kontrol MCU berkala paparan ruang dingin di RS Mitra Keluarga.',
+    status: 'Disetujui',
+    disetujuiOleh: 'Ahmad Fauzi',
+    tanggalPengajuan: '2026-11-10'
+  },
+  {
+    id: 'CUTI-2026-003',
+    karyawanId: 'EMP-04',
+    namaKaryawan: 'Ahmad Fauzi',
+    jenis: 'Cuti Tahunan',
+    tanggalMulai: '2026-12-07',
+    tanggalSelesai: '2026-12-09',
+    jumlahHari: 3,
+    alasan: 'Cuti tahunan setelah audit stok opname akhir tahun.',
+    status: 'Disetujui',
+    disetujuiOleh: 'apt. Dewi Kartika, S.Si',
+    tanggalPengajuan: '2026-11-05'
+  }
+];
+

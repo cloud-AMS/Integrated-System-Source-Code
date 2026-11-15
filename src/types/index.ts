@@ -27,6 +27,8 @@ export type UserRole =
   | 'manajer_produksi'
   | 'purchasing'
   | 'sales_manager'
+  | 'sales_medrep'
+  | 'karyawan'
   | 'auditor_internal'
   | 'it_admin';
 
@@ -915,6 +917,20 @@ export interface LogAbsensi {
   sumber: SumberAbsensi;
   status: 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Mangkir';
   lokasi: string;
+}
+
+export interface PengajuanCuti {
+  id: string;
+  karyawanId: string;
+  namaKaryawan: string;
+  jenis: 'Cuti Tahunan' | 'Sakit' | 'Izin Khusus' | 'Cuti Melahirkan';
+  tanggalMulai: string;
+  tanggalSelesai: string;
+  jumlahHari: number;
+  alasan: string;
+  status: 'Menunggu' | 'Disetujui' | 'Ditolak';
+  disetujuiOleh?: string;
+  tanggalPengajuan: string;
 }
 
 export interface PerhitunganLembur {
