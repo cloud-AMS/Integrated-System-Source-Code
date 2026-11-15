@@ -665,7 +665,7 @@ export default function Navbar({
                             </span>
                           )}
                         </button>
-                        {isIT && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (
+                        {isIT && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (
                           <button
                             type="button"
                             onClick={() => goITSub('user-roles')}
@@ -839,7 +839,7 @@ export default function Navbar({
                                   </span>
                                 )}
                               </button>
-                              {isIT && (
+                              {isIT && (!sesi || punyaIzin(sesi, 'rbac-admin', 'view')) && (
                                 <button
                                   type="button"
                                   onClick={() => goITSub('user-roles')}

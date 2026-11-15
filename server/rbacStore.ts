@@ -926,6 +926,17 @@ export class ServerRbacStore {
     };
   }
 
+  public resolveSessionById(sessionId?: string | null): boolean {
+    if (!sessionId) return false;
+    const session = this.state.sessions.find((s) => s.id === sessionId);
+    if (!session) return false;
+    if (new Date(session.expiresAt).getTime() <= Date.now()) return false;
+    const user = this.state.users.find((u) => u.id === session.userId);
+    if (!user || !user.isActive) return false;
+    const role = this.state.roles.find((r) => r.id === user.roleId);
+    return Boolean(role);
+  }
+
   public revokeSession(sessionId: string, actorUsername: string, actorRole: string, ip: string): boolean {
     const target = this.state.sessions.find((s) => s.id === sessionId);
     if (!target) return false;
@@ -1189,10 +1200,19 @@ export class ServerRbacStore {
     }
 
     const nextActive = typeof input.isActive === 'boolean' ? input.isActive : user.isActive;
+    const currentRoleObj = this.state.roles.find((r) => r.id === user.roleId);
     const nextRoleObj = this.state.roles.find((r) => r.id === nextRoleId);
-    const nextHasAdmin = Boolean(nextRoleObj?.permissions['rbac-admin']?.includes('update'));
+    const wasActiveRbacAdmin = Boolean(
+      user.isActive &&
+        currentRoleObj?.permissions['rbac-admin']?.includes('update') &&
+        currentRoleObj?.permissions['rbac-admin']?.includes('view')
+    );
+    const nextHasAdmin = Boolean(
+      nextRoleObj?.permissions['rbac-admin']?.includes('update') &&
+        nextRoleObj?.permissions['rbac-admin']?.includes('view')
+    );
 
-    if ((!nextActive || !nextHasAdmin) && this.countActiveRbacAdmins(user.id) === 0) {
+    if (wasActiveRbacAdmin && (!nextActive || !nextHasAdmin) && this.countActiveRbacAdmins(user.id) === 0) {
       return {
         ok: false,
         status: 400,
@@ -1210,16 +1230,18 @@ export class ServerRbacStore {
     user.roleId = nextRoleId;
     user.isActive = nextActive;
 
+    let passwordReset = false;
     if (typeof input.newPassword === 'string' && input.newPassword.length > 0) {
       if (input.newPassword.length < 6) {
         return { ok: false, status: 400, message: 'Kata sandi baru minimal 6 karakter.' };
       }
       user.passwordHash = hashPassword(input.newPassword);
+      passwordReset = true;
     }
 
     user.updatedAt = new Date().toISOString();
 
-    if (!user.isActive) {
+    if (!user.isActive || (passwordReset && user.id !== actorUserId)) {
       this.state.sessions = this.state.sessions.filter((s) => s.userId !== user.id);
     }
 
@@ -1249,7 +1271,13 @@ export class ServerRbacStore {
     }
     const user = this.state.users.find((u) => u.id === userId);
     if (!user || user.isHiddenDeveloper) return { ok: false, status: 404, message: 'Pengguna tidak ditemukan.' };
-    if (this.countActiveRbacAdmins(user.id) === 0) {
+    const currentRoleObj = this.state.roles.find((r) => r.id === user.roleId);
+    const wasActiveRbacAdmin = Boolean(
+      user.isActive &&
+        currentRoleObj?.permissions['rbac-admin']?.includes('update') &&
+        currentRoleObj?.permissions['rbac-admin']?.includes('view')
+    );
+    if (wasActiveRbacAdmin && this.countActiveRbacAdmins(user.id) === 0) {
       return { ok: false, status: 400, message: 'Tidak dapat menghapus satu-satunya pengelola RBAC aktif.' };
     }
 

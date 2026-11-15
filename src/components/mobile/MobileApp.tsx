@@ -116,6 +116,7 @@ export default function MobileApp() {
       }
       const segar = await ambilSesiServer();
       if (segar) {
+        db.prepareSessionSync(segar.userId);
         await db.syncFromServer(false);
         void db.syncFromPocketBaseAMS();
       } else {
@@ -160,7 +161,18 @@ export default function MobileApp() {
 
   const tanganiMasuk = async (sesiBaru: SesiLogin) => {
     setMemeriksaSesi(true);
+    db.prepareSessionSync(sesiBaru.userId);
     await db.syncFromServer(false);
+    if (!sesiBaru.isHiddenDeveloper) {
+      db.logAudit(
+        'Autentikasi & Akses',
+        'Masuk berhasil ke AMS Mobile (RBAC server terverifikasi)',
+        sesiBaru.namaPengguna,
+        sesiBaru.namaLengkap,
+        sesiBaru.namaPeran,
+        [{ kolom: 'sesi', nilaiLama: 'Keluar', nilaiBaru: `Masuk ${sesiBaru.masukPada}` }]
+      );
+    }
     void db.syncFromPocketBaseAMS();
     db.connectRealtimeSync(sesiBaru.token || null);
     setSesi(sesiBaru);
@@ -170,7 +182,7 @@ export default function MobileApp() {
 
   const tanganiKeluar = async () => {
     await keluarDariServer();
-    db.disconnectRealtimeSync();
+    db.connectRealtimeSync(null);
     setSesi(null);
   };
 

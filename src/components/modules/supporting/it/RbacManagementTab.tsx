@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Check,
+  Eye,
+  EyeOff,
   KeyRound,
   Lock,
   Plus,
   RefreshCw,
+  Search,
   ShieldAlert,
   ShieldCheck,
   Trash2,
@@ -88,6 +91,19 @@ export default function RbacManagementTab({
   const [draftPerms, setDraftPerms] = useState<RolePermissionMatrix>({});
   const [savingRole, setSavingRole] = useState(false);
 
+  // Filter & Search User
+  const [searchUser, setSearchUser] = useState('');
+  const [filterRoleId, setFilterRoleId] = useState('ALL');
+  const [showUserPass, setShowUserPass] = useState(false);
+
+  // Confirm Dialog state (non-blocking UI)
+  const [confirmAction, setConfirmAction] = useState<
+    | { kind: 'delete-user'; user: ServerUserPublic }
+    | { kind: 'delete-role'; role: RoleDefinition }
+    | { kind: 'revoke-session'; session: ServerSessionSummary }
+    | null
+  >(null);
+
   // New Role Modal state
   const [newRoleOpen, setNewRoleOpen] = useState(false);
   const [newRoleForm, setNewRoleForm] = useState({ name: '', description: '' });
@@ -116,8 +132,8 @@ export default function RbacManagementTab({
         const d = (await rolesRes.json()) as { roles?: RoleDefinition[] };
         const list = d.roles || [];
         setRoles(list);
-        if (list.length > 0 && !list.some((r) => r.id === selectedRoleId)) {
-          setSelectedRoleId(list[0].id);
+        if (list.length > 0) {
+          setSelectedRoleId((cur) => (list.some((r) => r.id === cur) ? cur : list[0].id));
         }
       }
       if (usersRes.ok) {
@@ -137,11 +153,11 @@ export default function RbacManagementTab({
     } finally {
       setLoading(false);
     }
-  }, [canViewAudit, selectedRoleId]);
+  }, [canViewAudit]);
 
   useEffect(() => {
     void loadAll();
-    const unsub = db.subscribeRbacUpdated(() => {
+    const unsub = db.subscribeRbacActivity(() => {
       void loadAll();
     });
     return unsub;
@@ -160,14 +176,26 @@ export default function RbacManagementTab({
     setTimeout(() => setBanner((cur) => (cur?.text === text ? null : cur)), 5000);
   };
 
+  const filteredUsers = useMemo(() => {
+    const q = searchUser.trim().toLowerCase();
+    return users.filter((u) => {
+      if (filterRoleId !== 'ALL' && u.roleId !== filterRoleId) return false;
+      if (!q) return true;
+      return [u.username, u.fullName, u.email, u.department, u.roleName].some((val) =>
+        (val || '').toLowerCase().includes(q)
+      );
+    });
+  }, [users, searchUser, filterRoleId]);
+
   const openCreateUser = () => {
     setEditingUser(null);
+    setShowUserPass(false);
     setUserForm({
       username: '',
       fullName: '',
       email: '',
       department: '',
-      roleId: roles[0]?.id || 'qa_manager',
+      roleId: roles.find((r) => r.id === 'qa_manager')?.id || roles[0]?.id || 'qa_manager',
       password: '',
       isActive: true
     });
@@ -176,6 +204,7 @@ export default function RbacManagementTab({
 
   const openEditUser = (u: ServerUserPublic) => {
     setEditingUser(u);
+    setShowUserPass(false);
     setUserForm({
       username: u.username,
       fullName: u.fullName,
@@ -190,6 +219,7 @@ export default function RbacManagementTab({
 
   const submitUser = async (e: FormEvent) => {
     e.preventDefault();
+    const cleanUsername = userForm.username.trim().toLowerCase();
     const endpoint = editingUser ? `/api/rbac/users/${editingUser.id}` : '/api/rbac/users';
     const method = editingUser ? 'PUT' : 'POST';
     const body = editingUser
@@ -202,7 +232,7 @@ export default function RbacManagementTab({
           ...(userForm.password ? { newPassword: userForm.password } : {})
         }
       : {
-          username: userForm.username,
+          username: cleanUsername,
           fullName: userForm.fullName,
           email: userForm.email,
           department: userForm.department,
@@ -222,7 +252,12 @@ export default function RbacManagementTab({
       return;
     }
     setUserModalOpen(false);
-    showMsg('ok', editingUser ? `Akun ${editingUser.username} diperbarui.` : 'Pengguna baru berhasil ditambahkan.');
+    showMsg(
+      'ok',
+      editingUser
+        ? `Akun @${editingUser.username} diperbarui secara real-time di server.`
+        : `Akun @${cleanUsername} tersimpan di server dan langsung aktif untuk login dari internet.`
+    );
     await loadAll();
     onPermissionsUpdated?.();
   };
@@ -234,7 +269,7 @@ export default function RbacManagementTab({
       showMsg('err', data.pesan || 'Gagal menghapus pengguna.');
       return;
     }
-    showMsg('ok', `Akun "${u.username}" dihapus.`);
+    showMsg('ok', `Akun "${u.username}" dihapus dan seluruh sesinya dicabut.`);
     await loadAll();
   };
 
@@ -430,21 +465,47 @@ export default function RbacManagementTab({
       {/* SUBTAB 1: USERS */}
       {subTab === 'users' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="text-xs">
               <p className="font-bold text-slate-900">Daftar Akun Pengguna Terverifikasi Server</p>
-              <p className="text-slate-500 text-[11px]">Kata sandi di-hash dengan scrypt (salt acak) di penyimpanan server.</p>
+              <p className="text-slate-500 text-[11px]">
+                Kata sandi di-hash dengan scrypt (salt acak). Akun yang dibuat langsung dapat digunakan login via internet (/ &amp; /mobile).
+              </p>
             </div>
-            {canCreate && (
-              <button
-                type="button"
-                onClick={openCreateUser}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchUser}
+                  onChange={(e) => setSearchUser(e.target.value)}
+                  placeholder="Cari nama / username..."
+                  className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs w-44"
+                />
+              </div>
+              <select
+                value={filterRoleId}
+                onChange={(e) => setFilterRoleId(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs"
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                Tambah Akun
-              </button>
-            )}
+                <option value="ALL">Semua Peran</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={openCreateUser}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Tambah Akun
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -460,14 +521,16 @@ export default function RbacManagementTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 px-4 text-center text-xs text-slate-500">
-                      Belum ada akun pengguna operasional terdaftar. Klik <strong>Tambah Akun</strong> untuk membuat akun staf atau admin operasional.
+                      {users.length === 0
+                        ? 'Belum ada akun pengguna operasional terdaftar. Klik Tambah Akun untuk membuat akun staf atau admin operasional.'
+                        : 'Tidak ada akun yang cocok dengan filter pencarian.'}
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
+                  filteredUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900">{u.fullName}</div>
@@ -506,7 +569,7 @@ export default function RbacManagementTab({
                         {canDelete && u.id !== sesi.userId && (
                           <button
                             type="button"
-                            onClick={() => void removeUser(u)}
+                            onClick={() => setConfirmAction({ kind: 'delete-user', user: u })}
                             className="px-2 py-1 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-700 cursor-pointer"
                             title="Hapus akun"
                           >
@@ -610,7 +673,7 @@ export default function RbacManagementTab({
                   {canDelete && !activeRoleObj.isSystem && (
                     <button
                       type="button"
-                      onClick={() => void removeRole(activeRoleObj)}
+                      onClick={() => setConfirmAction({ kind: 'delete-role', role: activeRoleObj })}
                       className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold cursor-pointer"
                     >
                       Hapus Peran
@@ -741,7 +804,7 @@ export default function RbacManagementTab({
                         {canDelete && !s.isCurrent && (
                           <button
                             type="button"
-                            onClick={() => void revokeSession(s.id)}
+                            onClick={() => setConfirmAction({ kind: 'revoke-session', session: s })}
                             className="px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-700 font-semibold cursor-pointer"
                           >
                             Cabut Sesi
@@ -829,13 +892,18 @@ export default function RbacManagementTab({
             <form onSubmit={submitUser} className="space-y-3 text-xs">
               {!editingUser && (
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Username</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Username (3–32 karakter huruf kecil/angka/._-)</label>
                   <input
                     required
                     value={userForm.username}
-                    onChange={(e) => setUserForm((p) => ({ ...p, username: e.target.value }))}
+                    onChange={(e) =>
+                      setUserForm((p) => ({
+                        ...p,
+                        username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '')
+                      }))
+                    }
                     placeholder="mis. budi.qa"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono"
                   />
                 </div>
               )}
@@ -876,22 +944,42 @@ export default function RbacManagementTab({
                 >
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.name} ({r.id})
+                      {r.name} ({Object.keys(r.permissions || {}).length} modul)
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const selRole = roles.find((r) => r.id === userForm.roleId);
+                  if (!selRole) return null;
+                  return (
+                    <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                      {selRole.description || `Akses ke ${Object.keys(selRole.permissions || {}).length} modul/sumber daya.`}
+                    </p>
+                  );
+                })()}
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
                   {editingUser ? 'Reset Kata Sandi (kosongkan jika tidak diubah)' : 'Kata Sandi Awal (min. 6 karakter)'}
                 </label>
-                <input
-                  type="password"
-                  required={!editingUser}
-                  value={userForm.password}
-                  onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                />
+                <div className="relative">
+                  <input
+                    type={showUserPass ? 'text' : 'password'}
+                    required={!editingUser}
+                    minLength={editingUser && !userForm.password ? undefined : 6}
+                    value={userForm.password}
+                    onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))}
+                    className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPass((v) => !v)}
+                    aria-label={showUserPass ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showUserPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <label className="flex items-center gap-2 pt-1 cursor-pointer">
                 <input
@@ -968,6 +1056,58 @@ export default function RbacManagementTab({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: KONFIRMASI HAPUS / CABUT SESI */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-bold text-sm text-slate-900">
+                {confirmAction.kind === 'delete-user'
+                  ? `Hapus Akun @${confirmAction.user.username}?`
+                  : confirmAction.kind === 'delete-role'
+                    ? `Hapus Peran "${confirmAction.role.name}"?`
+                    : `Cabut Sesi @${confirmAction.session.username}?`}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {confirmAction.kind === 'delete-user'
+                ? 'Akun akan dihapus permanen dari server dan seluruh sesi aktifnya segera dikeluarkan secara real-time.'
+                : confirmAction.kind === 'delete-role'
+                  ? 'Peran kustom ini akan dihapus dari matriks RBAC server.'
+                  : 'Pengguna pada perangkat tersebut akan langsung dikeluarkan (logout) secara real-time.'}
+            </p>
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const act = confirmAction;
+                  setConfirmAction(null);
+                  if (act.kind === 'delete-user') void removeUser(act.user);
+                  else if (act.kind === 'delete-role') void removeRole(act.role);
+                  else void revokeSession(act.session.id);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold cursor-pointer"
+              >
+                Ya, Lanjutkan
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -497,7 +497,7 @@ alkes.perusahaan-anda.co.id {
           }`}
         >
           <Users className="w-4 h-4" />
-          Manajemen RBAC Server &amp; Peran
+          User Account &amp; Roles (RBAC Server)
         </button>
         )}
 
@@ -517,9 +517,9 @@ alkes.perusahaan-anda.co.id {
 
       {/* Tab 0: Manajemen RBAC Server / User Account & Roles */}
       {activeTab === 'user-roles' && bolehRbac && (
-        sesi ? (
+        sesiAktif ? (
           <RbacManagementTab
-            sesi={sesi}
+            sesi={sesiAktif}
             onPermissionsUpdated={onPermissionsUpdated}
           />
         ) : (

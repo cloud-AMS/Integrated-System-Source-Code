@@ -81,6 +81,7 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', 1);
   const httpServer = http.createServer(app);
   // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
   const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
@@ -97,6 +98,7 @@ async function startServer() {
   interface SyncWsClient {
     ws: WebSocket;
     isAuthenticated: boolean;
+    sessionId?: string;
     userId?: string;
     username?: string;
     isAlive: boolean;
@@ -133,6 +135,7 @@ async function startServer() {
     const client: SyncWsClient = {
       ws,
       isAuthenticated: Boolean(resolved),
+      sessionId: resolved?.session.id,
       userId: resolved?.user.id,
       username: resolved?.user.username,
       isAlive: true
@@ -146,8 +149,9 @@ async function startServer() {
       try {
         const msg = JSON.parse(String(raw)) as { type?: string; token?: string };
         if (msg?.type === 'sync:auth' && typeof msg.token === 'string') {
-          const auth = rbacStore.resolveToken(msg.token);
+          const auth = msg.token ? rbacStore.resolveToken(msg.token) : null;
           client.isAuthenticated = Boolean(auth);
+          client.sessionId = auth?.session.id;
           client.userId = auth?.user.id;
           client.username = auth?.user.username;
           ws.send(JSON.stringify({
@@ -280,7 +284,38 @@ async function startServer() {
   };
 
   const broadcastRbacUpdated = () => {
-    broadcastMessage({ type: 'rbac:updated', at: new Date().toISOString() }, false);
+    const nowIso = new Date().toISOString();
+    const updatedPayload = JSON.stringify({ type: 'rbac:updated', at: nowIso });
+    const revokedPayload = JSON.stringify({ type: 'rbac:session-revoked', at: nowIso });
+    const setupPayload = JSON.stringify({
+      type: 'rbac:setup-updated',
+      needsSetup: rbacStore.needsInitialSetup(),
+      at: nowIso
+    });
+    for (const client of syncClients) {
+      if (client.ws.readyState !== WebSocket.OPEN) continue;
+      try {
+        if (client.isAuthenticated) {
+          if (!client.sessionId || !rbacStore.resolveSessionById(client.sessionId)) {
+            client.isAuthenticated = false;
+            client.sessionId = undefined;
+            client.userId = undefined;
+            client.username = undefined;
+            client.ws.send(revokedPayload);
+          } else {
+            client.ws.send(updatedPayload);
+          }
+        } else {
+          client.ws.send(setupPayload);
+        }
+      } catch {
+        /* abaikan socket gagal kirim */
+      }
+    }
+  };
+
+  const broadcastRbacActivity = () => {
+    broadcastMessage({ type: 'rbac:activity', at: new Date().toISOString() }, false);
   };
 
   // PocketBase AMS (C:\pocketbase-ams, port 8091) hanya diekspos seperlunya:
@@ -379,6 +414,7 @@ async function startServer() {
       return res.status(result.status).json({ error: 'AUTH_FAILED', pesan: result.message });
     }
     setSessionCookie(req, res, result.token);
+    broadcastRbacActivity();
     res.json({
       user: result.user,
       role: result.role,
@@ -390,7 +426,17 @@ async function startServer() {
 
   app.post('/api/auth/logout', (req, res) => {
     if (req.auth) {
-      rbacStore.revokeSession(req.auth.session.id, req.auth.user.username, req.auth.role.id, getClientIp(req));
+      const loggedOutSessionId = req.auth.session.id;
+      rbacStore.revokeSession(loggedOutSessionId, req.auth.user.username, req.auth.role.id, getClientIp(req));
+      for (const client of syncClients) {
+        if (client.sessionId === loggedOutSessionId) {
+          client.isAuthenticated = false;
+          client.sessionId = undefined;
+          client.userId = undefined;
+          client.username = undefined;
+        }
+      }
+      broadcastRbacActivity();
     }
     clearSessionCookie(req, res);
     res.json({ ok: true });
@@ -416,6 +462,7 @@ async function startServer() {
     if (!result.ok) {
       return res.status(result.status).json({ error: 'CHANGE_PASSWORD_FAILED', pesan: result.message });
     }
+    broadcastRbacActivity();
     res.json({ ok: true, pesan: 'Kata sandi berhasil diperbarui di server.' });
   });
 

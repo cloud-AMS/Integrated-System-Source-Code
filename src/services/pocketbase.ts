@@ -259,6 +259,7 @@ export type KunciKoleksiOperasionalSitus = (typeof KOLEKSI_OPERASIONAL_SITUS)[nu
 const KANAL_REALTIME_AMS = 'ams_alkes_realtime_v1';
 const KUNCI_SESI_AUTH = 'ams_alkes_sesi_login_v2';
 const KUNCI_ANTREAN_SYNC = '__ams_pending_sync_v1';
+const KUNCI_LAST_SYNC_USER = '__ams_last_sync_user_v1';
 const KUNCI_MANIFEST_DATA = 'sistem_data_manifest';
 
 type SyncOp = { type: 'put'; value: unknown } | { type: 'delete' };
@@ -268,6 +269,7 @@ class AMSDatabaseManager {
   private listeners: Map<string, Set<() => void>> = new Map();
   private remoteListeners: Set<(keys: string[], reason: string) => void> = new Set();
   private rbacListeners: Set<() => void> = new Set();
+  private rbacActivityListeners: Set<() => void> = new Set();
   private isOnlinePocketBase: boolean = false;
   private pbRealtimeTerpasang: boolean = false;
   private kanalSiaran: BroadcastChannel | null = null;
@@ -368,6 +370,21 @@ class AMSDatabaseManager {
         Array.from(this.listeners.keys()).forEach((kunci) => {
           if (kunci !== 'all') this.notifyLocal(kunci);
         });
+        return;
+      }
+      if (e.key === KUNCI_SESI_AUTH) {
+        if (!e.newValue) {
+          this.currentWsToken = null;
+          window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+        } else {
+          this.rbacListeners.forEach((cb) => {
+            try {
+              cb();
+            } catch {
+              /* abaikan */
+            }
+          });
+        }
         return;
       }
       if (e.key.startsWith(STORAGE_PREFIX)) {
@@ -634,6 +651,13 @@ class AMSDatabaseManager {
     this.rbacListeners.add(callback);
     return () => {
       this.rbacListeners.delete(callback);
+    };
+  }
+
+  public subscribeRbacActivity(callback: () => void): () => void {
+    this.rbacActivityListeners.add(callback);
+    return () => {
+      this.rbacActivityListeners.delete(callback);
     };
   }
 
@@ -917,14 +941,50 @@ class AMSDatabaseManager {
     };
   }
 
+  public prepareSessionSync(userId?: string | null): void {
+    this.serverVersions = {};
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const prevUserId = localStorage.getItem(KUNCI_LAST_SYNC_USER);
+      if (userId) {
+        if (prevUserId && prevUserId !== userId) {
+          this.pendingSyncKeys.clear();
+          this.latestSyncOp.clear();
+          for (const timer of this.syncRetryTimers.values()) {
+            clearTimeout(timer);
+          }
+          this.syncRetryTimers.clear();
+          this.syncRetryCounts.clear();
+          this.simpanAntreanSyncPersisten();
+          this.isApplyingRemote = true;
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith(STORAGE_PREFIX) && k !== KUNCI_SESI_AUTH) {
+                localStorage.removeItem(k);
+              }
+            }
+          } finally {
+            this.isApplyingRemote = false;
+          }
+        }
+        localStorage.setItem(KUNCI_LAST_SYNC_USER, userId);
+      }
+    } catch {
+      /* abaikan error storage */
+    }
+    this.updateConnectionStatusLabel();
+  }
+
   private applyRemoteEntry(
     key: string,
     value: unknown,
     version?: number,
-    notifyIndividual = true
+    notifyIndividual = true,
+    forceApply = false
   ): boolean {
     if (typeof localStorage === 'undefined') return false;
-    if (typeof version === 'number' && (this.serverVersions[key] ?? 0) >= version) {
+    if (!forceApply && typeof version === 'number' && (this.serverVersions[key] ?? 0) >= version) {
       return false;
     }
     if (typeof version === 'number') {
@@ -1026,11 +1086,13 @@ class AMSDatabaseManager {
       const remoteManifest = remoteEntries[KUNCI_MANIFEST_DATA]?.value as Partial<ManifestAsalData> | undefined;
       const remotePurged = Boolean(remoteManifest?.dummyDihapus);
 
+      const forceApply = !deltaOnly;
+
       // Pastikan manifest diterapkan terlebih dahulu agar penanda dummyDihapus aktif sebelum koleksi lain
       if (remoteEntries[KUNCI_MANIFEST_DATA]) {
         const me = remoteEntries[KUNCI_MANIFEST_DATA];
         if (!this.pendingSyncKeys.has(KUNCI_MANIFEST_DATA) || remotePurged) {
-          if (this.applyRemoteEntry(KUNCI_MANIFEST_DATA, me.value, me.version, true)) {
+          if (this.applyRemoteEntry(KUNCI_MANIFEST_DATA, me.value, me.version, true, forceApply)) {
             changed.push(KUNCI_MANIFEST_DATA);
           }
         }
@@ -1042,7 +1104,7 @@ class AMSDatabaseManager {
         if (this.pendingSyncKeys.has(key) && !remotePurged) {
           continue;
         }
-        if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
+        if (this.applyRemoteEntry(key, entry.value, entry.version, true, forceApply)) {
           changed.push(key);
         }
       }
@@ -1113,6 +1175,14 @@ class AMSDatabaseManager {
         this.wsConnected = true;
         this.stopFallbackPolling();
         this.updateConnectionStatusLabel();
+        const latestToken = this.currentWsToken || this.getAuthTokenFromStorage();
+        if (latestToken) {
+          try {
+            socket.send(JSON.stringify({ type: 'sync:auth', token: latestToken }));
+          } catch {
+            /* abaikan bila socket baru putus */
+          }
+        }
         void this.flushPendingSync().then(() => this.syncFromServer(true));
       };
 
@@ -1229,7 +1299,7 @@ class AMSDatabaseManager {
             return;
           }
 
-          if (msg.type === 'rbac:updated') {
+          if (msg.type === 'rbac:updated' || msg.type === 'rbac:setup-updated') {
             this.rbacListeners.forEach((cb) => {
               try {
                 cb();
@@ -1237,6 +1307,39 @@ class AMSDatabaseManager {
                 /* abaikan */
               }
             });
+            this.rbacActivityListeners.forEach((cb) => {
+              try {
+                cb();
+              } catch {
+                /* abaikan */
+              }
+            });
+            return;
+          }
+
+          if (msg.type === 'rbac:activity') {
+            this.rbacActivityListeners.forEach((cb) => {
+              try {
+                cb();
+              } catch {
+                /* abaikan */
+              }
+            });
+            return;
+          }
+
+          if (msg.type === 'rbac:session-revoked') {
+            this.currentWsToken = null;
+            try {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem(KUNCI_SESI_AUTH);
+              }
+            } catch {
+              /* abaikan */
+            }
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+            }
           }
         } catch {
           /* abaikan pesan tidak dikenal */
@@ -1255,7 +1358,7 @@ class AMSDatabaseManager {
             this.wsReconnectTimer = setTimeout(() => {
               this.wsReconnectTimer = null;
               if (this.wsShouldConnect) {
-                this.connectRealtimeSync(this.currentWsToken);
+                this.connectRealtimeSync(this.getAuthTokenFromStorage());
               }
             }, 3000);
           }

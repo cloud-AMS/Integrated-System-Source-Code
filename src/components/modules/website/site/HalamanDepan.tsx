@@ -155,24 +155,29 @@ export function KartuMasuk({
 
   useEffect(() => {
     let aktif = true;
-    void ambilStatusSetupServer().then((st) => {
-      if (!aktif) return;
-      setModeSetup(st.needsSetup);
-      setButuhTokenSetup(st.requiresSetupToken);
-      setMemeriksaSetup(false);
-      requestAnimationFrame(() => {
-        if (st.needsSetup) {
-          setupRef.current?.focus();
-        } else {
-          bidangRef.current?.focus();
-        }
+    const periksaSetup = () => {
+      void ambilStatusSetupServer().then((st) => {
+        if (!aktif) return;
+        setModeSetup(st.needsSetup);
+        setButuhTokenSetup(st.requiresSetupToken);
+        setMemeriksaSetup(false);
+        requestAnimationFrame(() => {
+          if (st.needsSetup) {
+            setupRef.current?.focus();
+          } else {
+            bidangRef.current?.focus();
+          }
+        });
       });
-    });
+    };
+    periksaSetup();
+    const unsubRbac = db.subscribeRbacUpdated(periksaSetup);
 
     const tutup = (e: KeyboardEvent) => e.key === 'Escape' && onBatal();
     window.addEventListener('keydown', tutup);
     return () => {
       aktif = false;
+      unsubRbac();
       window.removeEventListener('keydown', tutup);
     };
   }, [onBatal]);
@@ -184,15 +189,9 @@ export function KartuMasuk({
     setMemproses(true);
     const hasil = await masukDenganServer(namaPengguna, kataSandi);
     if (!hasil.ok) {
-      db.logAudit('Autentikasi & Akses', `Percobaan masuk ditolak server: ${hasil.pesan}`, namaPengguna.trim() || '-', namaPengguna.trim() || '-', 'Pengguna');
       setGalat(hasil.pesan);
       setMemproses(false);
       return;
-    }
-    if (!hasil.sesi.isHiddenDeveloper) {
-      db.logAudit('Autentikasi & Akses', 'Masuk berhasil (RBAC server terverifikasi)', hasil.sesi.namaPengguna, hasil.sesi.namaLengkap, hasil.sesi.namaPeran, [
-        { kolom: 'sesi', nilaiLama: 'Keluar', nilaiBaru: `Masuk ${hasil.sesi.masukPada}` }
-      ]);
     }
     setMemproses(false);
     onTerima(hasil.sesi);
@@ -245,15 +244,6 @@ export function KartuMasuk({
       return;
     }
 
-    if (!hasil.sesi.isHiddenDeveloper) {
-      db.logAudit(
-        'Autentikasi & Akses',
-        'Inisialisasi akun developer pertama berhasil via Setup Wizard sekali pakai',
-        hasil.sesi.namaPengguna,
-        hasil.sesi.namaLengkap,
-        hasil.sesi.namaPeran
-      );
-    }
     setMemproses(false);
     onTerima(hasil.sesi);
   };

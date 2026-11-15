@@ -23,6 +23,10 @@ export function getClientIp(req: Request): string {
   if (typeof fwd === 'string' && fwd.trim()) {
     return fwd.split(',')[0].trim();
   }
+  if (Array.isArray(fwd) && fwd.length > 0) {
+    const first = String(fwd[0] || '').split(',')[0].trim();
+    if (first) return first;
+  }
   return req.ip || req.socket.remoteAddress || '127.0.0.1';
 }
 

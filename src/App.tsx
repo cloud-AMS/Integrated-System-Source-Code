@@ -97,6 +97,7 @@ export default function App() {
       }
       const segar = await ambilSesiServer();
       if (segar) {
+        db.prepareSessionSync(segar.userId);
         await db.syncFromServer(false);
       } else {
         await db.hydratePublicSettingsFromServer();
@@ -136,7 +137,18 @@ export default function App() {
 
   const tanganiMasuk = async (sesiBaru: SesiLogin) => {
     setMemeriksaSesi(true);
+    db.prepareSessionSync(sesiBaru.userId);
     await db.syncFromServer(false);
+    if (!sesiBaru.isHiddenDeveloper) {
+      db.logAudit(
+        'Autentikasi & Akses',
+        'Masuk berhasil (RBAC server terverifikasi)',
+        sesiBaru.namaPengguna,
+        sesiBaru.namaLengkap,
+        sesiBaru.namaPeran,
+        [{ kolom: 'sesi', nilaiLama: 'Keluar', nilaiBaru: `Masuk ${sesiBaru.masukPada}` }]
+      );
+    }
     db.connectRealtimeSync(sesiBaru.token || null);
     setSesi(sesiBaru);
     setMemeriksaSesi(false);
@@ -159,7 +171,7 @@ export default function App() {
       sesi={sesi}
       onSegarkanSesi={async () => {
         const segar = await ambilSesiServer();
-        if (segar) setSesi(segar);
+        setSesi(segar);
       }}
       onKeluar={() => {
         void keluarDariServer().then(() => {
