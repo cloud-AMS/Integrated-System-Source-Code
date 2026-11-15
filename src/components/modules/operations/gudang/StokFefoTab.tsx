@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   GaransiInstalasi,
@@ -76,13 +77,41 @@ const toneGaransi = (label: string): Tone =>
         : 'slate';
 
 export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }: Props) {
+  const dbTick = useDbTick([
+    'stok_gudang',
+    'lokasi_bin',
+    'unit_serial',
+    'garansi_instalasi',
+    'pelanggan_b2b',
+    'penjualan',
+    'gudang_pergerakan',
+    'konfigurasi_gudang'
+  ]);
   const [subLayar, setSubLayar] = useState<'kartu' | 'ketelusuran'>('kartu');
-  const [stokList, setStokList] = useState<StokGudang[]>(() => db.getStokGudang());
-  const [binList, setBinList] = useState<LokasiBin[]>(() => db.getLokasiBin());
-  const [unitList, setUnitList] = useState<UnitSerialAlkes[]>(() => db.getUnitSerial());
-  const [garansiList, setGaransiList] = useState<GaransiInstalasi[]>(() => db.getGaransiInstalasi());
-  const [pelangganList] = useState(() => db.getPelangganB2B());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [stokList]);
+  const stokList = useMemo<StokGudang[]>(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const binList = useMemo<LokasiBin[]>(() => {
+    void dbTick;
+    return db.getLokasiBin();
+  }, [dbTick]);
+  const unitList = useMemo<UnitSerialAlkes[]>(() => {
+    void dbTick;
+    return db.getUnitSerial();
+  }, [dbTick]);
+  const garansiList = useMemo<GaransiInstalasi[]>(() => {
+    void dbTick;
+    return db.getGaransiInstalasi();
+  }, [dbTick]);
+  const pelangganList = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [cariStok, setCariStok] = useState('');
   const [filterStatus, setFilterStatus] = useState<'Semua' | StatusStokFisik>('Semua');
@@ -130,10 +159,6 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
   const identitas = identitasPeranGudang(currentRole);
 
   const segarkan = () => {
-    setStokList(db.getStokGudang());
-    setBinList(db.getLokasiBin());
-    setUnitList(db.getUnitSerial());
-    setGaransiList(db.getGaransiInstalasi());
     onPerubahanData();
   };
 
@@ -301,17 +326,19 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
   }, [unitList, kunciBets, filterStatusUnit]);
 
   const betsDikenal = useMemo(() => {
+    void dbTick;
     const bersih = kunciBets.trim().toUpperCase();
     if (!bersih) return false;
     const diGudang = stokList.some((s) => s.nomorBatch.toUpperCase().includes(bersih));
     const diPenjualan = db.getPenjualan().some((p) => p.nomorBatch.toUpperCase().includes(bersih));
     return diGudang || diPenjualan || unitList.some((u) => u.nomorBatch.toUpperCase().includes(bersih));
-  }, [kunciBets, stokList, unitList]);
+  }, [kunciBets, stokList, unitList, dbTick]);
 
   const betsTerpilih = useMemo(() => {
+    void dbTick;
     if (!betsDikenal) return null;
     return db.cariKetelusuran(kunciBets.trim().toUpperCase());
-  }, [kunciBets, betsDikenal]);
+  }, [kunciBets, betsDikenal, dbTick]);
 
   const betsList = useMemo(
     () => Array.from(new Set([...stokList.map((s) => s.nomorBatch), ...unitList.map((u) => u.nomorBatch)])).sort(),

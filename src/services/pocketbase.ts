@@ -124,6 +124,19 @@ import {
   auditOtomatisDokumenQA,
   auditOtomatisDokumenQC
 } from '../utils/auditInternalIso13485';
+import {
+  KATALOG_KOLEKSI_DATA,
+  PETA_KATALOG_KOLEKSI,
+  bangunUlangRantaiJurnal,
+  bangunUlangRantaiPergerakan,
+  buatManifestDefault,
+  hitungRingkasanAsalKoleksi,
+  kumpulkanIdSeedDiedit,
+  normalisasiManifest,
+  saringHanyaDataUser,
+  type ManifestAsalData,
+  type RingkasanAsalKoleksi
+} from '../utils/dataOrigin';
 
 import {
   INITIAL_IZIN_EDAR,
@@ -243,8 +256,11 @@ export type KunciKoleksiOperasionalSitus = (typeof KOLEKSI_OPERASIONAL_SITUS)[nu
 
 const KANAL_REALTIME_AMS = 'ams_alkes_realtime_v1';
 const KUNCI_SESI_AUTH = 'ams_alkes_sesi_login_v2';
+const KUNCI_ANTREAN_SYNC = '__ams_pending_sync_v1';
+const KUNCI_MANIFEST_DATA = 'sistem_data_manifest';
 
 type SyncOp = { type: 'put'; value: unknown } | { type: 'delete' };
+export type StatusSinkronisasi = 'idle' | 'syncing' | 'pending' | 'offline' | 'error';
 
 class AMSDatabaseManager {
   private listeners: Map<string, Set<() => void>> = new Map();
@@ -256,6 +272,7 @@ class AMSDatabaseManager {
   private connectionStatusText: string = 'Menghubungkan ke Server Real-Time Sync...';
   private migrasiDraftAktif: boolean = false;
   private isApplyingRemote: boolean = false;
+  private isInternalProvenanceOp: boolean = false;
   private readonly clientTabId: string =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
@@ -271,10 +288,18 @@ class AMSDatabaseManager {
   private currentWsToken: string | null = null;
   private latestSyncOp: Map<string, SyncOp> = new Map();
   private activeSyncKeys: Set<string> = new Set();
+  private pendingSyncKeys: Set<string> = new Set();
+  private syncRetryTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private syncRetryCounts: Map<string, number> = new Map();
+  private syncStateStatus: StatusSinkronisasi = 'idle';
+  private lastSyncError: string | null = null;
+  private isOnlineBrowser: boolean =
+    typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
 
   constructor() {
     this.ratakanNamaPerusahaan();
     this.ratakanIstilahBatch();
+    this.muatAntreanSyncPersisten();
     this.pasangPendengarLintasTab();
     if (typeof window !== 'undefined') {
       this.checkPBConnection();
@@ -283,6 +308,36 @@ class AMSDatabaseManager {
 
   public getClientId(): string {
     return this.clientTabId;
+  }
+
+  private muatAntreanSyncPersisten() {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const raw = localStorage.getItem(KUNCI_ANTREAN_SYNC);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        parsed.forEach((k) => {
+          if (typeof k === 'string' && k) this.pendingSyncKeys.add(k);
+        });
+      }
+    } catch {
+      /* abaikan antrean rusak */
+    }
+  }
+
+  private simpanAntreanSyncPersisten() {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const daftar = Array.from(this.pendingSyncKeys);
+      if (daftar.length === 0) {
+        localStorage.removeItem(KUNCI_ANTREAN_SYNC);
+      } else {
+        localStorage.setItem(KUNCI_ANTREAN_SYNC, JSON.stringify(daftar));
+      }
+    } catch {
+      /* abaikan bila storage penuh */
+    }
   }
 
   private getAuthTokenFromStorage(): string | null {
@@ -328,6 +383,34 @@ class AMSDatabaseManager {
         this.enqueueKeySync(detail.key, { type: 'put', value: detail.value });
       }
     });
+
+    window.addEventListener('online', () => {
+      this.isOnlineBrowser = true;
+      this.updateConnectionStatusLabel();
+      void this.flushPendingSync();
+      if (this.wsShouldConnect) {
+        void this.syncFromServer(true);
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnlineBrowser = false;
+      this.updateConnectionStatusLabel();
+    });
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.isOnlineBrowser = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+          if (this.pendingSyncKeys.size > 0) {
+            void this.flushPendingSync();
+          }
+          if (this.wsShouldConnect) {
+            void this.syncFromServer(true);
+          }
+        }
+      });
+    }
 
     if (typeof BroadcastChannel !== 'undefined') {
       try {
@@ -402,13 +485,31 @@ class AMSDatabaseManager {
   }
 
   private updateConnectionStatusLabel() {
-    if (this.wsConnected) {
+    if (!this.isOnlineBrowser) {
+      this.syncStateStatus = 'offline';
+      this.connectionStatusText =
+        this.pendingSyncKeys.size > 0
+          ? `Offline — ${this.pendingSyncKeys.size} perubahan menunggu jaringan`
+          : 'Offline — Penyimpanan Lokal Aktif';
+    } else if (this.activeSyncKeys.size > 0) {
+      this.syncStateStatus = 'syncing';
+      this.connectionStatusText = 'Menyinkronkan Perubahan ke Server...';
+    } else if (this.pendingSyncKeys.size > 0) {
+      this.syncStateStatus = this.lastSyncError ? 'error' : 'pending';
+      this.connectionStatusText = this.lastSyncError
+        ? `${this.pendingSyncKeys.size} Perubahan Tertunda (${this.lastSyncError})`
+        : `${this.pendingSyncKeys.size} Perubahan Menunggu Sinkronisasi`;
+    } else if (this.wsConnected) {
+      this.syncStateStatus = 'idle';
       this.connectionStatusText = 'Server Real-Time Sync Aktif (WebSocket Terhubung)';
     } else if (this.isOnlinePocketBase) {
+      this.syncStateStatus = 'idle';
       this.connectionStatusText = 'PocketBase Terhubung (Real-time)';
     } else if (this.wsShouldConnect) {
-      this.connectionStatusText = 'Server Sync Mode Polling HTTP (Menunggu WebSocket)';
+      this.syncStateStatus = 'idle';
+      this.connectionStatusText = 'Server Sync Aktif (Mode HTTP Polling)';
     } else {
+      this.syncStateStatus = 'idle';
       this.connectionStatusText = 'Penyimpanan Lokal Aktif (Offline-First)';
     }
     this.notifyLocal('connection_status');
@@ -433,11 +534,16 @@ class AMSDatabaseManager {
     return {
       isPocketBaseConnected: this.wsConnected || this.isOnlinePocketBase,
       isRealtimeSyncConnected: this.wsConnected,
+      isServerSyncActive: Boolean(this.getAuthTokenFromStorage()) && this.isOnlineBrowser,
       revision: this.serverRevision,
       lastSyncedAt: this.lastSyncedAt,
       clientId: this.clientTabId,
       statusLabel: this.connectionStatusText,
-      url: this.wsConnected || this.wsShouldConnect ? originUrl : PB_URL
+      url: this.wsConnected || this.wsShouldConnect ? originUrl : PB_URL,
+      pendingCount: this.pendingSyncKeys.size,
+      pendingKeys: Array.from(this.pendingSyncKeys),
+      syncState: this.syncStateStatus,
+      lastSyncError: this.lastSyncError
     };
   }
 
@@ -476,22 +582,64 @@ class AMSDatabaseManager {
     });
   }
 
+  private bacaOperasiDariLocalStorage(key: string): SyncOp {
+    try {
+      if (typeof localStorage === 'undefined') return { type: 'delete' };
+      const raw = localStorage.getItem(STORAGE_PREFIX + key);
+      if (raw === null) return { type: 'delete' };
+      return { type: 'put', value: JSON.parse(raw) };
+    } catch {
+      return { type: 'delete' };
+    }
+  }
+
+  private jadwalkanUlangSync(key: string) {
+    if (typeof window === 'undefined') return;
+    if (this.syncRetryTimers.has(key)) return;
+    const percobaan = (this.syncRetryCounts.get(key) ?? 0) + 1;
+    this.syncRetryCounts.set(key, percobaan);
+    const jeda = Math.min(30_000, 1500 * 2 ** Math.min(percobaan - 1, 5));
+    const timer = setTimeout(() => {
+      this.syncRetryTimers.delete(key);
+      if (!this.pendingSyncKeys.has(key)) return;
+      if (!this.activeSyncKeys.has(key)) {
+        void this.drainKeySync(key);
+      }
+    }, jeda);
+    this.syncRetryTimers.set(key, timer);
+  }
+
   private enqueueKeySync(key: string, op: SyncOp) {
     if (typeof window === 'undefined' || typeof fetch !== 'function') return;
-    if (!this.getAuthTokenFromStorage()) return;
+    this.pendingSyncKeys.add(key);
     this.latestSyncOp.set(key, op);
+    this.simpanAntreanSyncPersisten();
+    const timer = this.syncRetryTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      this.syncRetryTimers.delete(key);
+    }
+    this.syncRetryCounts.delete(key);
+    this.updateConnectionStatusLabel();
+
+    if (!this.getAuthTokenFromStorage() || !this.isOnlineBrowser) return;
     if (this.activeSyncKeys.has(key)) return;
     void this.drainKeySync(key);
   }
 
   private async drainKeySync(key: string) {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return;
     this.activeSyncKeys.add(key);
+    this.updateConnectionStatusLabel();
     try {
-      while (this.latestSyncOp.has(key)) {
-        const op = this.latestSyncOp.get(key)!;
-        this.latestSyncOp.delete(key);
+      while (this.pendingSyncKeys.has(key) || this.latestSyncOp.has(key)) {
+        const op = this.latestSyncOp.get(key) ?? this.bacaOperasiDariLocalStorage(key);
+        this.latestSyncOp.set(key, op);
+
         const token = this.getAuthTokenFromStorage();
-        if (!token) break;
+        if (!token || !this.isOnlineBrowser) {
+          break;
+        }
 
         try {
           const url = `/api/sync/keys/${encodeURIComponent(key)}`;
@@ -515,30 +663,192 @@ class AMSDatabaseManager {
               headers
             });
           }
+
           if (res.status === 401 && typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+            this.lastSyncError = 'Sesi berakhir';
             break;
           }
-          if (res.ok) {
-            const payload = (await res.json().catch(() => null)) as {
-              version?: number;
-              revision?: number;
-            } | null;
-            if (typeof payload?.version === 'number') {
-              this.serverVersions[key] = Math.max(this.serverVersions[key] ?? 0, payload.version);
+
+          if (res.status === 400 || res.status === 403) {
+            const errPayload = (await res.json().catch(() => null)) as { pesan?: string } | null;
+            this.lastSyncError = errPayload?.pesan || `HTTP ${res.status}`;
+            if (this.latestSyncOp.get(key) === op) {
+              this.latestSyncOp.delete(key);
+              this.pendingSyncKeys.delete(key);
+              this.syncRetryCounts.delete(key);
+              this.simpanAntreanSyncPersisten();
             }
-            if (typeof payload?.revision === 'number') {
-              this.serverRevision = Math.max(this.serverRevision, payload.revision);
-            }
-            this.lastSyncedAt = new Date().toISOString();
+            continue;
+          }
+
+          if (!res.ok) {
+            this.lastSyncError = `Server HTTP ${res.status}`;
+            this.jadwalkanUlangSync(key);
+            break;
+          }
+
+          const payload = (await res.json().catch(() => null)) as {
+            version?: number;
+            revision?: number;
+          } | null;
+          if (typeof payload?.version === 'number') {
+            this.serverVersions[key] = Math.max(this.serverVersions[key] ?? 0, payload.version);
+          }
+          if (typeof payload?.revision === 'number') {
+            this.serverRevision = Math.max(this.serverRevision, payload.revision);
+          }
+          this.lastSyncedAt = new Date().toISOString();
+          this.lastSyncError = null;
+
+          // Hapus hanya bila belum ada mutasi baru yang masuk selama request berjalan
+          if (this.latestSyncOp.get(key) === op) {
+            this.latestSyncOp.delete(key);
+            this.pendingSyncKeys.delete(key);
+            this.syncRetryCounts.delete(key);
+            this.simpanAntreanSyncPersisten();
           }
         } catch {
-          /* tetap bertahan offline-first tanpa menghentikan antrean lokal */
+          this.lastSyncError = 'Koneksi server terputus';
+          this.jadwalkanUlangSync(key);
+          break;
         }
       }
     } finally {
       this.activeSyncKeys.delete(key);
+      this.updateConnectionStatusLabel();
     }
+  }
+
+  public async flushPendingSync(): Promise<{ synced: number; remaining: number }> {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') {
+      return { synced: 0, remaining: this.pendingSyncKeys.size };
+    }
+    const token = this.getAuthTokenFromStorage();
+    if (!token || !this.isOnlineBrowser) {
+      return { synced: 0, remaining: this.pendingSyncKeys.size };
+    }
+
+    const keys = Array.from(this.pendingSyncKeys).filter((k) => !this.activeSyncKeys.has(k));
+    if (keys.length === 0) {
+      return { synced: 0, remaining: this.pendingSyncKeys.size };
+    }
+
+    if (keys.length === 1) {
+      await this.drainKeySync(keys[0]);
+      return {
+        synced: this.pendingSyncKeys.has(keys[0]) ? 0 : 1,
+        remaining: this.pendingSyncKeys.size
+      };
+    }
+
+    const updates: Record<string, unknown> = {};
+    const deletes: string[] = [];
+    const snapshotOps = new Map<string, SyncOp>();
+
+    for (const k of keys) {
+      this.activeSyncKeys.add(k);
+      const timer = this.syncRetryTimers.get(k);
+      if (timer) {
+        clearTimeout(timer);
+        this.syncRetryTimers.delete(k);
+      }
+      const op = this.latestSyncOp.get(k) ?? this.bacaOperasiDariLocalStorage(k);
+      this.latestSyncOp.set(k, op);
+      snapshotOps.set(k, op);
+      if (op.type === 'put') updates[k] = op.value;
+      else deletes.push(k);
+    }
+    this.updateConnectionStatusLabel();
+
+    let synced = 0;
+    try {
+      const res = await fetch('/api/sync/batch', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Sync-Client-Id': this.clientTabId
+        },
+        body: JSON.stringify({ updates, deletes, clientId: this.clientTabId })
+      });
+
+      if (res.status === 401) {
+        window.dispatchEvent(new CustomEvent('ams:auth-expired'));
+        this.lastSyncError = 'Sesi berakhir';
+        return { synced: 0, remaining: this.pendingSyncKeys.size };
+      }
+
+      if (res.ok) {
+        const payload = (await res.json().catch(() => null)) as {
+          revision?: number;
+          versions?: Record<string, number>;
+        } | null;
+        if (typeof payload?.revision === 'number') {
+          this.serverRevision = Math.max(this.serverRevision, payload.revision);
+        }
+        if (payload?.versions) {
+          for (const [k, v] of Object.entries(payload.versions)) {
+            if (typeof v === 'number') {
+              this.serverVersions[k] = Math.max(this.serverVersions[k] ?? 0, v);
+            }
+          }
+        }
+        this.lastSyncedAt = new Date().toISOString();
+        this.lastSyncError = null;
+        for (const k of keys) {
+          if (this.latestSyncOp.get(k) === snapshotOps.get(k)) {
+            this.latestSyncOp.delete(k);
+            this.pendingSyncKeys.delete(k);
+            this.syncRetryCounts.delete(k);
+            synced += 1;
+          }
+        }
+        this.simpanAntreanSyncPersisten();
+      } else {
+        // Fallback per-kunci bila salah satu item batch ditolak RBAC
+        for (const k of keys) {
+          this.activeSyncKeys.delete(k);
+        }
+        for (const k of keys) {
+          await this.drainKeySync(k);
+          if (!this.pendingSyncKeys.has(k)) synced += 1;
+        }
+        return { synced, remaining: this.pendingSyncKeys.size };
+      }
+    } catch {
+      this.lastSyncError = 'Koneksi server terputus';
+      for (const k of keys) {
+        this.jadwalkanUlangSync(k);
+      }
+    } finally {
+      for (const k of keys) {
+        this.activeSyncKeys.delete(k);
+      }
+      this.updateConnectionStatusLabel();
+    }
+
+    // Jika ada perubahan baru saat batch berlangsung, antrekan ulang
+    if (this.pendingSyncKeys.size > 0 && synced > 0) {
+      for (const sisa of Array.from(this.pendingSyncKeys)) {
+        if (!this.activeSyncKeys.has(sisa)) {
+          void this.drainKeySync(sisa);
+        }
+      }
+    }
+    return { synced, remaining: this.pendingSyncKeys.size };
+  }
+
+  public async syncNow(): Promise<{ ok: boolean; uploaded: number; downloaded: number; remaining: number }> {
+    const push = await this.flushPendingSync();
+    const pull = await this.syncFromServer(false);
+    return {
+      ok: push.remaining === 0,
+      uploaded: push.synced,
+      downloaded: pull.length,
+      remaining: push.remaining
+    };
   }
 
   private applyRemoteEntry(
@@ -646,7 +956,26 @@ class AMSDatabaseManager {
         this.serverRevision = Math.max(this.serverRevision, data.revision);
       }
       const changed: string[] = [];
-      for (const [key, entry] of Object.entries(data.entries || {})) {
+      const remoteEntries = data.entries || {};
+      const remoteManifest = remoteEntries[KUNCI_MANIFEST_DATA]?.value as Partial<ManifestAsalData> | undefined;
+      const remotePurged = Boolean(remoteManifest?.dummyDihapus);
+
+      // Pastikan manifest diterapkan terlebih dahulu agar penanda dummyDihapus aktif sebelum koleksi lain
+      if (remoteEntries[KUNCI_MANIFEST_DATA]) {
+        const me = remoteEntries[KUNCI_MANIFEST_DATA];
+        if (!this.pendingSyncKeys.has(KUNCI_MANIFEST_DATA) || remotePurged) {
+          if (this.applyRemoteEntry(KUNCI_MANIFEST_DATA, me.value, me.version, true)) {
+            changed.push(KUNCI_MANIFEST_DATA);
+          }
+        }
+      }
+
+      for (const [key, entry] of Object.entries(remoteEntries)) {
+        if (key === KUNCI_MANIFEST_DATA) continue;
+        // Jangan timpa kunci yang belum selesai dikirim ke server kecuali server baru saja melakukan purge
+        if (this.pendingSyncKeys.has(key) && !remotePurged) {
+          continue;
+        }
         if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
           changed.push(key);
         }
@@ -654,6 +983,9 @@ class AMSDatabaseManager {
       this.lastSyncedAt = new Date().toISOString();
       if (changed.length > 0) {
         this.emitRemoteUpdate(changed, deltaOnly ? 'delta' : 'hydrate');
+      }
+      if (this.pendingSyncKeys.size > 0 && !remotePurged) {
+        void this.flushPendingSync();
       }
       return changed;
     } catch {
@@ -715,7 +1047,7 @@ class AMSDatabaseManager {
         this.wsConnected = true;
         this.stopFallbackPolling();
         this.updateConnectionStatusLabel();
-        void this.syncFromServer(true);
+        void this.flushPendingSync().then(() => this.syncFromServer(true));
       };
 
       socket.onmessage = (ev: MessageEvent) => {
@@ -727,6 +1059,8 @@ class AMSDatabaseManager {
             version?: number;
             revision?: number;
             sourceClientId?: string | null;
+            entries?: Record<string, { value: unknown; version: number }>;
+            deleted?: string[];
           };
           if (!msg || typeof msg.type !== 'string') return;
 
@@ -750,6 +1084,45 @@ class AMSDatabaseManager {
             if (this.applyRemoteEntry(msg.key, msg.value, msg.version, true)) {
               this.lastSyncedAt = new Date().toISOString();
               this.emitRemoteUpdate([msg.key], 'ws');
+            }
+            return;
+          }
+
+          if (msg.type === 'sync:batch-update') {
+            if (typeof msg.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, msg.revision);
+            }
+            const entries = msg.entries || {};
+            const deleted = Array.isArray(msg.deleted) ? msg.deleted : [];
+            if (msg.sourceClientId === this.clientTabId) {
+              for (const [k, entry] of Object.entries(entries)) {
+                if (typeof entry?.version === 'number') {
+                  this.serverVersions[k] = Math.max(this.serverVersions[k] ?? 0, entry.version);
+                }
+              }
+              return;
+            }
+            const changed: string[] = [];
+            if (entries[KUNCI_MANIFEST_DATA]) {
+              const me = entries[KUNCI_MANIFEST_DATA];
+              if (this.applyRemoteEntry(KUNCI_MANIFEST_DATA, me.value, me.version, true)) {
+                changed.push(KUNCI_MANIFEST_DATA);
+              }
+            }
+            for (const [k, entry] of Object.entries(entries)) {
+              if (k === KUNCI_MANIFEST_DATA) continue;
+              if (this.applyRemoteEntry(k, entry.value, entry.version, true)) {
+                changed.push(k);
+              }
+            }
+            for (const k of deleted) {
+              if (this.applyRemoteDelete(k, 'ws-batch')) {
+                changed.push(k);
+              }
+            }
+            if (changed.length > 0) {
+              this.lastSyncedAt = new Date().toISOString();
+              this.emitRemoteUpdate(changed, 'ws-batch');
             }
             return;
           }
@@ -898,13 +1271,39 @@ class AMSDatabaseManager {
     }
   }
 
+  public getManifestData(): ManifestAsalData {
+    return normalisasiManifest(this.getJson<unknown>(KUNCI_MANIFEST_DATA));
+  }
+
+  public saveManifestData(manifest: ManifestAsalData, skipRemoteSync = false): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_PREFIX + KUNCI_MANIFEST_DATA, JSON.stringify(manifest));
+      }
+      this.notify(KUNCI_MANIFEST_DATA);
+      if (!skipRemoteSync && !this.isApplyingRemote && !this.migrasiDraftAktif) {
+        this.enqueueKeySync(KUNCI_MANIFEST_DATA, { type: 'put', value: manifest });
+      }
+    } catch (e) {
+      console.error('Gagal menyimpan manifest asal data:', e);
+    }
+  }
+
   private getCollection<T>(key: string, initial: T[]): T[] {
     try {
-      if (typeof localStorage === 'undefined') return initial;
+      if (typeof localStorage === 'undefined') {
+        const manifest = this.getManifestData();
+        const def = PETA_KATALOG_KOLEKSI.get(key);
+        if (manifest.dummyDihapus && def?.kategori === 'operasional') return [];
+        return initial;
+      }
       const stored = localStorage.getItem(STORAGE_PREFIX + key);
       if (!stored) {
-        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(initial));
-        return initial;
+        const manifest = this.getManifestData();
+        const def = PETA_KATALOG_KOLEKSI.get(key);
+        const seedAwal = manifest.dummyDihapus && def?.kategori === 'operasional' ? ([] as T[]) : initial;
+        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(seedAwal));
+        return seedAwal;
       }
       return JSON.parse(stored);
     } catch {
@@ -919,8 +1318,27 @@ class AMSDatabaseManager {
         return;
       }
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
+      if (
+        !this.isApplyingRemote &&
+        !this.migrasiDraftAktif &&
+        !this.isInternalProvenanceOp &&
+        key !== KUNCI_MANIFEST_DATA
+      ) {
+        const def = PETA_KATALOG_KOLEKSI.get(key);
+        if (def?.kategori === 'operasional') {
+          const manifest = this.getManifestData();
+          const lama = manifest.userEditedIds[key] || [];
+          const baru = kumpulkanIdSeedDiedit(key, data as unknown[], lama);
+          if (baru.length !== lama.length) {
+            this.saveManifestData({
+              ...manifest,
+              userEditedIds: { ...manifest.userEditedIds, [key]: baru }
+            });
+          }
+        }
+      }
       this.notify(key);
-      if (!this.isApplyingRemote && !this.migrasiDraftAktif) {
+      if (!this.isApplyingRemote && !this.migrasiDraftAktif && !this.isInternalProvenanceOp) {
         this.enqueueKeySync(key, { type: 'put', value: data });
       }
     } catch (e) {
@@ -1000,11 +1418,28 @@ class AMSDatabaseManager {
 
   // Audit Internal ISO 13485:2016 & CDAKB
   public getAuditInternal(lingkup?: 'QA' | 'QC' | 'SEMUA'): AuditInternalIso13485[] {
-    const defaultAudits: AuditInternalIso13485[] = [
-      auditOtomatisDokumenQA(this.getDokumenMutu(), this.getCAPA(), this.getProdukKembalian()),
-      auditOtomatisDokumenQC(this.getInspeksiQC(), this.getStokGudang())
-    ];
-    const items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', defaultAudits);
+    const manifest = this.getManifestData();
+    const sudahTersimpan =
+      typeof localStorage !== 'undefined' &&
+      localStorage.getItem(STORAGE_PREFIX + 'audit_internal_iso') !== null;
+
+    let items: AuditInternalIso13485[];
+    if (sudahTersimpan) {
+      items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', []);
+    } else if (manifest.dummyDihapus) {
+      items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', []);
+    } else {
+      const defaultAudits: AuditInternalIso13485[] = [
+        auditOtomatisDokumenQA(this.getDokumenMutu(), this.getCAPA(), this.getProdukKembalian()),
+        auditOtomatisDokumenQC(this.getInspeksiQC(), this.getStokGudang())
+      ];
+      items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', defaultAudits);
+      const seededIds = defaultAudits.map((a) => a.id);
+      if (seededIds.length > 0 && manifest.seededAuditIds.length === 0) {
+        this.saveManifestData({ ...manifest, seededAuditIds: seededIds }, true);
+      }
+    }
+
     if (!lingkup || lingkup === 'SEMUA') return items;
     return items.filter(a => lingkup === 'QA' ? a.lingkup.includes('QA') : a.lingkup.includes('QC'));
   }
@@ -2916,6 +3351,14 @@ class AMSDatabaseManager {
     }
   }
 
+  public getCatalogSettings<T>(fallback: T): T {
+    return this.getJson<T>('catalog_settings_v1') ?? fallback;
+  }
+
+  public saveCatalogSettings<T>(settings: T): void {
+    this.setJson('catalog_settings_v1', settings);
+  }
+
   /** Kumpulan data aplikasi yang menjadi sumber konten situs. */
   public getSumberKontenWebsite(): SumberKontenWebsite {
     return {
@@ -3067,16 +3510,20 @@ class AMSDatabaseManager {
     const cleanBets = nomorBatch.trim().toUpperCase();
     if (!cleanBets) return null;
 
-    // Search across stocks, QC, manufacturing, and sales
+    // Search across stocks, QC, manufacturing, recall, and sales
     const stok = this.getStokGudang().find(s => (s?.nomorBatch || '').toUpperCase().includes(cleanBets));
     const qc = this.getInspeksiQC().find(q => (q?.nomorBatch || '').toUpperCase().includes(cleanBets));
     const bmr = this.getBetsProduksi().find(b => (b?.nomorBatch || '').toUpperCase().includes(cleanBets));
     const recall = this.getPenarikanProduk().find(r => (r?.nomorBatchTerdampak || '').toUpperCase().includes(cleanBets));
     const sales = this.getPenjualan().filter(p => (p?.nomorBatch || '').toUpperCase().includes(cleanBets));
 
-    const namaAlkes = stok?.namaAlkes || qc?.namaBarang || bmr?.namaProduk || 'Alat Kesehatan Terdaftar';
-    const nomorIzinEdar = stok?.nomorIzinEdar || 'KEMENKES RI Terdaftar';
-    const produsen = bmr ? 'PT Anugrahmitra Selaras (CPAKB)' : 'Shenzhen Mindray / Prinsipal Resmi';
+    if (!stok && !qc && !bmr && !recall && sales.length === 0) {
+      return null;
+    }
+
+    const namaAlkes = stok?.namaAlkes || qc?.namaBarang || bmr?.namaProduk || sales[0]?.namaAlkes || 'Alat Kesehatan Terdaftar';
+    const nomorIzinEdar = stok?.nomorIzinEdar || 'Terdaftar pada Modul RA/PJT';
+    const produsen = bmr ? 'PT Anugrahmitra Selaras (CPAKB)' : 'Prinsipal / Pemasok Terkualifikasi';
 
     const fasyankesPenerima = sales.map(s => ({
       nama: s.fasyankes,
@@ -3085,25 +3532,15 @@ class AMSDatabaseManager {
       jumlah: s.jumlah
     }));
 
-    // If no sales yet, add a realistic traceable record if matching batch
-    if (fasyankesPenerima.length === 0 && cleanBets.includes('PM44')) {
-      fasyankesPenerima.push({
-        nama: 'RSUD Pasar Minggu Jakarta Selatan',
-        nomorSuratJalan: 'SJ/CDAKB/2024/05/118',
-        tanggalKirim: '2024-05-18',
-        jumlah: 2
-      });
-    }
-
     return {
       nomorBatch: cleanBets,
       namaAlkes,
       nomorIzinEdar,
       produsen,
-      tanggalPenerimaan: qc?.tanggalInspeksi || stok?.tanggalMasuk || '2024-05-01',
-      hasilInspeksiQC: qc ? `${qc.hasilPemeriksaan} (${qc.inspektur})` : 'Lolos Pengujian Mutu (Released)',
-      lokasiGudang: stok?.lokasiPenyimpanan || 'Gudang Utama Distribusi',
-      logSuhuStatus: stok?.zonaSuhu || 'Ruang Sejuk Terpantau 24 Jam',
+      tanggalPenerimaan: qc?.tanggalInspeksi || stok?.tanggalMasuk || sales[0]?.tanggalPesanan || '-',
+      hasilInspeksiQC: qc ? `${qc.hasilPemeriksaan} (${qc.inspektur})` : 'Belum Ada Catatan Inspeksi QC',
+      lokasiGudang: stok?.lokasiPenyimpanan || '-',
+      logSuhuStatus: stok?.zonaSuhu || '-',
       fasyankesPenerima,
       statusRecall: recall ? 'Dalam Pengawasan Recall' : 'Aman (Tidak Ada Recall)'
     };
@@ -3230,6 +3667,450 @@ class AMSDatabaseManager {
     );
   }
 
+  private bacaKoleksiMentahUntukProvenance(key: string): unknown[] {
+    switch (key) {
+      case 'izin_edar': return this.getIzinEdar();
+      case 'sertifikat': return this.getSertifikat();
+      case 'dokumen_mutu': return this.getDokumenMutu();
+      case 'capa': return this.getCAPA();
+      case 'produk_kembalian': return this.getProdukKembalian();
+      case 'inspeksi_qc': return this.getInspeksiQC();
+      case 'audit_internal_iso': return this.getAuditInternal();
+      case 'stok_gudang': return this.getStokGudang();
+      case 'log_suhu': return this.getLogSuhu();
+      case 'pest_control': return this.getPestControl();
+      case 'gudang_unit': return this.getGudangFisik();
+      case 'gudang_bin': return this.getLokasiBin();
+      case 'gudang_aturan_simpan': return this.getAturanSimpan();
+      case 'gudang_pergerakan': return this.getJejakPergerakan();
+      case 'gudang_penerimaan': return this.getTerimaBarang();
+      case 'gudang_surat_jalan': return this.getSuratJalan();
+      case 'gudang_opname': return this.getOpnameStok();
+      case 'gudang_ambang': return this.getAmbangStok();
+      case 'gudang_scanner': return this.getKejadianScanner();
+      case 'gudang_lkpp_sync': return this.getSinkronisasiLkpp();
+      case 'gudang_satusehat': return this.getKirimanSatuSehat();
+      case 'layanan_teknis': return this.getLayananTeknis();
+      case 'bets_produksi': return this.getBetsProduksi();
+      case 'pemasok': return this.getPemasok();
+      case 'purchase_order': return this.getPurchaseOrder();
+      case 'penjualan': return this.getPenjualan();
+      case 'sales_pelanggan': return this.getPelangganB2B();
+      case 'sales_prospek': return this.getProspek();
+      case 'sales_teritorial': return this.getTeritorial();
+      case 'sales_tender': return this.getTender();
+      case 'sales_kontrak': return this.getKontrakHarga();
+      case 'sales_kunjungan': return this.getKunjunganMedRep();
+      case 'sales_pengetahuan_produk': return this.getPengetahuanProduk();
+      case 'sales_pra_order': return this.getPraOrder();
+      case 'sales_skema_harga': return this.getSkemaHarga();
+      case 'sales_unit_serial': return this.getUnitSerial();
+      case 'sales_garansi': return this.getGaransiInstalasi();
+      case 'sales_kampanye': return this.getKampanye();
+      case 'sales_unit_demo': return this.getUnitDemo();
+      case 'sales_rebate': return this.getProgramRebate();
+      case 'sales_riwayat_bulanan': return this.getRiwayatPenjualanBulanan();
+      case 'surat_daftar': return this.getDaftarSurat();
+      case 'surat_subscriber': return this.getPelangganSurat();
+      case 'surat_kampanye': return this.getKampanyeSurat();
+      case 'surat_templat': return this.getTemplatSurat();
+      case 'surat_media': return this.getMediaSurat();
+      case 'surat_tx': return this.getPesanTransaksional();
+      case 'laporan_ktd': return this.getLaporanKTD();
+      case 'penarikan_produk': return this.getPenarikanProduk();
+      case 'pelatihan': return this.getPelatihan();
+      case 'sertifikasi_pegawai': return this.getSertifikasiPegawai();
+      case 'hris_karyawan': return this.getKaryawanHRIS();
+      case 'hris_grading': return this.getGradingJabatan();
+      case 'hris_mutasi': return this.getRiwayatMutasi();
+      case 'hris_shift': return this.getJadwalShift();
+      case 'hris_absensi': return this.getAbsensi();
+      case 'hris_lembur': return this.getLembur();
+      case 'hris_slip_gaji': return this.getSlipGaji();
+      case 'hris_ats': return this.getKandidatATS();
+      case 'hris_skill_matrix': return this.getSkillMatrix();
+      case 'hris_kpi': return this.getKpiKaryawan();
+      case 'hris_umpan_balik_360': return this.getUmpanBalik360();
+      case 'hris_insiden_k3': return this.getInsidenK3();
+      case 'hris_mcu': return this.getRekamMcu();
+      case 'hris_apd': return this.getDistribusiApd();
+      case 'transaksi': return this.getTransaksi();
+      case 'keuangan_valuasi_batch': return this.getValuasiBatch();
+      case 'keuangan_jurnal': return this.getJurnalKeuangan();
+      case 'audit_trail': return this.getAuditTrail();
+      case 'keuangan_coa': return this.getCoA();
+      case 'keuangan_periode': return this.getPeriodeBuku();
+      case 'keuangan_tetapan_pajak': return this.getTetapanPajak();
+      case 'gudang_pengaturan': return [this.getKonfigurasiGudang()];
+      case 'surat_pengaturan': return [this.getKonfigurasiSurat()];
+      default: {
+        const val = this.getJson<unknown>(key);
+        if (Array.isArray(val)) return val;
+        return val ? [val] : [];
+      }
+    }
+  }
+
+  public getRingkasanAsalData(): {
+    manifest: ManifestAsalData;
+    koleksi: RingkasanAsalKoleksi[];
+    totalDummy: number;
+    totalUserBaru: number;
+    totalUserDiedit: number;
+    totalMasterSistem: number;
+    totalKonfigurasiUser: number;
+  } {
+    const manifest = this.getManifestData();
+    const koleksi: RingkasanAsalKoleksi[] = [];
+    let totalDummy = 0;
+    let totalUserBaru = 0;
+    let totalUserDiedit = 0;
+    let totalMasterSistem = 0;
+    let totalKonfigurasiUser = 0;
+
+    for (const def of KATALOG_KOLEKSI_DATA) {
+      if (def.kategori === 'operasional') {
+        const items = this.bacaKoleksiMentahUntukProvenance(def.key);
+        const manifestEfektif = def.key === 'audit_internal_iso' ? this.getManifestData() : manifest;
+        const r = hitungRingkasanAsalKoleksi(def.key, items, manifestEfektif);
+        koleksi.push(r);
+        totalDummy += r.dummy;
+        totalUserBaru += r.userBaru;
+        totalUserDiedit += r.userDiedit;
+      } else if (def.kategori === 'master_sistem') {
+        const items = this.bacaKoleksiMentahUntukProvenance(def.key);
+        totalMasterSistem += items.length;
+        koleksi.push({
+          key: def.key,
+          label: def.label,
+          modul: def.modul,
+          kategori: def.kategori,
+          total: items.length,
+          dummy: 0,
+          userBaru: items.length,
+          userDiedit: 0,
+          strukturGudang: false
+        });
+      } else {
+        const val = this.getJson<unknown>(def.key);
+        const ada = Array.isArray(val) ? val.length : val ? 1 : 0;
+        totalKonfigurasiUser += ada;
+        koleksi.push({
+          key: def.key,
+          label: def.label,
+          modul: def.modul,
+          kategori: def.kategori,
+          total: ada,
+          dummy: 0,
+          userBaru: ada,
+          userDiedit: 0,
+          strukturGudang: false
+        });
+      }
+    }
+
+    return {
+      manifest,
+      koleksi,
+      totalDummy,
+      totalUserBaru,
+      totalUserDiedit,
+      totalMasterSistem,
+      totalKonfigurasiUser
+    };
+  }
+
+  public async purgeDummyData(
+    opsi: {
+      pertahankanEditUser?: boolean;
+      pertahankanStrukturGudang?: boolean;
+      pelaku?: string;
+      peran?: string;
+    } = {}
+  ): Promise<{
+    ok: boolean;
+    terhapusDummy: number;
+    dipertahankanUser: number;
+    revision: number;
+    pesan: string;
+  }> {
+    const pertahankanEditUser = opsi.pertahankanEditUser ?? true;
+    const pertahankanStrukturGudang = opsi.pertahankanStrukturGudang ?? false;
+    const pelaku = opsi.pelaku || 'Administrator Sistem';
+    const peran = opsi.peran || 'IT & Traceability Hub';
+
+    const manifestLama = this.getManifestData();
+    const batchUpdates: Record<string, unknown> = {};
+    let terhapusDummy = 0;
+    let dipertahankanUser = 0;
+
+    this.isInternalProvenanceOp = true;
+    try {
+      for (const def of KATALOG_KOLEKSI_DATA) {
+        if (def.kategori !== 'operasional') continue;
+        const sebelum = this.bacaKoleksiMentahUntukProvenance(def.key);
+        const manifestEfektif = def.key === 'audit_internal_iso' ? this.getManifestData() : manifestLama;
+        const ringkas = hitungRingkasanAsalKoleksi(def.key, sebelum, manifestEfektif);
+        let sesudah = saringHanyaDataUser(def.key, sebelum, manifestEfektif, {
+          pertahankanEditUser,
+          pertahankanStrukturGudang
+        });
+
+        if (def.key === 'gudang_pergerakan') {
+          sesudah = bangunUlangRantaiPergerakan(sesudah as JejakPergerakan[]);
+        } else if (def.key === 'keuangan_jurnal') {
+          sesudah = bangunUlangRantaiJurnal(sesudah as JurnalKeuangan[]);
+        }
+
+        const berkurang = Math.max(0, sebelum.length - sesudah.length);
+        terhapusDummy += berkurang > 0 ? berkurang : ringkas.dummy;
+        dipertahankanUser += sesudah.length;
+        batchUpdates[def.key] = sesudah;
+      }
+
+      // Sinkronkan kapasitas terpakai pada lokasi bin terhadap stok user yang tersisa
+      const stokSisa = (batchUpdates['stok_gudang'] as StokGudang[]) || [];
+      const isiBin = new Map<string, number>();
+      stokSisa.forEach((s) => {
+        if (s.binId) isiBin.set(s.binId, (isiBin.get(s.binId) ?? 0) + s.jumlahStok);
+      });
+      const binsSisa = ((batchUpdates['gudang_bin'] as LokasiBin[]) || []).map((b) => ({
+        ...b,
+        terpakai: isiBin.get(b.id) ?? 0
+      }));
+      batchUpdates['gudang_bin'] = binsSisa;
+
+      // Pastikan periode akuntansi bulan berjalan tersedia & terbuka agar transaksi user pasca-purge tetap bisa dijurnal
+      const periodeAktif = this.getPeriodeBuku();
+      const periodeBulanIni = new Date().toISOString().slice(0, 7);
+      if (!periodeAktif.some((p) => p.status === 'Terbuka')) {
+        const periodeBaru: PeriodeBuku = {
+          id: periodeBulanIni,
+          label: `Periode ${periodeBulanIni}`,
+          status: 'Terbuka',
+          ditutupPada: null,
+          ditutupOleh: '',
+          alasan: 'Dibuka otomatis pasca-purge data dummy'
+        };
+        const nextPeriode = [periodeBaru, ...periodeAktif];
+        batchUpdates['keuangan_periode'] = nextPeriode;
+      }
+
+      // Tambahkan entri audit ALCOA+ resmi atas aksi purge ini
+      const now = new Date();
+      const waktuWIB = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('id-ID')} WIB`;
+      const auditSisa = (batchUpdates['audit_trail'] as LogAuditTrail[]) || [];
+      const logPurge: LogAuditTrail = {
+        id: 'LOG-' + now.getTime(),
+        waktu: waktuWIB,
+        pengguna: pelaku,
+        peran,
+        modul: 'IT & Traceability',
+        aktivitas: `Pembersihan selektif (purge) ${terhapusDummy} data dummy; ${dipertahankanUser} data user & seluruh konfigurasi dipertahankan`,
+        nomorReferensi: `PURGE-${now.toISOString().split('T')[0]}`,
+        statusIntegritas: 'Tervalidasi Digital'
+      };
+      batchUpdates['audit_trail'] = [logPurge, ...auditSisa].slice(0, 100);
+
+      const manifestBaru: ManifestAsalData = {
+        ...manifestLama,
+        dummyDihapus: true,
+        dummyDihapusPada: now.toISOString(),
+        dummyDihapusOleh: pelaku,
+        userEditedIds: pertahankanEditUser ? manifestLama.userEditedIds : {},
+        seededAuditIds: []
+      };
+      batchUpdates[KUNCI_MANIFEST_DATA] = manifestBaru;
+
+      if (typeof localStorage !== 'undefined') {
+        for (const [k, val] of Object.entries(batchUpdates)) {
+          localStorage.setItem(STORAGE_PREFIX + k, JSON.stringify(val));
+          this.latestSyncOp.delete(k);
+          this.pendingSyncKeys.delete(k);
+          this.syncRetryCounts.delete(k);
+          const timer = this.syncRetryTimers.get(k);
+          if (timer) {
+            clearTimeout(timer);
+            this.syncRetryTimers.delete(k);
+          }
+        }
+        this.simpanAntreanSyncPersisten();
+      }
+    } finally {
+      this.isInternalProvenanceOp = false;
+    }
+
+    let syncedRevision = this.serverRevision;
+    const token = this.getAuthTokenFromStorage();
+    if (token && typeof fetch === 'function') {
+      try {
+        const res = await fetch('/api/sync/purge-dummy', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Sync-Client-Id': this.clientTabId
+          },
+          body: JSON.stringify({
+            updates: batchUpdates,
+            mode: 'purge',
+            ringkasan: `Purge ${terhapusDummy} data dummy (dipertahankan ${dipertahankanUser} rekaman user).`,
+            clientId: this.clientTabId
+          })
+        });
+        if (res.ok) {
+          const payload = (await res.json().catch(() => null)) as {
+            revision?: number;
+            versions?: Record<string, number>;
+          } | null;
+          if (typeof payload?.revision === 'number') {
+            this.serverRevision = Math.max(this.serverRevision, payload.revision);
+            syncedRevision = this.serverRevision;
+          }
+          if (payload?.versions) {
+            for (const [k, v] of Object.entries(payload.versions)) {
+              if (typeof v === 'number') {
+                this.serverVersions[k] = Math.max(this.serverVersions[k] ?? 0, v);
+              }
+            }
+          }
+          this.lastSyncedAt = new Date().toISOString();
+          this.lastSyncError = null;
+        } else {
+          for (const [k, v] of Object.entries(batchUpdates)) {
+            this.enqueueKeySync(k, { type: 'put', value: v });
+          }
+        }
+      } catch {
+        for (const [k, v] of Object.entries(batchUpdates)) {
+          this.enqueueKeySync(k, { type: 'put', value: v });
+        }
+      }
+    }
+
+    for (const k of Object.keys(batchUpdates)) {
+      this.notify(k);
+    }
+    this.notify('all');
+    this.updateConnectionStatusLabel();
+
+    return {
+      ok: true,
+      terhapusDummy,
+      dipertahankanUser,
+      revision: syncedRevision,
+      pesan: `Berhasil membersihkan ${terhapusDummy} data dummy. ${dipertahankanUser} rekaman pengguna, CoA, pajak, RBAC, dan pengaturan situs tetap utuh.`
+    };
+  }
+
+  public async pulihkanDataDummy(
+    pelaku = 'Administrator Sistem',
+    peran = 'IT & Traceability Hub'
+  ): Promise<{ ok: boolean; revision: number; pesan: string }> {
+    const manifestBaru = buatManifestDefault();
+    const keysReset: string[] = [];
+
+    this.isInternalProvenanceOp = true;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        for (const def of KATALOG_KOLEKSI_DATA) {
+          if (def.kategori !== 'operasional') continue;
+          localStorage.removeItem(STORAGE_PREFIX + def.key);
+          keysReset.push(def.key);
+        }
+        localStorage.setItem(STORAGE_PREFIX + KUNCI_MANIFEST_DATA, JSON.stringify(manifestBaru));
+      }
+
+      // Bangun kembali seluruh koleksi awal + audit internal
+      const batchUpdates: Record<string, unknown> = {
+        [KUNCI_MANIFEST_DATA]: manifestBaru
+      };
+      for (const def of KATALOG_KOLEKSI_DATA) {
+        if (def.kategori !== 'operasional') continue;
+        batchUpdates[def.key] = this.bacaKoleksiMentahUntukProvenance(def.key);
+      }
+
+      const now = new Date();
+      const waktuWIB = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('id-ID')} WIB`;
+      const logRestore: LogAuditTrail = {
+        id: 'LOG-' + now.getTime(),
+        waktu: waktuWIB,
+        pengguna: pelaku,
+        peran,
+        modul: 'IT & Traceability',
+        aktivitas: 'Pemulihan data simulasi (dummy) standar awal sistem',
+        nomorReferensi: `RESTORE-${now.toISOString().split('T')[0]}`,
+        statusIntegritas: 'Tervalidasi Digital'
+      };
+      const auditAwal = (batchUpdates['audit_trail'] as LogAuditTrail[]) || [];
+      batchUpdates['audit_trail'] = [logRestore, ...auditAwal].slice(0, 100);
+      batchUpdates[KUNCI_MANIFEST_DATA] = this.getManifestData();
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_PREFIX + 'audit_trail', JSON.stringify(batchUpdates['audit_trail']));
+      }
+
+      let syncedRevision = this.serverRevision;
+      const token = this.getAuthTokenFromStorage();
+      if (token && typeof fetch === 'function') {
+        try {
+          const res = await fetch('/api/sync/purge-dummy', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+              'X-Sync-Client-Id': this.clientTabId
+            },
+            body: JSON.stringify({
+              updates: batchUpdates,
+              mode: 'restore',
+              ringkasan: 'Pemulihan seluruh koleksi data simulasi/dummy standar.',
+              clientId: this.clientTabId
+            })
+          });
+          if (res.ok) {
+            const payload = (await res.json().catch(() => null)) as {
+              revision?: number;
+              versions?: Record<string, number>;
+            } | null;
+            if (typeof payload?.revision === 'number') {
+              this.serverRevision = Math.max(this.serverRevision, payload.revision);
+              syncedRevision = this.serverRevision;
+            }
+            if (payload?.versions) {
+              for (const [k, v] of Object.entries(payload.versions)) {
+                if (typeof v === 'number') {
+                  this.serverVersions[k] = Math.max(this.serverVersions[k] ?? 0, v);
+                }
+              }
+            }
+            this.lastSyncedAt = new Date().toISOString();
+          }
+        } catch {
+          for (const [k, v] of Object.entries(batchUpdates)) {
+            this.enqueueKeySync(k, { type: 'put', value: v });
+          }
+        }
+      }
+
+      for (const k of keysReset) {
+        this.notify(k);
+      }
+      this.notify(KUNCI_MANIFEST_DATA);
+      this.notify('all');
+      this.updateConnectionStatusLabel();
+
+      return {
+        ok: true,
+        revision: syncedRevision,
+        pesan: 'Seluruh data simulasi standar telah dipulihkan; pengaturan situs, quotation, e-Katalog, CoA, pajak, dan RBAC tetap terjaga.'
+      };
+    } finally {
+      this.isInternalProvenanceOp = false;
+    }
+  }
+
   // Reset defaults for testing
   public async resetToDefaults() {
     const token = this.getAuthTokenFromStorage();
@@ -3249,6 +4130,8 @@ class AMSDatabaseManager {
       }
     }
     this.serverVersions = {};
+    this.pendingSyncKeys.clear();
+    this.latestSyncOp.clear();
     if (typeof localStorage !== 'undefined') {
       const sesiTersimpan = localStorage.getItem(KUNCI_SESI_AUTH);
       localStorage.clear();

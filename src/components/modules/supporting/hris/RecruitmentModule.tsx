@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { KandidatATS } from '../../../../types';
 import {
@@ -36,7 +37,11 @@ const toneLisensi = (status: 'Terverifikasi' | 'Menunggu' | 'Tidak Valid'): Tone
   status === 'Terverifikasi' ? 'emerald' : status === 'Menunggu' ? 'amber' : 'rose';
 
 export default function RecruitmentModule() {
-  const [kandidat, setKandidat] = useState<KandidatATS[]>(db.getKandidatATS());
+  const dbTick = useDbTick(['hris_kandidat_ats']);
+  const kandidat = useMemo<KandidatATS[]>(() => {
+    void dbTick;
+    return db.getKandidatATS();
+  }, [dbTick]);
   const [modalSkrining, setModalSkrining] = useState(false);
   const [detail, setDetail] = useState<KandidatATS | null>(null);
   const [form, setForm] = useState({
@@ -80,7 +85,6 @@ export default function RecruitmentModule() {
       tanggalLamar: form.tanggalLamar
     };
     db.addKandidatATS(baru);
-    setKandidat(db.getKandidatATS());
     setModalSkrining(false);
     setForm({ ...form, nama: '', posisiDilamar: '', teksCv: '' });
   };
@@ -88,7 +92,6 @@ export default function RecruitmentModule() {
   const pindahTahap = (id: string, tahap: KandidatATS['tahap']) => {
     const diperbarui = kandidat.map((k) => (k.id === id ? { ...k, tahap } : k));
     db.saveKandidatATS(diperbarui);
-    setKandidat(diperbarui);
     if (detail?.id === id) setDetail(diperbarui.find((k) => k.id === id) || null);
   };
 
@@ -102,7 +105,6 @@ export default function RecruitmentModule() {
         : k
     );
     db.saveKandidatATS(diperbarui);
-    setKandidat(diperbarui);
     if (detail?.id === id) setDetail(diperbarui.find((k) => k.id === id) || null);
   };
 

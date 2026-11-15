@@ -103,7 +103,6 @@ export default function FinanceModule({ currentRole }: { currentRole?: UserRole 
 
       {activeTab === 'faktur' && (
         <FakturTab
-          key={refreshTrigger}
           identitas={identitas}
           dariAcuan={dariAcuan}
           bukaForm={bukaFormFaktur}
@@ -111,29 +110,26 @@ export default function FinanceModule({ currentRole }: { currentRole?: UserRole 
         />
       )}
       {activeTab === 'dasbor' && (
-        <DasborTab key={refreshTrigger} dariAcuan={dariAcuan} identitas={identitas} onPilihTab={setActiveTab} />
+        <DasborTab dariAcuan={dariAcuan} identitas={identitas} onPilihTab={setActiveTab} />
       )}
       {activeTab === 'jurnal' && (
         <JurnalTab
-          key={refreshTrigger}
           identitas={identitas}
           dariAcuan={dariAcuan}
           onPerubahanData={() => setRefreshTrigger((n) => n + 1)}
         />
       )}
-      {activeTab === 'laporan' && <LaporanTab key={refreshTrigger} dariAcuan={dariAcuan} />}
+      {activeTab === 'laporan' && <LaporanTab dariAcuan={dariAcuan} />}
       {activeTab === 'persediaan' && (
         <PersediaanTab
-          key={refreshTrigger}
           identitas={identitas}
           dariAcuan={dariAcuan}
           onPerubahanData={() => setRefreshTrigger((n) => n + 1)}
         />
       )}
-      {activeTab === 'pajak' && <PajakTab key={refreshTrigger} identitas={identitas} dariAcuan={dariAcuan} />}
+      {activeTab === 'pajak' && <PajakTab identitas={identitas} dariAcuan={dariAcuan} />}
       {activeTab === 'periode' && (
         <PeriodeTab
-          key={refreshTrigger}
           identitas={identitas}
           dariAcuan={dariAcuan}
           onPerubahanData={() => setRefreshTrigger((n) => n + 1)}

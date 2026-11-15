@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import type { PusatBiayaId, ValuasiBatch } from '../../../../types';
 import {
   NAMA_PUSAT_BIAYA,
@@ -40,11 +41,12 @@ export default function PersediaanTab({
   const [dasar, setDasar] = useState<ValuasiBatch | 'BARU' | null>(null);
   const [formDasar, setFormDasar] = useState<Partial<ValuasiBatch>>({});
 
-  const jurnal = useMemo(() => db.getJurnalKeuangan(), []);
-  const valuasi = useMemo(() => db.getValuasiBatch(), []);
-  const stok = useMemo(() => db.getStokGudang(), []);
-  const suratJalan = useMemo(() => db.getSuratJalan(), []);
-  const akunCoA = useMemo(() => db.getCoA(), []);
+  const dbTick = useDbTick(['keuangan_jurnal', 'keuangan_valuasi_batch', 'stok_gudang', 'gudang_surat_jalan', 'keuangan_coa']);
+  const jurnal = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
+  const valuasi = useMemo(() => { void dbTick; return db.getValuasiBatch(); }, [dbTick]);
+  const stok = useMemo(() => { void dbTick; return db.getStokGudang(); }, [dbTick]);
+  const suratJalan = useMemo(() => { void dbTick; return db.getSuratJalan(); }, [dbTick]);
+  const akunCoA = useMemo(() => { void dbTick; return db.getCoA(); }, [dbTick]);
 
   const hasil = useMemo(() => nilaiPersediaanPerBets({ daftarStok: stok, daftarValuasi: valuasi, dari: dariAcuan }), [stok, valuasi, dariAcuan]);
 
@@ -98,17 +100,35 @@ export default function PersediaanTab({
 
   const simpanDasar = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dasar || dasar === 'BARU') return;
+    if (!dasar) return;
+    const template: ValuasiBatch =
+      dasar === 'BARU'
+        ? {
+            nomorBatch: formDasar.nomorBatch ?? '',
+            kodeSKU: formDasar.kodeSKU ?? '',
+            namaAlkes: formDasar.namaAlkes ?? '',
+            satuan: formDasar.satuan ?? 'Unit',
+            qtyTercatat: Number(formDasar.qtyTercatat ?? 0),
+            tanggalProduksi: formDasar.tanggalProduksi ?? isoAcuan,
+            tanggalKedaluwarsa: formDasar.tanggalKedaluwarsa ?? '2026-12-31',
+            metode: 'FIFO',
+            sumberBiaya: 'Purchase Order',
+            rujukanSumber: '',
+            asal: 'ASLI',
+            nilaiPerUnit: 0,
+            tercatatPada: isoAcuan
+          }
+        : dasar;
     const baru: ValuasiBatch = {
-      ...dasar,
-      nilaiPerUnit: Number(formDasar.nilaiPerUnit ?? dasar.nilaiPerUnit),
-      metode: (formDasar.metode ?? dasar.metode) as ValuasiBatch['metode'],
-      sumberBiaya: (formDasar.sumberBiaya ?? dasar.sumberBiaya) as ValuasiBatch['sumberBiaya'],
-      rujukanSumber: formDasar.rujukanSumber ?? dasar.rujukanSumber,
-      asal: (formDasar.asal ?? dasar.asal) as ValuasiBatch['asal'],
+      ...template,
+      nilaiPerUnit: Number(formDasar.nilaiPerUnit ?? template.nilaiPerUnit),
+      metode: (formDasar.metode ?? template.metode) as ValuasiBatch['metode'],
+      sumberBiaya: (formDasar.sumberBiaya ?? template.sumberBiaya) as ValuasiBatch['sumberBiaya'],
+      rujukanSumber: formDasar.rujukanSumber ?? template.rujukanSumber,
+      asal: (formDasar.asal ?? template.asal) as ValuasiBatch['asal'],
       tercatatPada: isoAcuan
     };
-    if (!(baru.nilaiPerUnit > 0)) {
+    if (!baru.nomorBatch || !(baru.nilaiPerUnit > 0)) {
       setPesan({ tipe: 'galat', teks: 'Nilai per unit harus lebih dari nol; persediaan bernilai nol berarti sudah dihapus seluruhnya.' });
       return;
     }
@@ -117,7 +137,9 @@ export default function PersediaanTab({
     setFormDasar({});
     setPesan({
       tipe: 'sukses',
-      teks: `Dasar biaya ${baru.nomorBatch} direvisi ke ${formatRupiah(baru.nilaiPerUnit)} per ${baru.satuan}. Jurnal Posted yang memakai harga lama TIDAK diubah — koreksi periode berjalan lewat jurnal penyesuaian.`
+      teks: dasar === 'BARU'
+        ? `Dasar biaya ${baru.nomorBatch} tercatat sebesar ${formatRupiah(baru.nilaiPerUnit)} per ${baru.satuan} (asal: ${baru.asal}).`
+        : `Dasar biaya ${baru.nomorBatch} direvisi ke ${formatRupiah(baru.nilaiPerUnit)} per ${baru.satuan}. Jurnal Posted yang memakai harga lama TIDAK diubah — koreksi periode berjalan lewat jurnal penyesuaian.`
     });
     onPerubahanData();
   };
@@ -327,9 +349,9 @@ export default function PersediaanTab({
                                 tanggalProduksi: isoAcuan,
                                 tanggalKedaluwarsa: '2026-12-31',
                                 metode: 'FIFO',
-                                sumberBiaya: 'Taksiran Manajemen',
+                                sumberBiaya: 'Purchase Order',
                                 rujukanSumber: '',
-                                asal: 'DUMMY',
+                                asal: 'ASLI',
                                 nilaiPerUnit: 0,
                                 tercatatPada: isoAcuan
                               });
@@ -526,11 +548,9 @@ export default function PersediaanTab({
               <button type="button" onClick={() => setDasar(null)} className={tombolSekunder}>
                 Batal
               </button>
-              {dasar !== 'BARU' && (
-                <button type="submit" className={tombolPrimer}>
-                  Simpan Revisi
-                </button>
-              )}
+              <button type="submit" className={tombolPrimer}>
+                {dasar === 'BARU' ? 'Simpan Dasar Biaya' : 'Simpan Revisi'}
+              </button>
             </div>
           </form>
         </Modal>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import DeveloperNotes from '../../../common/DeveloperNotes';
 import { db } from '../../../../services/pocketbase';
 import { KirimanSatuSehat, SinkronisasiLkpp } from '../../../../types';
@@ -42,10 +43,28 @@ const toneFhir = (st: KirimanSatuSehat['status']): Tone => {
 };
 
 export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Props) {
-  const [lkppList, setLkppList] = useState<SinkronisasiLkpp[]>(() => db.getSinkronisasiLkpp());
-  const [fhirList, setFhirList] = useState<KirimanSatuSehat[]>(() => db.getKirimanSatuSehat());
-  const [stokList] = useState(() => db.getStokGudang());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [lkppList, fhirList]);
+  const dbTick = useDbTick([
+    'gudang_lkpp',
+    'gudang_satusehat',
+    'stok_gudang',
+    'konfigurasi_gudang'
+  ]);
+  const lkppList = useMemo<SinkronisasiLkpp[]>(() => {
+    void dbTick;
+    return db.getSinkronisasiLkpp();
+  }, [dbTick]);
+  const fhirList = useMemo<KirimanSatuSehat[]>(() => {
+    void dbTick;
+    return db.getKirimanSatuSehat();
+  }, [dbTick]);
+  const stokList = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [skuCekGerbang, setSkuCekGerbang] = useState('IVD-STD-06');
   const [filterLkpp, setFilterLkpp] = useState<'Semua' | SinkronisasiLkpp['status']>('Semua');
@@ -81,8 +100,6 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
   });
 
   const segarkan = () => {
-    setLkppList(db.getSinkronisasiLkpp());
-    setFhirList(db.getKirimanSatuSehat());
     onPerubahanData();
   };
 

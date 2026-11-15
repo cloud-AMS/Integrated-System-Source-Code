@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { PemasokAlkes, PurchaseOrderAlkes } from '../../../types';
 import { 
   ShoppingCart, 
@@ -14,12 +15,20 @@ import {
 } from 'lucide-react';
 
 export default function ProcurementModule() {
+  const dbTick = useDbTick(['pemasok', 'purchase_order']);
   const [activeTab, setActiveTab] = useState<'pemasok' | 'po'>('pemasok');
-  const [pemasokList, setPemasokList] = useState<PemasokAlkes[]>(db.getPemasok());
-  const [poList, setPoList] = useState<PurchaseOrderAlkes[]>(db.getPurchaseOrder());
+  const pemasokList = useMemo<PemasokAlkes[]>(() => {
+    void dbTick;
+    return db.getPemasok();
+  }, [dbTick]);
+  const poList = useMemo<PurchaseOrderAlkes[]>(() => {
+    void dbTick;
+    return db.getPurchaseOrder();
+  }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
+  const [poNotice, setPoNotice] = useState<string | null>(null);
 
   // New Supplier Form
   const [supplierForm, setSupplierForm] = useState<Partial<PemasokAlkes>>({
@@ -61,20 +70,26 @@ export default function ProcurementModule() {
     };
 
     db.addPemasok(newItem);
-    setPemasokList(db.getPemasok());
+    setPoNotice(null);
     setIsModalOpen(false);
   };
 
   const handleSavePO = (e: React.FormEvent) => {
     e.preventDefault();
     const selSupplier = pemasokList.find(p => p.id === poForm.pemasokId) || pemasokList[0];
+    if (!selSupplier) {
+      setPoNotice('Belum ada pemasok terkualifikasi. Tambahkan pemasok terlebih dahulu sebelum menerbitkan Purchase Order.');
+      return;
+    }
 
+    const tanggalRef = poForm.tanggalPO || new Date().toISOString().split('T')[0];
+    const [tahun, bulan] = tanggalRef.split('-');
     const newItem: PurchaseOrderAlkes = {
       id: 'PO-' + Date.now(),
-      nomorPO: `PO/AMS/2024/05/${String(poList.length + 1).padStart(3, '0')}`,
+      nomorPO: `PO/AMS/${tahun || new Date().getFullYear()}/${bulan || '01'}/${String(poList.length + 1).padStart(3, '0')}`,
       pemasokId: selSupplier.id,
       namaPemasok: selSupplier.namaPemasok,
-      tanggalPO: poForm.tanggalPO || new Date().toISOString().split('T')[0],
+      tanggalPO: tanggalRef,
       estimasiTiba: poForm.estimasiTiba || '',
       totalNilai: Number(poForm.totalNilai) || 0,
       status: poForm.status as PurchaseOrderAlkes['status'],
@@ -82,7 +97,7 @@ export default function ProcurementModule() {
     };
 
     db.addPurchaseOrder(newItem);
-    setPoList(db.getPurchaseOrder());
+    setPoNotice(null);
     setIsPoModalOpen(false);
   };
 
@@ -161,6 +176,11 @@ export default function ProcurementModule() {
 
       {/* Content 1: Pemasok List */}
       {activeTab === 'pemasok' && (
+        pemasokList.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+            Belum ada pemasok terkualifikasi. Klik <strong>Kualifikasi Pemasok Baru</strong> untuk menambahkan data.
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {pemasokList.map((p) => (
             <div key={p.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
@@ -204,6 +224,7 @@ export default function ProcurementModule() {
             </div>
           ))}
         </div>
+        )
       )}
 
       {/* Content 2: Purchase Order Table */}
@@ -221,7 +242,13 @@ export default function ProcurementModule() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {poList.map((po) => (
+              {poList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-slate-500">
+                    Belum ada Purchase Order terdaftar.
+                  </td>
+                </tr>
+              ) : poList.map((po) => (
                 <tr key={po.id} className="hover:bg-slate-50">
                   <td className="py-3 px-4 font-mono font-bold text-blue-800">{po.nomorPO}</td>
                   <td className="py-3 px-4 font-semibold text-slate-900">{po.namaPemasok}</td>
@@ -363,14 +390,22 @@ export default function ProcurementModule() {
             </p>
 
             <form onSubmit={handleSavePO} className="space-y-3 text-xs">
+              {poNotice && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800 font-medium">
+                  {poNotice}
+                </div>
+              )}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Pilih Pemasok Terkualifikasi</label>
                 <select
-                  value={poForm.pemasokId}
+                  value={poForm.pemasokId || pemasokList[0]?.id || ''}
                   onChange={(e) => setPoForm({ ...poForm, pemasokId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                  disabled={pemasokList.length === 0}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100"
                 >
-                  {pemasokList.map(p => (
+                  {pemasokList.length === 0 ? (
+                    <option value="">Belum ada pemasok terkualifikasi</option>
+                  ) : pemasokList.map(p => (
                     <option key={p.id} value={p.id}>{p.namaPemasok} ({p.negara})</option>
                   ))}
                 </select>
@@ -423,14 +458,15 @@ export default function ProcurementModule() {
               <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsPoModalOpen(false)}
+                  onClick={() => { setPoNotice(null); setIsPoModalOpen(false); }}
                   className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer shadow-xs transition-colors"
+                  disabled={pemasokList.length === 0}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl font-semibold cursor-pointer shadow-xs transition-colors"
                 >
                   Terbitkan Purchase Order
                 </button>

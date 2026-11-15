@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import {
   gerbangPeriodeBuku,
   nilaiPersediaanPerBets,
@@ -28,7 +29,9 @@ export default function DasborTab({
   identitas: IdentitasFinance;
   onPilihTab: (tab: FinanceTabId) => void;
 }) {
+  const dbTick = useDbTick(['keuangan_jurnal', 'keuangan_coa', 'keuangan_valuasi_batch', 'keuangan_periode', 'stok_gudang']);
   const data = useMemo(() => {
+    void dbTick;
     const jurnal = db.getJurnalKeuangan();
     const akun = db.getCoA();
     const valuasi = db.getValuasiBatch();
@@ -43,7 +46,7 @@ export default function DasborTab({
     const ppn = rekapPpnMasa({ daftarJurnal: jurnal, masa: masaAktif });
     const gerbang = gerbangPeriodeBuku(isoAcuan, periode);
     return { jurnal, akun, valuasi, periode, rantai, persediaan, neraca, labaRugi, ppn, masaAktif, gerbang, isoAcuan };
-  }, [dariAcuan]);
+  }, [dariAcuan, dbTick]);
 
   const penyimpangan = useMemo<Penyimpangan[]>(() => {
     const daftar: Penyimpangan[] = [];

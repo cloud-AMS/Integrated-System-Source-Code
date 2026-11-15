@@ -24,18 +24,64 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { gabungkanKatalogProduk, selesaikanGambar } from '../../../../utils/website';
 import { ProdukWebsite } from '../../../../types';
 import LogoAplikasi from '../../../common/LogoAplikasi';
 import { Panel } from '../../../ui';
+
+export interface CatalogSettings {
+  judulKatalog: string;
+  subjudulKatalog: string;
+  produkPerPage: number;
+  tampilCover: boolean;
+  judulCover: string;
+  subjudulCover: string;
+  penulisCover: string;
+  badgeCover: string;
+  bgCoverColor: string;
+  bgCoverImage: string;
+  tampilBackCover: boolean;
+  judulBackCover: string;
+  catatanBackCover: string;
+  alamatBackCover: string;
+  kontakBackCover: string;
+  bgBackCoverColor: string;
+  bgBackCoverImage: string;
+  pilihanId: string[];
+}
+
+const DEFAULT_CATALOG_SETTINGS: CatalogSettings = {
+  judulKatalog: 'Katalog Alat Kesehatan & Diagnostik 2026',
+  subjudulKatalog: 'Standar Mutu CDAKB & ISO 13485 — PT Anugrahmitra Selaras',
+  produkPerPage: 2,
+  tampilCover: true,
+  judulCover: 'KATALOG PRODUK ALAT KESEHATAN',
+  subjudulCover: 'Solusi Terpadu Instrumen Medis, Laboratorium & Diagnostik In Vitro untuk Rumah Sakit dan Klinik',
+  penulisCover: 'Divisi Komersial & PJT PT Anugrahmitra Selaras',
+  badgeCover: 'EDISI RESMI 2026',
+  bgCoverColor: '#0f172a',
+  bgCoverImage: '',
+  tampilBackCover: true,
+  judulBackCover: 'HUBUNGI TIM KONSULTAN MEDIS & TENDER KAMI',
+  catatanBackCover: 'Seluruh produk memiliki Nomor Izin Edar (AKL/AKD) aktif dari Kementerian Kesehatan RI dan didistribusikan sesuai standar CDAKB.',
+  alamatBackCover: 'Kantor Pusat & Gudang CDAKB: Kawasan Industri Medis Jakarta',
+  kontakBackCover: 'sales@anugrahmitraselaras.co.id • (021) 555-0192',
+  bgBackCoverColor: '#0f172a',
+  bgBackCoverImage: '',
+  pilihanId: []
+};
 
 /** Lebar 210mm dalam piksel CSS (96dpi) — dipakai untuk menghitung skala pratinjau. */
 const A4_LEBAR_PX = (210 * 96) / 25.4;
 const NAMA_BERKAS_PDF = 'Katalog Elektronik AMS 2026';
 
 export default function InternalCatalogModule() {
+  const dbTick = useDbTick(['izin_edar', 'stok_gudang', 'sales_pengetahuan_produk']);
+
   // Ambil data produk dari register izin edar & rujukan website
   const daftarProdukSemua = useMemo(() => {
+    void dbTick;
     try {
       const sumber = {
         izinEdar: db.getIzinEdar(),
@@ -47,35 +93,126 @@ export default function InternalCatalogModule() {
     } catch {
       return [];
     }
-  }, []);
+  }, [dbTick]);
+
+  const initialSettings = useMemo(() => db.getCatalogSettings<CatalogSettings>(DEFAULT_CATALOG_SETTINGS), []);
 
   // State pengaturan katalog
-  const [judulKatalog, setJudulKatalog] = useState('Katalog Resmi Alkes & BMHP • PT Anugrahmitra Selaras 2026');
-  const [subjudulKatalog, setSubjudulKatalog] = useState('Standar Mutu CDAKB & ISO 13485:2016 • e-Katalog LKPP Pemerintah & Swasta');
-  const [produkPerPage, setProdukPerPage] = useState<number>(2); // Maksimum 2 produk per halaman (1 atau 2)
+  const [judulKatalog, setJudulKatalog] = useState(initialSettings.judulKatalog);
+  const [subjudulKatalog, setSubjudulKatalog] = useState(initialSettings.subjudulKatalog);
+  const [produkPerPage, setProdukPerPage] = useState<number>(initialSettings.produkPerPage);
   
   // Cover Depan (Full Manual Editing + Background Color RGB & Image)
-  const [tampilCover, setTampilCover] = useState(true);
-  const [judulCover, setJudulCover] = useState('KATALOG PRODUK ALAT KESEHATAN');
-  const [subjudulCover, setSubjudulCover] = useState('PT ANUGRAHMITRA SELARAS (REMEDI)');
-  const [penulisCover, setPenulisCover] = useState('Divisi Komersial & Penjaminan Mutu (PJT)');
-  const [badgeCover, setBadgeCover] = useState('EDISI RESMI 2026');
-  const [bgCoverColor, setBgCoverColor] = useState('#ffffff');
-  const [bgCoverImage, setBgCoverImage] = useState('');
+  const [tampilCover, setTampilCover] = useState(initialSettings.tampilCover);
+  const [judulCover, setJudulCover] = useState(initialSettings.judulCover);
+  const [subjudulCover, setSubjudulCover] = useState(initialSettings.subjudulCover);
+  const [penulisCover, setPenulisCover] = useState(initialSettings.penulisCover);
+  const [badgeCover, setBadgeCover] = useState(initialSettings.badgeCover);
+  const [bgCoverColor, setBgCoverColor] = useState(initialSettings.bgCoverColor);
+  const [bgCoverImage, setBgCoverImage] = useState(initialSettings.bgCoverImage);
 
   // Back Cover (Full Manual Editing + Background Color RGB & Image)
-  const [tampilBackCover, setTampilBackCover] = useState(true);
-  const [judulBackCover, setJudulBackCover] = useState('Mitra Terpercaya Pengadaan Rumah Sakit Pemerintah & Swasta');
-  const [catatanBackCover, setCatatanBackCover] = useState('Dokumen resmi penawaran e-Katalog LKPP, LPSE, dan Purchase Order B2B. Semua produk telah memiliki izin edar aktif Kemenkes RI.');
-  const [alamatBackCover, setAlamatBackCover] = useState('Jl. Cempaka Utama No. 88, Komplek Pergudangan CDAKB Blok B-5, Jakarta 13830');
-  const [kontakBackCover, setKontakBackCover] = useState('Surel: info@anugrahmitraselaras.co.id | Telepon: (021) 4788-9999 | Web: www.anugrahmitraselaras.co.id');
-  const [bgBackCoverColor, setBgBackCoverColor] = useState('#0f172a'); // slate-900
-  const [bgBackCoverImage, setBgBackCoverImage] = useState('');
+  const [tampilBackCover, setTampilBackCover] = useState(initialSettings.tampilBackCover);
+  const [judulBackCover, setJudulBackCover] = useState(initialSettings.judulBackCover);
+  const [catatanBackCover, setCatatanBackCover] = useState(initialSettings.catatanBackCover);
+  const [alamatBackCover, setAlamatBackCover] = useState(initialSettings.alamatBackCover);
+  const [kontakBackCover, setKontakBackCover] = useState(initialSettings.kontakBackCover);
+  const [bgBackCoverColor, setBgBackCoverColor] = useState(initialSettings.bgBackCoverColor);
+  const [bgBackCoverImage, setBgBackCoverImage] = useState(initialSettings.bgBackCoverImage);
 
   // Selected products IDs
-  const [pilihanId, setPilihanId] = useState<string[]>(() => 
-    daftarProdukSemua.slice(0, 4).map(p => p.id)
-  );
+  const [pilihanId, setPilihanId] = useState<string[]>(() => {
+    if (initialSettings.pilihanId && initialSettings.pilihanId.length > 0) {
+      return initialSettings.pilihanId;
+    }
+    return daftarProdukSemua.slice(0, 4).map(p => p.id);
+  });
+
+  const skipNextSaveRef = useRef(true);
+  const lastSerializedRef = useRef<string>(JSON.stringify(initialSettings));
+
+  // Sinkronkan perubahan jarak jauh (WebSocket / tab lain) ke state editor tanpa memicu tulis balik
+  useEffect(() => {
+    return db.subscribe('catalog_settings_v1', () => {
+      const remote = db.getCatalogSettings<CatalogSettings>(DEFAULT_CATALOG_SETTINGS);
+      const serialized = JSON.stringify(remote);
+      if (serialized === lastSerializedRef.current) return;
+      lastSerializedRef.current = serialized;
+      skipNextSaveRef.current = true;
+      setJudulKatalog(remote.judulKatalog);
+      setSubjudulKatalog(remote.subjudulKatalog);
+      setProdukPerPage(remote.produkPerPage);
+      setTampilCover(remote.tampilCover);
+      setJudulCover(remote.judulCover);
+      setSubjudulCover(remote.subjudulCover);
+      setPenulisCover(remote.penulisCover);
+      setBadgeCover(remote.badgeCover);
+      setBgCoverColor(remote.bgCoverColor);
+      setBgCoverImage(remote.bgCoverImage);
+      setTampilBackCover(remote.tampilBackCover);
+      setJudulBackCover(remote.judulBackCover);
+      setCatatanBackCover(remote.catatanBackCover);
+      setAlamatBackCover(remote.alamatBackCover);
+      setKontakBackCover(remote.kontakBackCover);
+      setBgBackCoverColor(remote.bgBackCoverColor);
+      setBgBackCoverImage(remote.bgBackCoverImage);
+      setPilihanId(remote.pilihanId);
+    });
+  }, []);
+
+  // Auto-save pengaturan katalog ke db + server sync
+  useEffect(() => {
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    const payload: CatalogSettings = {
+      judulKatalog,
+      subjudulKatalog,
+      produkPerPage,
+      tampilCover,
+      judulCover,
+      subjudulCover,
+      penulisCover,
+      badgeCover,
+      bgCoverColor,
+      bgCoverImage,
+      tampilBackCover,
+      judulBackCover,
+      catatanBackCover,
+      alamatBackCover,
+      kontakBackCover,
+      bgBackCoverColor,
+      bgBackCoverImage,
+      pilihanId
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSerializedRef.current) return;
+    const timer = window.setTimeout(() => {
+      lastSerializedRef.current = serialized;
+      db.saveCatalogSettings(payload);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [
+    judulKatalog,
+    subjudulKatalog,
+    produkPerPage,
+    tampilCover,
+    judulCover,
+    subjudulCover,
+    penulisCover,
+    badgeCover,
+    bgCoverColor,
+    bgCoverImage,
+    tampilBackCover,
+    judulBackCover,
+    catatanBackCover,
+    alamatBackCover,
+    kontakBackCover,
+    bgBackCoverColor,
+    bgBackCoverImage,
+    pilihanId
+  ]);
 
   const [pencarian, setPencarian] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('Semua');

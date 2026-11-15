@@ -71,7 +71,6 @@ export default function WarehouseModule({
 }: WarehouseModuleProps) {
   const [activeTab, setActiveTab] = useState<GudangTabId>(initialTab ?? 'dasbor');
   const [modeTanggal, setModeTanggal] = useState<'benih' | 'hari-ini'>('benih');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (initialTab) {
@@ -88,9 +87,7 @@ export default function WarehouseModule({
 
   const identitas = identitasPeranGudang(currentRole);
 
-  const picuSegarkan = () => {
-    setRefreshTrigger((prev) => prev + 1);
-  };
+  const picuSegarkan = () => {};
 
   return (
     <div className="space-y-6">
@@ -181,19 +178,17 @@ export default function WarehouseModule({
       {activeTab === 'dasbor' && (
         <DasborAuditTab
           dariAcuan={dariAcuan}
-          refreshTrigger={refreshTrigger}
           onPilihTab={(tujuan) => setActiveTab(tujuan)}
           onPerubahanData={picuSegarkan}
         />
       )}
 
       {activeTab === 'struktur' && (
-        <StrukturGudangTab key={refreshTrigger} onPerubahanData={picuSegarkan} />
+        <StrukturGudangTab onPerubahanData={picuSegarkan} />
       )}
 
       {activeTab === 'stok' && (
         <StokFefoTab
-          key={refreshTrigger}
           currentRole={currentRole}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
@@ -202,7 +197,6 @@ export default function WarehouseModule({
 
       {activeTab === 'rantai-dingin' && (
         <RantaiDinginTab
-          key={refreshTrigger}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
         />
@@ -210,7 +204,6 @@ export default function WarehouseModule({
 
       {activeTab === 'hama' && (
         <PengendalianHamaTab
-          key={refreshTrigger}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
         />
@@ -218,7 +211,6 @@ export default function WarehouseModule({
 
       {activeTab === 'inbound' && (
         <PenerimaanInboundTab
-          key={refreshTrigger}
           currentRole={currentRole}
           dariAcuan={dariAcuan}
           onOpenPrintModal={onOpenPrintModal}
@@ -228,7 +220,6 @@ export default function WarehouseModule({
 
       {activeTab === 'outbound' && (
         <PengirimanOutboundTab
-          key={refreshTrigger}
           dariAcuan={dariAcuan}
           onOpenPrintModal={onOpenPrintModal}
           onPerubahanData={picuSegarkan}
@@ -237,7 +228,6 @@ export default function WarehouseModule({
 
       {activeTab === 'opname' && (
         <OpnameCycleCountTab
-          key={refreshTrigger}
           currentRole={currentRole}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
@@ -246,7 +236,6 @@ export default function WarehouseModule({
 
       {activeTab === 'optimasi' && (
         <OptimasiStokTab
-          key={refreshTrigger}
           dariAcuan={dariAcuan}
           onNavigateModule={onNavigateModule}
           onPerubahanData={picuSegarkan}
@@ -255,7 +244,6 @@ export default function WarehouseModule({
 
       {activeTab === 'scanner' && (
         <ScannerRfidTab
-          key={refreshTrigger}
           currentRole={currentRole}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
@@ -264,7 +252,6 @@ export default function WarehouseModule({
 
       {activeTab === 'recall' && (
         <KarantinaRecallTab
-          key={refreshTrigger}
           currentRole={currentRole}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
@@ -273,7 +260,6 @@ export default function WarehouseModule({
 
       {activeTab === 'pemerintah' && (
         <GerbangPemerintahTab
-          key={refreshTrigger}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
         />

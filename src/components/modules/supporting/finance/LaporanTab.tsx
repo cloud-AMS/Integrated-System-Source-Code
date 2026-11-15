@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import type { AkunCoA, KelompokLaporan, TipeAkun } from '../../../../types';
 import { NAMA_PUSAT_BIAYA, susunLabaRugi, susunNeraca } from '../../../../utils/akuntansi';
 import { Badge, Modal, Panel, Stat, chipFilter, formatPersen, formatRupiah, inputClass, labelClass, tombolPrimer, tombolSekunder } from '../../../ui';
@@ -63,8 +64,9 @@ export default function LaporanTab({ dariAcuan }: { dariAcuan: Date }) {
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'galat'; teks: string } | null>(null);
   const [baru, setBaru] = useState<Partial<AkunCoA>>({ tipe: 'Beban', kelompokLaporan: 'Beban Operasional', saldoNormal: 'Debet', aktif: true });
 
-  const akun = useMemo(() => db.getCoA(), []);
-  const jurnal = useMemo(() => db.getJurnalKeuangan(), []);
+  const dbTick = useDbTick(['keuangan_coa', 'keuangan_jurnal']);
+  const akun = useMemo(() => { void dbTick; return db.getCoA(); }, [dbTick]);
+  const jurnal = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
 
   const neraca = useMemo(
     () => susunNeraca({ daftarJurnal: jurnal, daftarAkun: akun, sampai: isoAcuan }),

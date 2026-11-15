@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { LayananTeknis } from '../../../types';
 import { 
   Wrench, 
@@ -15,7 +16,8 @@ import {
 } from 'lucide-react';
 
 export default function ServiceModule() {
-  const [layananList, setLayananList] = useState<LayananTeknis[]>(db.getLayananTeknis());
+  const dbTick = useDbTick(['layanan_teknis']);
+  const layananList = useMemo<LayananTeknis[]>(() => { void dbTick; return db.getLayananTeknis(); }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterJenis, setFilterJenis] = useState<string>('semua');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -64,7 +66,6 @@ export default function ServiceModule() {
     };
 
     db.addLayananTeknis(newItem);
-    setLayananList(db.getLayananTeknis());
     setIsModalOpen(false);
   };
 

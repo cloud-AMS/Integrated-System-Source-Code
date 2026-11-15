@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { KaryawanHRIS, LokasiKerja, RiwayatMutasi } from '../../../../types';
 import { statusSertifikat, hitungSisaHari } from '../../../../utils/hris';
@@ -35,9 +36,19 @@ const toneMedis = (status: KaryawanHRIS['statusRekamMedis']): Tone =>
   status === 'Fit to Work' ? 'emerald' : status === 'Fit with Restriction' ? 'amber' : 'rose';
 
 export default function CoreHRModule() {
-  const [karyawan, setKaryawan] = useState<KaryawanHRIS[]>(db.getKaryawanHRIS());
-  const [mutasi, setMutasi] = useState<RiwayatMutasi[]>(db.getRiwayatMutasi());
-  const [grading] = useState(db.getGradingJabatan());
+  const dbTick = useDbTick(['hris_karyawan', 'hris_mutasi', 'hris_grading']);
+  const karyawan = useMemo<KaryawanHRIS[]>(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
+  const mutasi = useMemo<RiwayatMutasi[]>(() => {
+    void dbTick;
+    return db.getRiwayatMutasi();
+  }, [dbTick]);
+  const grading = useMemo(() => {
+    void dbTick;
+    return db.getGradingJabatan();
+  }, [dbTick]);
   const [kataKunci, setKataKunci] = useState('');
   const [filterLokasi, setFilterLokasi] = useState<LokasiKerja | 'Semua'>('Semua');
   const [detail, setDetail] = useState<KaryawanHRIS | null>(null);
@@ -143,7 +154,6 @@ export default function CoreHRModule() {
     };
 
     db.addKaryawanHRIS(baru);
-    setKaryawan(db.getKaryawanHRIS());
     setModalTambah(false);
   };
 
@@ -162,8 +172,6 @@ export default function CoreHRModule() {
       alasanMutasi: formMutasi.alasanMutasi || 'Mutasi internal'
     };
     db.catatMutasi(baru);
-    setMutasi(db.getRiwayatMutasi());
-    setKaryawan(db.getKaryawanHRIS());
     setModalMutasi(false);
   };
 

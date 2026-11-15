@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { LogPestControl } from '../../../../types';
 import { Bug, CheckCircle2, Plus, ShieldAlert } from 'lucide-react';
@@ -26,7 +27,11 @@ const toneTemuan = (hasil: LogPestControl['hasilTemuan']): Tone =>
   hasil === 'Bebas Hama' ? 'emerald' : hasil === 'Ditemukan Indikasi' ? 'amber' : 'rose';
 
 export default function PengendalianHamaTab({ dariAcuan, onPerubahanData }: Props) {
-  const [pestList, setPestList] = useState<LogPestControl[]>(() => db.getPestControl());
+  const dbTick = useDbTick(['pest_control']);
+  const pestList = useMemo<LogPestControl[]>(() => {
+    void dbTick;
+    return db.getPestControl();
+  }, [dbTick]);
   const [filterTemuan, setFilterTemuan] = useState<'Semua' | LogPestControl['hasilTemuan']>('Semua');
   const [modalTerbuka, setModalTerbuka] = useState(false);
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -70,7 +75,6 @@ export default function PengendalianHamaTab({ dariAcuan, onPerubahanData }: Prop
     };
 
     db.catatInspeksiHama(item);
-    setPestList(db.getPestControl());
     setModalTerbuka(false);
     setGalatModal(null);
     setPesan({

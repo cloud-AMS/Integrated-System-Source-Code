@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { SlipGaji } from '../../../../types';
 import { PARAMETER_PAYROLL_2026 as P } from '../../../../data/initialData';
@@ -23,10 +24,23 @@ const toneMetode = (metode: SlipGaji['metodePph21']): Tone =>
   metode === 'Gross' ? 'slate' : metode === 'Gross Up' ? 'blue' : 'amber';
 
 export default function PayrollModule() {
-  const [slip, setSlip] = useState<SlipGaji[]>(db.getSlipGaji());
-  const [karyawan] = useState(db.getKaryawanHRIS());
-  const [lembur] = useState(db.getLembur());
-  const [absensi] = useState(db.getAbsensi());
+  const dbTick = useDbTick(['hris_slip_gaji', 'hris_karyawan', 'hris_lembur', 'hris_absensi']);
+  const slip = useMemo<SlipGaji[]>(() => {
+    void dbTick;
+    return db.getSlipGaji();
+  }, [dbTick]);
+  const karyawan = useMemo(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
+  const lembur = useMemo(() => {
+    void dbTick;
+    return db.getLembur();
+  }, [dbTick]);
+  const absensi = useMemo(() => {
+    void dbTick;
+    return db.getAbsensi();
+  }, [dbTick]);
   const [periodeFilter, setPeriodeFilter] = useState('Semua');
   const [detail, setDetail] = useState<SlipGaji | null>(null);
   const [modalRun, setModalRun] = useState(false);
@@ -100,7 +114,6 @@ export default function PayrollModule() {
 
     const periodeLain = db.getSlipGaji().filter((s) => s.periode !== run.periode);
     db.saveSlipGaji([...slipBaru, ...periodeLain]);
-    setSlip(db.getSlipGaji());
     setPeriodeFilter(run.periode);
     setModalRun(false);
   };
@@ -108,7 +121,6 @@ export default function PayrollModule() {
   const ubahStatusSlip = (id: string, status: SlipGaji['status']) => {
     const diperbarui = slip.map((s) => (s.id === id ? { ...s, status } : s));
     db.saveSlipGaji(diperbarui);
-    setSlip(diperbarui);
     if (detail?.id === id) setDetail({ ...detail, status });
   };
 

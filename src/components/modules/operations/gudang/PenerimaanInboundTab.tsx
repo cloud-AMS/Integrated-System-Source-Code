@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   IzinEdarAlkes,
@@ -45,11 +46,34 @@ export default function PenerimaanInboundTab({
   onOpenPrintModal,
   onPerubahanData
 }: Props) {
-  const [terimaList, setTerimaList] = useState<TerimaBarang[]>(() => db.getTerimaBarang());
-  const [poList] = useState(() => db.getPurchaseOrder());
-  const [binList, setBinList] = useState(() => db.getLokasiBin());
-  const [gudangList] = useState(() => db.getGudangFisik());
-  const [aturanList] = useState(() => db.getAturanSimpan());
+  const dbTick = useDbTick([
+    'gudang_terima_barang',
+    'purchase_order',
+    'lokasi_bin',
+    'gudang_fisik',
+    'aturan_simpan',
+    'stok_gudang'
+  ]);
+  const terimaList = useMemo<TerimaBarang[]>(() => {
+    void dbTick;
+    return db.getTerimaBarang();
+  }, [dbTick]);
+  const poList = useMemo(() => {
+    void dbTick;
+    return db.getPurchaseOrder();
+  }, [dbTick]);
+  const binList = useMemo(() => {
+    void dbTick;
+    return db.getLokasiBin();
+  }, [dbTick]);
+  const gudangList = useMemo(() => {
+    void dbTick;
+    return db.getGudangFisik();
+  }, [dbTick]);
+  const aturanList = useMemo(() => {
+    void dbTick;
+    return db.getAturanSimpan();
+  }, [dbTick]);
 
   const [filterPosting, setFilterPosting] = useState<'Semua' | 'Antre' | 'Sudah Posting'>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -89,8 +113,6 @@ export default function PenerimaanInboundTab({
   const identitas = identitasPeranGudang(currentRole);
 
   const segarkan = () => {
-    setTerimaList(db.getTerimaBarang());
-    setBinList(db.getLokasiBin());
     onPerubahanData();
   };
 

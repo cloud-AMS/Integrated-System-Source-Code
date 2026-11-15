@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import type { PeriodeBuku } from '../../../../types';
 import { alokasiBiayaMutu, periodeDari } from '../../../../utils/akuntansi';
 import { Badge, Panel, Stat, formatRupiah, formatTanggal, inputClass, labelClass, tombolBahaya, tombolPrimer, tombolSekunder } from '../../../ui';
@@ -28,8 +29,9 @@ export default function PeriodeTab({
   const [scrap, setScrap] = useState(134_460_000);
   const [nomorBmr, setNomorBmr] = useState('');
 
-  const periode = useMemo(() => db.getPeriodeBuku(), []);
-  const jurnal = useMemo(() => db.getJurnalKeuangan(), []);
+  const dbTick = useDbTick(['keuangan_periode', 'keuangan_jurnal']);
+  const periode = useMemo(() => { void dbTick; return db.getPeriodeBuku(); }, [dbTick]);
+  const jurnal = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
 
   const ringkas = (id: string) => {
     const dalam = jurnal.filter((j) => (j.periode ?? periodeDari(j.tanggalTransaksi)) === id);

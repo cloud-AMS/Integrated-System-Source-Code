@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { BetsProduksi } from '../../../types';
 import { 
   Factory, 
@@ -14,7 +15,8 @@ import {
 } from 'lucide-react';
 
 export default function ProductionModule() {
-  const [bmrList, setBmrList] = useState<BetsProduksi[]>(db.getBetsProduksi());
+  const dbTick = useDbTick(['bets_produksi']);
+  const bmrList = useMemo<BetsProduksi[]>(() => { void dbTick; return db.getBetsProduksi(); }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -59,7 +61,6 @@ export default function ProductionModule() {
     };
 
     db.addBetsProduksi(newItem);
-    setBmrList(db.getBetsProduksi());
     setIsModalOpen(false);
   };
 

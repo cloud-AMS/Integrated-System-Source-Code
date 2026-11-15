@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import type { TransaksiKeuangan } from '../../../../types';
 import { gerbangPenagihanCdakb, rancangJurnalFaktur } from '../../../../utils/akuntansi';
 import { Badge, Panel, chipFilter, formatRupiah } from '../../../ui';
@@ -54,7 +55,8 @@ export default function FakturTab({
   bukaForm: number;
   onPerubahanData: () => void;
 }) {
-  const [transaksiList, setTransaksiList] = useState<TransaksiKeuangan[]>(db.getTransaksi());
+  const dbTick = useDbTick(['transaksi_keuangan', 'keuangan_jurnal', 'keuangan_pajak', 'gudang_surat_jalan', 'stok_gudang', 'penarikan_produk', 'izin_edar', 'sales_pelanggan_b2b']);
+  const transaksiList = useMemo<TransaksiKeuangan[]>(() => { void dbTick; return db.getTransaksi(); }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'galat'; teks: string } | null>(null);
@@ -70,8 +72,8 @@ export default function FakturTab({
     ppnStatus: 'PPN 11% Terbit Faktur Pajak'
   });
 
-  const jurnal = useMemo(() => db.getJurnalKeuangan(), []);
-  const tetapan = useMemo(() => db.getTetapanPajak(), []);
+  const jurnal = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
+  const tetapan = useMemo(() => { void dbTick; return db.getTetapanPajak(); }, [dbTick]);
   const tarifPpn = tetapan.find((t) => t.jenis === 'PPN Keluaran' && t.statusVerifikasiPJT === 'Terverifikasi')?.tarifPersen ?? 11;
 
   useEffect(() => {
@@ -92,19 +94,20 @@ export default function FakturTab({
     e.preventDefault();
     if (!formData.fasyankesAtauPemasok) return;
 
+    const tanggalRef = formData.tanggal || new Date().toISOString().split('T')[0];
+    const [tahun, bulan] = tanggalRef.split('-');
     const newItem: TransaksiKeuangan = {
       id: 'INV-' + Date.now(),
-      nomorFaktur: `INV/AMS/2024/05/${String(transaksiList.length + 101).padStart(3, '0')}`,
+      nomorFaktur: `INV/AMS/${tahun || new Date().getFullYear()}/${bulan || '01'}/${String(transaksiList.length + 101).padStart(3, '0')}`,
       kategori: formData.kategori as TransaksiKeuangan['kategori'],
       fasyankesAtauPemasok: formData.fasyankesAtauPemasok || '',
-      tanggal: formData.tanggal || new Date().toISOString().split('T')[0],
+      tanggal: tanggalRef,
       jumlah: Number(formData.jumlah) || 0,
       statusPembayaran: formData.statusPembayaran as TransaksiKeuangan['statusPembayaran'],
       ppnStatus: formData.ppnStatus as TransaksiKeuangan['ppnStatus']
     };
 
     db.addTransaksi(newItem);
-    setTransaksiList(db.getTransaksi());
 
     const rancangan = rancangJurnalFaktur(newItem, {
       tarifPpnPersen: tarifPpn,

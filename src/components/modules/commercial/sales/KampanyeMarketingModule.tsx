@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { KampanyeAlkes, ProgramRebate, UnitDemoAlkes } from '../../../../types';
 import { hitungRebateTerutang, hitungRoiKampanye, statusUnitDemo } from '../../../../utils/sales';
@@ -25,10 +26,23 @@ const toneRebate = (status: ProgramRebate['statusPembayaran']): Tone =>
   status === 'Terbayar' ? 'emerald' : status === 'Terverifikasi' ? 'blue' : 'amber';
 
 export default function KampanyeMarketingModule() {
-  const [kampanye, setKampanye] = useState<KampanyeAlkes[]>(db.getKampanye());
-  const [unitDemo, setUnitDemo] = useState<UnitDemoAlkes[]>(db.getUnitDemo());
-  const [rebate, setRebate] = useState<ProgramRebate[]>(db.getProgramRebate());
-  const [pelanggan] = useState(db.getPelangganB2B());
+  const dbTick = useDbTick(['sales_kampanye', 'sales_unit_demo', 'sales_rebate', 'pelanggan_b2b']);
+  const kampanye = useMemo<KampanyeAlkes[]>(() => {
+    void dbTick;
+    return db.getKampanye();
+  }, [dbTick]);
+  const unitDemo = useMemo<UnitDemoAlkes[]>(() => {
+    void dbTick;
+    return db.getUnitDemo();
+  }, [dbTick]);
+  const rebate = useMemo<ProgramRebate[]>(() => {
+    void dbTick;
+    return db.getProgramRebate();
+  }, [dbTick]);
+  const pelanggan = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
 
   const [filterJenis, setFilterJenis] = useState<KampanyeAlkes['jenisKegiatan'] | 'Semua'>('Semua');
   const [kataKunci, setKataKunci] = useState('');
@@ -55,7 +69,6 @@ export default function KampanyeMarketingModule() {
 
   const tutupKampanye = (k: KampanyeAlkes) => {
     db.saveKampanye(kampanye.map((x) => (x.id === k.id ? { ...x, status: 'Selesai' } : x)));
-    setKampanye(db.getKampanye());
     setDetail(null);
     db.logAudit(
       'Sales & Marketing — Kampanye',
@@ -72,7 +85,6 @@ export default function KampanyeMarketingModule() {
     db.saveUnitDemo(
       unitDemo.map((x) => (x.id === u.id ? { ...x, statusPinjam: 'Dikembalikan', tanggalHarusKembali: tanggalHariIni } : x))
     );
-    setUnitDemo(db.getUnitDemo());
     db.logAudit(
       'Sales & Marketing — Unit Demo',
       'Pengembalian unit demo dan berita acara serah terima',
@@ -87,7 +99,6 @@ export default function KampanyeMarketingModule() {
     const berikutnya: ProgramRebate['statusPembayaran'] =
       r.statusPembayaran === 'Belum Jatuh Tempo' ? 'Terverifikasi' : r.statusPembayaran === 'Terverifikasi' ? 'Terbayar' : 'Terbayar';
     db.saveProgramRebate(rebate.map((x) => (x.id === r.id ? { ...x, statusPembayaran: berikutnya } : x)));
-    setRebate(db.getProgramRebate());
     db.logAudit(
       'Sales & Marketing — Rebate',
       'Perubahan status pembayaran program rebate mitra',

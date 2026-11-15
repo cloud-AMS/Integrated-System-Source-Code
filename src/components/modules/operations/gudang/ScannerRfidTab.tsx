@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { KejadianScanner, StokGudang, UserRole } from '../../../../types';
 import { kodeBinDariLokasi, validasiPemindaian } from '../../../../utils/gudang';
@@ -38,9 +39,19 @@ const toneHasilScan = (hasil: KejadianScanner['hasilValidasi']): Tone => {
 };
 
 export default function ScannerRfidTab({ currentRole, dariAcuan, onPerubahanData }: Props) {
-  const [riwayat, setRiwayat] = useState<KejadianScanner[]>(() => db.getKejadianScanner());
-  const [binList, setBinList] = useState(() => db.getLokasiBin());
-  const [stokList, setStokList] = useState(() => db.getStokGudang());
+  const dbTick = useDbTick(['gudang_scanner', 'lokasi_bin', 'stok_gudang']);
+  const riwayat = useMemo<KejadianScanner[]>(() => {
+    void dbTick;
+    return db.getKejadianScanner();
+  }, [dbTick]);
+  const binList = useMemo(() => {
+    void dbTick;
+    return db.getLokasiBin();
+  }, [dbTick]);
+  const stokList = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
 
   const [filterHasil, setFilterHasil] = useState<'Semua' | KejadianScanner['hasilValidasi']>('Semua');
   const [filterProtokol, setFilterProtokol] = useState<'Semua' | KejadianScanner['protokol']>('Semua');
@@ -66,9 +77,6 @@ export default function ScannerRfidTab({ currentRole, dariAcuan, onPerubahanData
   } | null>(null);
 
   const segarkan = () => {
-    setRiwayat(db.getKejadianScanner());
-    setBinList(db.getLokasiBin());
-    setStokList(db.getStokGudang());
     onPerubahanData();
   };
 

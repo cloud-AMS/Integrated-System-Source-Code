@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { KontrakHarga, PelangganB2B, TenderAlkes } from '../../../../types';
 import { hitungMarginTender, hargaTerkunciAktif, selisihHari, validasiNomorIzinEdar } from '../../../../utils/sales';
@@ -31,10 +32,23 @@ const toneKontrak = (status: KontrakHarga['statusKontrak']): Tone =>
   status === 'Aktif' ? 'emerald' : status === 'Dibatalkan' ? 'rose' : 'slate';
 
 export default function TenderKontrakModule() {
-  const [tender] = useState<TenderAlkes[]>(db.getTender());
-  const [kontrak] = useState<KontrakHarga[]>(db.getKontrakHarga());
-  const [pelanggan] = useState<PelangganB2B[]>(db.getPelangganB2B());
-  const [izinEdar] = useState(db.getIzinEdar());
+  const dbTick = useDbTick(['tender', 'sales_kontrak_harga', 'pelanggan_b2b', 'izin_edar']);
+  const tender = useMemo<TenderAlkes[]>(() => {
+    void dbTick;
+    return db.getTender();
+  }, [dbTick]);
+  const kontrak = useMemo<KontrakHarga[]>(() => {
+    void dbTick;
+    return db.getKontrakHarga();
+  }, [dbTick]);
+  const pelanggan = useMemo<PelangganB2B[]>(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const izinEdar = useMemo(() => {
+    void dbTick;
+    return db.getIzinEdar();
+  }, [dbTick]);
   const [kataKunci, setKataKunci] = useState('');
   const [filterSumber, setFilterSumber] = useState<TenderAlkes['sumber'] | 'Semua'>('Semua');
   const [detail, setDetail] = useState<TenderAlkes | null>(null);

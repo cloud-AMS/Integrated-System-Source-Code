@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import {
   KODE_AKUN,
   csvEksporKpp,
@@ -35,10 +36,11 @@ export default function PajakTab({ identitas, dariAcuan }: { identitas: Identita
   const isoAcuan = dariAcuan.toISOString().slice(0, 10);
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'galat'; teks: string } | null>(null);
 
-  const jurnal = useMemo(() => db.getJurnalKeuangan(), []);
-  const periode = useMemo(() => db.getPeriodeBuku(), []);
-  const transaksi = useMemo(() => db.getTransaksi(), []);
-  const tetapan = useMemo(() => db.getTetapanPajak(), []);
+  const dbTick = useDbTick(['keuangan_jurnal', 'keuangan_periode', 'transaksi_keuangan', 'keuangan_pajak']);
+  const jurnal = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
+  const periode = useMemo(() => { void dbTick; return db.getPeriodeBuku(); }, [dbTick]);
+  const transaksi = useMemo(() => { void dbTick; return db.getTransaksi(); }, [dbTick]);
+  const tetapan = useMemo(() => { void dbTick; return db.getTetapanPajak(); }, [dbTick]);
 
   const masaAwal = periode.find((p) => p.status === 'Terbuka')?.id ?? isoAcuan.slice(0, 7);
   const [masa, setMasa] = useState(masaAwal);

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { CAPARecord, LogSuhu, StokGudang } from '../../../../types';
 import { deteksiExcursiRantaiDingin, statusUnitStok } from '../../../../utils/gudang';
@@ -26,10 +27,23 @@ const PILIHAN_SENSOR: { nama: string; zona: StokGudang['zonaSuhu'] }[] = [
 ];
 
 export default function RantaiDinginTab({ dariAcuan, onPerubahanData }: Props) {
-  const [logSuhuList, setLogSuhuList] = useState<LogSuhu[]>(() => db.getLogSuhu());
-  const [stokList, setStokList] = useState<StokGudang[]>(() => db.getStokGudang());
-  const [capaList, setCapaList] = useState<CAPARecord[]>(() => db.getCAPA());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [logSuhuList]);
+  const dbTick = useDbTick(['log_suhu', 'stok_gudang', 'capa', 'konfigurasi_gudang']);
+  const logSuhuList = useMemo<LogSuhu[]>(() => {
+    void dbTick;
+    return db.getLogSuhu();
+  }, [dbTick]);
+  const stokList = useMemo<StokGudang[]>(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const capaList = useMemo<CAPARecord[]>(() => {
+    void dbTick;
+    return db.getCAPA();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [modalSuhu, setModalSuhu] = useState(false);
   const [modalCapa, setModalCapa] = useState(false);
@@ -52,9 +66,6 @@ export default function RantaiDinginTab({ dariAcuan, onPerubahanData }: Props) {
   });
 
   const segarkan = () => {
-    setLogSuhuList(db.getLogSuhu());
-    setStokList(db.getStokGudang());
-    setCapaList(db.getCAPA());
     onPerubahanData();
   };
 

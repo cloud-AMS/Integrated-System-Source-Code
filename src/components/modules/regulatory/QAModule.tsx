@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { CAPARecord, ProdukKembalian, DokumenMutu, AuditInternalIso13485, DetailPemeriksaanDokumen } from '../../../types';
 import { 
   Award, 
@@ -26,11 +27,12 @@ import AuditReportModal from './AuditReportModal';
 import { unduhAuditInternalCsv } from '../../../utils/auditInternalIso13485';
 
 export default function QAModule() {
+  const dbTick = useDbTick(['capa', 'produk_kembalian', 'dokumen_mutu', 'audit_internal_iso']);
   const [activeTab, setActiveTab] = useState<'capa' | 'retur' | 'dokumen' | 'audit-iso'>('capa');
-  const [capaList, setCapaList] = useState<CAPARecord[]>(db.getCAPA());
-  const [returList, setReturList] = useState<ProdukKembalian[]>(db.getProdukKembalian());
-  const [dokumenList] = useState<DokumenMutu[]>(db.getDokumenMutu());
-  const [auditList, setAuditList] = useState<AuditInternalIso13485[]>(() => db.getAuditInternal('QA'));
+  const capaList = useMemo<CAPARecord[]>(() => { void dbTick; return db.getCAPA(); }, [dbTick]);
+  const returList = useMemo<ProdukKembalian[]>(() => { void dbTick; return db.getProdukKembalian(); }, [dbTick]);
+  const dokumenList = useMemo<DokumenMutu[]>(() => { void dbTick; return db.getDokumenMutu(); }, [dbTick]);
+  const auditList = useMemo<AuditInternalIso13485[]>(() => { void dbTick; return db.getAuditInternal('QA'); }, [dbTick]);
   const [isCapaModalOpen, setIsCapaModalOpen] = useState(false);
   const [isReturModalOpen, setIsReturModalOpen] = useState(false);
   const [selectedAuditForModal, setSelectedAuditForModal] = useState<AuditInternalIso13485 | null>(null);
@@ -66,7 +68,6 @@ export default function QAModule() {
 
     setTimeout(() => {
       const hasil = db.jalankanAuditOtomatisQA();
-      setAuditList(db.getAuditInternal('QA'));
       setIsScanning(false);
       setAuditNotice(`Audit internal otomatis selesai! Indeks Kepatuhan: ${hasil.skorKepatuhan}% (${hasil.dokumenSesuai} Sesuai, ${hasil.temuanMinor} Minor NC, ${hasil.temuanMajor} Mayor NC).`);
       setTimeout(() => setAuditNotice(null), 8000);
@@ -117,7 +118,6 @@ export default function QAModule() {
       verifikasiPJT: true
     };
     db.addCAPA(item);
-    setCapaList(db.getCAPA());
     setIsCapaModalOpen(false);
   };
 
@@ -138,7 +138,6 @@ export default function QAModule() {
       tanggalMasukKarantina: new Date().toISOString().split('T')[0]
     };
     db.addProdukKembalian(item);
-    setReturList(db.getProdukKembalian());
     setIsReturModalOpen(false);
   };
 

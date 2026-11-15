@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from '../../services/pocketbase';
+import { useDbTick } from '../../hooks/useDbSync';
 import { TraceabilityResult } from '../../types';
 import { 
   X, 
@@ -26,8 +27,24 @@ export default function TraceabilityModal({
   onClose,
   initialQuery = 'LOT-2024-PM44'
 }: TraceabilityModalProps) {
+  const dbTick = useDbTick(['all']);
   const [query, setQuery] = useState(initialQuery);
-  const [result, setResult] = useState<TraceabilityResult | null>(db.cariKetelusuran(initialQuery));
+  const [result, setResult] = useState<TraceabilityResult | null>(() => db.cariKetelusuran(initialQuery));
+
+  const quickBatches = useMemo(() => {
+    void dbTick;
+    const batches = Array.from(new Set(db.getStokGudang().map((s) => s.nomorBatch).filter(Boolean)));
+    return batches.slice(0, 4);
+  }, [dbTick]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const q = query.trim() || quickBatches[0] || initialQuery;
+    if (!query.trim() && quickBatches[0]) {
+      setQuery(quickBatches[0]);
+    }
+    setResult(q ? db.cariKetelusuran(q) : null);
+  }, [isOpen, dbTick]);
 
   if (!isOpen) return null;
 
@@ -36,6 +53,8 @@ export default function TraceabilityModal({
     if (query.trim()) {
       const res = db.cariKetelusuran(query);
       setResult(res);
+    } else {
+      setResult(null);
     }
   };
 
@@ -97,7 +116,7 @@ export default function TraceabilityModal({
           {/* Quick Examples */}
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500 flex-wrap">
             <span className="font-semibold text-slate-600">Pilih Batch Cepat:</span>
-            {['LOT-2024-PM44', 'LOT-2024-SP12', 'LOT-2024-DNG12', 'LOT-2023-B991'].map(b => (
+            {quickBatches.length > 0 ? quickBatches.map(b => (
               <button
                 key={b}
                 type="button"
@@ -106,7 +125,9 @@ export default function TraceabilityModal({
               >
                 {b}
               </button>
-            ))}
+            )) : (
+              <span className="text-slate-400 italic">Belum ada batch stok di gudang.</span>
+            )}
           </div>
         </div>
 

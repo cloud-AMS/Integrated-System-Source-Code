@@ -237,6 +237,48 @@ async function startServer() {
     );
   };
 
+  const broadcastSyncBatch = (
+    updated: Record<string, { value: unknown; version: number; updatedAt: string; updatedBy: string }>,
+    deleted: string[],
+    revision: number,
+    sourceClientId?: string
+  ) => {
+    const publicUpdated: Record<string, { value: unknown; version: number; updatedAt: string; updatedBy: string }> = {};
+    for (const [k, v] of Object.entries(updated)) {
+      if (PUBLIC_SYNC_KEYS.has(k)) publicUpdated[k] = v;
+    }
+    const publicDeleted = deleted.filter((k) => PUBLIC_SYNC_KEYS.has(k));
+    const hasPublicChanges = Object.keys(publicUpdated).length > 0 || publicDeleted.length > 0;
+
+    const fullPayload = JSON.stringify({
+      type: 'sync:batch-update',
+      entries: updated,
+      deleted,
+      revision,
+      sourceClientId: sourceClientId || null
+    });
+    const publicPayload = hasPublicChanges
+      ? JSON.stringify({
+          type: 'sync:batch-update',
+          entries: publicUpdated,
+          deleted: publicDeleted,
+          revision,
+          sourceClientId: sourceClientId || null
+        })
+      : null;
+
+    for (const client of syncClients) {
+      if (client.ws.readyState !== WebSocket.OPEN) continue;
+      const msg = client.isAuthenticated ? fullPayload : publicPayload;
+      if (!msg) continue;
+      try {
+        client.ws.send(msg);
+      } catch {
+        /* abaikan socket gagal kirim */
+      }
+    }
+  };
+
   const broadcastRbacUpdated = () => {
     broadcastMessage({ type: 'rbac:updated', at: new Date().toISOString() }, false);
   };
@@ -619,6 +661,169 @@ async function startServer() {
       broadcastSyncDelete(key, result.revision, sourceClientId);
     }
     res.json({ ok: true, key, deleted: result.deleted, revision: result.revision });
+  });
+
+  app.post('/api/sync/batch', requireAuth, (req, res) => {
+    const body = (req.body || {}) as {
+      updates?: Record<string, unknown>;
+      deletes?: string[];
+      clientId?: string;
+    };
+    const updates = body.updates && typeof body.updates === 'object' && !Array.isArray(body.updates) ? body.updates : {};
+    const deletes = Array.isArray(body.deletes) ? body.deletes : [];
+
+    for (const key of Object.keys(updates)) {
+      if (!isValidSyncKey(key)) {
+        return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci sinkronisasi tidak valid: ${key}` });
+      }
+      if (!canWriteSyncKey(req.auth!.role, key)) {
+        const resource = mapSyncKeyToResource(key);
+        rbacStore.recordAudit({
+          actorUsername: req.auth!.user.username,
+          actorRole: req.auth!.role.id,
+          action: 'PERMISSION_DENIED',
+          resource: `${resource}:${key}`,
+          status: 'DENIED',
+          ip: getClientIp(req),
+          detail: `Permintaan batch write "${key}" ditolak oleh RBAC server.`
+        });
+        return res.status(403).json({
+          error: 'FORBIDDEN',
+          pesan: `Akses ditolak: peran "${req.auth!.role.name}" tidak memiliki izin menulis "${key}".`
+        });
+      }
+    }
+
+    for (const key of deletes) {
+      if (!isValidSyncKey(key)) {
+        return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci hapus tidak valid: ${key}` });
+      }
+      if (!canDeleteSyncKey(req.auth!.role, key)) {
+        const resource = mapSyncKeyToResource(key);
+        return res.status(403).json({
+          error: 'FORBIDDEN',
+          pesan: `Akses ditolak: peran "${req.auth!.role.name}" tidak memiliki izin menghapus "${key}".`
+        });
+      }
+    }
+
+    if (updates.website_published && adalahKonfigurasiSitus(updates.website_published)) {
+      try {
+        const serialized = JSON.stringify(updates.website_published, null, 2);
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT, serialized, 'utf8');
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT_STATIS), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT_STATIS, serialized, 'utf8');
+      } catch {
+        /* lanjutkan penyimpanan batch */
+      }
+    }
+
+    const result = dataSyncStore.setBatch(updates, deletes, req.auth!.user.username);
+    const sourceClientId =
+      typeof body.clientId === 'string' && body.clientId
+        ? body.clientId
+        : typeof req.headers['x-sync-client-id'] === 'string'
+          ? req.headers['x-sync-client-id']
+          : undefined;
+    if (Object.keys(result.updated).length > 0 || result.deleted.length > 0) {
+      broadcastSyncBatch(result.updated, result.deleted, result.revision, sourceClientId);
+    }
+
+    const versions: Record<string, number> = {};
+    for (const [k, entry] of Object.entries(result.updated)) {
+      versions[k] = entry.version;
+    }
+
+    res.json({
+      ok: true,
+      revision: result.revision,
+      versions,
+      deleted: result.deleted
+    });
+  });
+
+  app.post('/api/sync/purge-dummy', requireAuth, (req, res) => {
+    const permsIt = req.auth!.role.permissions['it-traceability'] || [];
+    const permsRbac = req.auth!.role.permissions['rbac-admin'] || [];
+    const bolehPurge =
+      req.auth!.role.id === 'developer' ||
+      req.auth!.role.id === 'it_admin' ||
+      permsRbac.includes('delete') ||
+      permsRbac.includes('update') ||
+      permsIt.includes('delete') ||
+      permsIt.includes('update');
+
+    if (!bolehPurge) {
+      rbacStore.recordAudit({
+        actorUsername: req.auth!.user.username,
+        actorRole: req.auth!.role.id,
+        action: 'PERMISSION_DENIED',
+        resource: 'it-traceability:purge-dummy',
+        status: 'DENIED',
+        ip: getClientIp(req),
+        detail: 'Percobaan purge/pemulihan data dummy ditolak oleh RBAC server.'
+      });
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        pesan: `Akses ditolak: peran "${req.auth!.role.name}" tidak memiliki otoritas mengelola purge data dummy.`
+      });
+    }
+
+    const body = (req.body || {}) as {
+      updates?: Record<string, unknown>;
+      deletes?: string[];
+      mode?: 'purge' | 'restore';
+      ringkasan?: string;
+      clientId?: string;
+    };
+    const updates = body.updates && typeof body.updates === 'object' && !Array.isArray(body.updates) ? body.updates : {};
+    const deletes = Array.isArray(body.deletes) ? body.deletes : [];
+
+    for (const key of [...Object.keys(updates), ...deletes]) {
+      if (!isValidSyncKey(key)) {
+        return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci sinkronisasi tidak valid: ${key}` });
+      }
+    }
+
+    const result = dataSyncStore.setBatch(updates, deletes, req.auth!.user.username);
+    const sourceClientId =
+      typeof body.clientId === 'string' && body.clientId
+        ? body.clientId
+        : typeof req.headers['x-sync-client-id'] === 'string'
+          ? req.headers['x-sync-client-id']
+          : undefined;
+    if (Object.keys(result.updated).length > 0 || result.deleted.length > 0) {
+      broadcastSyncBatch(result.updated, result.deleted, result.revision, sourceClientId);
+    }
+
+    const versions: Record<string, number> = {};
+    for (const [k, entry] of Object.entries(result.updated)) {
+      versions[k] = entry.version;
+    }
+
+    const mode = body.mode === 'restore' ? 'restore' : 'purge';
+    rbacStore.recordAudit({
+      actorUsername: req.auth!.user.username,
+      actorRole: req.auth!.role.id,
+      action: mode === 'restore' ? 'DUMMY_DATA_RESTORED' : 'DUMMY_DATA_PURGED',
+      resource: 'sync',
+      status: 'ALLOWED',
+      ip: getClientIp(req),
+      detail:
+        body.ringkasan ||
+        (mode === 'restore'
+          ? 'Pemulihan data simulasi/dummy bawaan dilakukan melalui server sync.'
+          : 'Pembersihan (purge) selektif data dummy dilakukan; data pengguna, RBAC, CoA, pajak, dan pengaturan situs dipertahankan.')
+    });
+
+    res.json({
+      ok: true,
+      mode,
+      revision: result.revision,
+      versions,
+      deleted: result.deleted
+    });
   });
 
   app.post('/api/sync/reset', requirePermission('rbac-admin', 'delete'), (req, res) => {

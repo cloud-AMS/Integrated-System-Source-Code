@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import DeveloperNotes from '../../common/DeveloperNotes';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { LaporanKTD, PenarikanProduk } from '../../../types';
 import {
   AlertTriangle,
@@ -16,9 +17,10 @@ interface PMSModuleProps {
 }
 
 export default function PMSModule({ onBukaRecallGudang }: PMSModuleProps) {
+  const dbTick = useDbTick(['laporan_ktd', 'penarikan_produk']);
   const [activeTab, setActiveTab] = useState<'ktd' | 'recall'>('ktd');
-  const [ktdList, setKtdList] = useState<LaporanKTD[]>(() => db.getLaporanKTD());
-  const [recallList] = useState<PenarikanProduk[]>(() => db.getPenarikanProduk());
+  const ktdList = useMemo<LaporanKTD[]>(() => { void dbTick; return db.getLaporanKTD(); }, [dbTick]);
+  const recallList = useMemo<PenarikanProduk[]>(() => { void dbTick; return db.getPenarikanProduk(); }, [dbTick]);
   const [isKtdModalOpen, setIsKtdModalOpen] = useState(false);
 
   // New KTD Form
@@ -57,7 +59,6 @@ export default function PMSModule({ onBukaRecallGudang }: PMSModuleProps) {
     };
 
     db.addLaporanKTD(newItem);
-    setKtdList(db.getLaporanKTD());
     setIsKtdModalOpen(false);
   };
 

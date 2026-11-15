@@ -19,7 +19,13 @@ import {
   X,
   FileText,
   Info,
-  Users
+  Users,
+  RefreshCw,
+  Trash2,
+  RotateCcw,
+  AlertTriangle,
+  Layers,
+  Lock
 } from 'lucide-react';
 import { 
   downloadIso13485AuditCsv, 
@@ -27,6 +33,9 @@ import {
 } from '../../../utils/auditExportIso13485';
 import { authFetch, bacaSesi, punyaIzin, type SesiLogin } from '../../../utils/autentikasi';
 import { SEMUA_ID_MODUL } from '../../../utils/hakAkses';
+import { useDbTick } from '../../../hooks/useDbSync';
+import { verifikasiRantaiHash } from '../../../utils/gudang';
+import type { KategoriPenyimpananData } from '../../../utils/dataOrigin';
 import UserAccountRolesModule from '../../dashboard/UserAccountRolesModule';
 import RbacManagementTab from './it/RbacManagementTab';
 
@@ -65,6 +74,7 @@ export default function ITModule({
     modulDiizinkan: [...SEMUA_ID_MODUL],
     sumber: 'akses-penuh'
   };
+  const dbTick = useDbTick(['all', 'connection_status', 'sistem_data_manifest']);
   const [auditList, setAuditList] = useState<LogAuditTrail[]>(db.getAuditTrail());
   const [connStatus, setConnStatus] = useState(db.getConnectionStatus());
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
@@ -75,6 +85,16 @@ export default function ITModule({
   const [selectedIntegrityFilter, setSelectedIntegrityFilter] = useState('Semua');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // Pusat Pemisahan Data Dummy vs User, Purge & Sync
+  const [filterKategoriData, setFilterKategoriData] = useState<'SEMUA' | KategoriPenyimpananData>('SEMUA');
+  const [cariKoleksi, setCariKoleksi] = useState('');
+  const [hanyaYangAdaIsi, setHanyaYangAdaIsi] = useState(false);
+  const [modalPurge, setModalPurge] = useState<'purge' | 'restore' | 'reset' | null>(null);
+  const [pertahankanEditUser, setPertahankanEditUser] = useState(true);
+  const [pertahankanStrukturGudang, setPertahankanStrukturGudang] = useState(true);
+  const [sedangMemprosesPurge, setSedangMemprosesPurge] = useState(false);
+  const [sedangSyncManual, setSedangSyncManual] = useState(false);
 
   // Sesi pengguna aktif untuk atribusi kepatuhan ALCOA+
   const sesiAktif = sesi ?? bacaSesi();
@@ -220,6 +240,35 @@ alkes.perusahaan-anda.co.id {
     });
   }, [auditList, selectedModuleFilter, selectedIntegrityFilter, searchQuery]);
 
+  const ringkasanAsal = useMemo(() => {
+    void dbTick;
+    return db.getRingkasanAsalData();
+  }, [dbTick]);
+
+  const statusRantaiHash = useMemo(() => {
+    void dbTick;
+    return {
+      gudang: verifikasiRantaiHash(db.getJejakPergerakan()),
+      jurnal: db.periksaRantaiJurnal()
+    };
+  }, [dbTick]);
+
+  const koleksiAsalTerfilter = useMemo(() => {
+    const q = cariKoleksi.trim().toLowerCase();
+    return ringkasanAsal.koleksi.filter((item) => {
+      if (filterKategoriData !== 'SEMUA' && item.kategori !== filterKategoriData) return false;
+      if (hanyaYangAdaIsi && item.total === 0) return false;
+      if (q) {
+        return (
+          item.label.toLowerCase().includes(q) ||
+          item.modul.toLowerCase().includes(q) ||
+          item.key.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [ringkasanAsal.koleksi, filterKategoriData, hanyaYangAdaIsi, cariKoleksi]);
+
   /**
    * Fungsi Ekspor Berkas CSV Log Audit Standar ISO 13485:2016
    * Sesuai Klausul 4.2.4 & 4.2.5 (Control of Records) dan prinsip ALCOA+
@@ -227,7 +276,8 @@ alkes.perusahaan-anda.co.id {
   const handleExportIso13485Csv = (hanyaTerfilter = false) => {
     const dataTarget = hanyaTerfilter ? auditListTerfilter : auditList;
     if (dataTarget.length === 0) {
-      alert('Tidak ada catatan audit yang tersedia untuk diekspor.');
+      setExportNotice('Tidak ada catatan audit yang tersedia untuk diekspor.');
+      setTimeout(() => setExportNotice(null), 4000);
       return;
     }
 
@@ -258,9 +308,47 @@ alkes.perusahaan-anda.co.id {
     setTimeout(() => setExportNotice(null), 6000);
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Apakah Anda yakin ingin memulihkan seluruh data simulasi ke pengaturan awal standar?')) {
-      db.resetToDefaults();
+  const jalankanSinkronManual = async () => {
+    if (sedangSyncManual) return;
+    setSedangSyncManual(true);
+    try {
+      const hasil = await db.syncNow();
+      setConnStatus(db.getConnectionStatus());
+      setExportNotice(
+        hasil.ok
+          ? `Sinkronisasi selesai (${hasil.uploaded} unggah, ${hasil.downloaded} pembaruan server).`
+          : `Sinkronisasi parsial: masih ada ${hasil.remaining} perubahan menunggu koneksi server.`
+      );
+      setTimeout(() => setExportNotice(null), 5000);
+    } finally {
+      setSedangSyncManual(false);
+    }
+  };
+
+  const eksekusiAksiData = async () => {
+    if (!modalPurge || sedangMemprosesPurge) return;
+    setSedangMemprosesPurge(true);
+    try {
+      if (modalPurge === 'purge') {
+        const res = await db.purgeDummyData({
+          pertahankanEditUser,
+          pertahankanStrukturGudang,
+          pelaku: namaAdmin,
+          peran: String(peranAdmin)
+        });
+        setExportNotice(res.pesan);
+      } else if (modalPurge === 'restore') {
+        const res = await db.pulihkanDataDummy(namaAdmin, String(peranAdmin));
+        setExportNotice(res.pesan);
+      } else if (modalPurge === 'reset') {
+        await db.resetToDefaults();
+      }
+      setAuditList(db.getAuditTrail());
+      setConnStatus(db.getConnectionStatus());
+      setModalPurge(null);
+      setTimeout(() => setExportNotice(null), 7000);
+    } finally {
+      setSedangMemprosesPurge(false);
     }
   };
 
@@ -443,46 +531,242 @@ alkes.perusahaan-anda.co.id {
         )
       )}
 
-      {/* Tab 1: Storage & Sync Status */}
+      {/* Tab 1: Storage, Sync & Pemisahan Data Dummy vs User */}
       {activeTab === 'traceability' && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-sm text-slate-900">Status Arsitektur Sistem Dual-Layer</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">Status Arsitektur &amp; Auto-Sync Real-Time</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Perubahan pada seluruh modul otomatis tersimpan lokal dan disinkronkan ke server persisten.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void jalankanSinkronManual()}
+                disabled={sedangSyncManual}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${sedangSyncManual ? 'animate-spin' : ''}`} />
+                {sedangSyncManual ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
+              </button>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-indigo-900">1. Offline-First Cache Layer (Browser Storage)</span>
+                  <span className="font-bold text-indigo-900">1. Offline-First Cache Layer</span>
                   <CheckCircle2 className="w-4 h-4 text-indigo-600" />
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Menyimpan seluruh data operasional di memori lokal terenkripsi sehingga sistem gudang dan penerimaan barang tetap dapat bekerja tanpa henti meski koneksi internet terputus.
+                  Antrean perubahan tertunda bertahan lintas-reload di penyimpanan browser hingga server menerima konfirmasi.
                 </p>
-                <div className="text-2xs text-indigo-800 font-mono">Status: Aktif & Siap Baca-Tulis</div>
+                <div className="text-2xs text-indigo-800 font-mono">
+                  Antrean pending: {connStatus.pendingCount ?? 0} koleksi
+                </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
+              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-900">2. Server Real-Time WebSocket &amp; State Sync</span>
+                  <span className="font-bold text-blue-900">2. Server WebSocket &amp; Batch Sync</span>
                   <Server className="w-4 h-4 text-blue-600" />
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Menghubungkan seluruh sesi pengguna ke server sinkronisasi pada <code>{connStatus.url}</code> agar pengaturan dan data modul tersinkronisasi real-time (revisi server #{connStatus.revision ?? 0}).
+                  Kanal sinkronisasi pada <code>{connStatus.url}</code> (Revisi #{connStatus.revision ?? 0}).
                 </p>
-                <div className="text-2xs text-blue-800 font-mono">Konektor: {connStatus.statusLabel}</div>
+                <div className="text-2xs text-blue-800 font-mono">
+                  Status: {connStatus.statusLabel}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-emerald-900">3. Integritas Rantai Hash SHA-256</span>
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                </div>
+                <p className="text-slate-600 text-xs leading-relaxed">
+                  Jejak pergerakan stok &amp; buku besar jurnal diverifikasi berantai dari genesis saat purge.
+                </p>
+                <div className="text-2xs font-mono text-emerald-800 space-y-0.5">
+                  <div>
+                    Pergerakan Gudang: {statusRantaiHash.gudang.utuh ? 'UTUH' : 'PUTUS'} ({statusRantaiHash.gudang.jumlahBaris} baris)
+                  </div>
+                  <div>
+                    Jurnal Keuangan: {statusRantaiHash.jurnal.valid ? 'UTUH' : 'PUTUS'} ({statusRantaiHash.jurnal.jumlahMata} baris)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pusat Pemisahan Data Dummy vs Data Pengguna & Purge */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Pemisahan Data Dummy vs Data Input Pengguna (Purge Center)
+                  </h3>
+                  {ringkasanAsal.manifest.dummyDihapus ? (
+                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Mode Produksi (Dummy Sudah Dibersihkan)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      Data Simulasi / Dummy Masih Terpasang
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 mt-1 max-w-3xl">
+                  Sistem melacak asal setiap rekaman secara terpisah. Saat <strong>Purge Data Dummy</strong> dijalankan, seluruh contoh bawaan dihapus serempak hingga ke server, sedangkan data baru input pengguna, akun RBAC, Bagan Akun (CoA), tarif pajak, dan pengaturan Website/Quotation/e-Katalog tetap dipertahankan.
+                </p>
+                {ringkasanAsal.manifest.dummyDihapusPada && (
+                  <p className="text-2xs text-slate-500 mt-1 font-mono">
+                    Purge terakhir: {new Date(ringkasanAsal.manifest.dummyDihapusPada).toLocaleString('id-ID')} oleh {ringkasanAsal.manifest.dummyDihapusOleh || '-'}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setModalPurge('purge')}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Purge Data Dummy ({ringkasanAsal.totalDummy})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalPurge('restore')}
+                  className="px-3.5 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Pulihkan Simulasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalPurge('reset')}
+                  className="px-3.5 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-semibold cursor-pointer"
+                >
+                  Reset Penuh
+                </button>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-500">
-                Kelola data simulasi untuk keperluan demo atau uji coba audit internal:
-              </span>
-              <button
-                onClick={handleResetData}
-                className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
+            {/* 4 Kartu Ringkasan */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/60">
+                <span className="text-2xs font-semibold text-amber-800 block">Data Dummy Bawaan</span>
+                <span className="text-xl font-bold text-amber-950 font-mono">{ringkasanAsal.totalDummy}</span>
+                <span className="text-2xs text-amber-700 block mt-0.5">Akan dihapus saat purge</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60">
+                <span className="text-2xs font-semibold text-emerald-800 block">Data Baru Input Pengguna</span>
+                <span className="text-xl font-bold text-emerald-950 font-mono">{ringkasanAsal.totalUserBaru}</span>
+                <span className="text-2xs text-emerald-700 block mt-0.5">100% dipertahankan aman</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60">
+                <span className="text-2xs font-semibold text-blue-800 block">Seed Diedit Pengguna</span>
+                <span className="text-xl font-bold text-blue-950 font-mono">{ringkasanAsal.totalUserDiedit}</span>
+                <span className="text-2xs text-blue-700 block mt-0.5">Opsional dipertahankan saat purge</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50">
+                <span className="text-2xs font-semibold text-slate-700 block">Master &amp; Konfigurasi Dilindungi</span>
+                <span className="text-xl font-bold text-slate-900 font-mono">
+                  {ringkasanAsal.totalMasterSistem + ringkasanAsal.totalKonfigurasiUser}
+                </span>
+                <span className="text-2xs text-slate-500 block mt-0.5">CoA, Pajak, Periode, Situs &amp; RBAC</span>
+              </div>
+            </div>
+
+            {/* Filter Tabel Asal Data */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 text-xs pt-1">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={cariKoleksi}
+                  onChange={(e) => setCariKoleksi(e.target.value)}
+                  placeholder="Cari nama koleksi, modul, atau kunci..."
+                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+              <select
+                value={filterKategoriData}
+                onChange={(e) => setFilterKategoriData(e.target.value as 'SEMUA' | KategoriPenyimpananData)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium cursor-pointer"
               >
-                Reset ke Data Standar
-              </button>
+                <option value="SEMUA">Semua Kategori ({ringkasanAsal.koleksi.length})</option>
+                <option value="operasional">Data Operasional (Kena Purge)</option>
+                <option value="master_sistem">Master Sistem (CoA, Pajak, Konfig)</option>
+                <option value="konfigurasi_user">Konfigurasi User (Website, Quotation, Katalog)</option>
+              </select>
+              <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hanyaYangAdaIsi}
+                  onChange={(e) => setHanyaYangAdaIsi(e.target.checked)}
+                />
+                <span>Hanya koleksi berisi data</span>
+              </label>
+            </div>
+
+            {/* Tabel Rincian Koleksi */}
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3">Koleksi Data</th>
+                    <th className="py-2.5 px-3">Modul</th>
+                    <th className="py-2.5 px-3">Kategori</th>
+                    <th className="py-2.5 px-3 text-right">Dummy</th>
+                    <th className="py-2.5 px-3 text-right">User Baru</th>
+                    <th className="py-2.5 px-3 text-right">User Diedit</th>
+                    <th className="py-2.5 px-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {koleksiAsalTerfilter.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-slate-400">
+                        Tidak ada koleksi yang sesuai filter saat ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    koleksiAsalTerfilter.map((row) => (
+                      <tr key={row.key} className="hover:bg-slate-50/70">
+                        <td className="py-2 px-3">
+                          <div className="font-semibold text-slate-900">{row.label}</div>
+                          <div className="text-2xs font-mono text-slate-400">{row.key}</div>
+                        </td>
+                        <td className="py-2 px-3 text-slate-700">{row.modul}</td>
+                        <td className="py-2 px-3">
+                          {row.kategori === 'operasional' ? (
+                            <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                              {row.strukturGudang ? 'Struktur Gudang' : 'Operasional'}
+                            </span>
+                          ) : row.kategori === 'master_sistem' ? (
+                            <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Master Sistem
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 inline-flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Konfigurasi User
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono text-amber-700 font-semibold">{row.dummy}</td>
+                        <td className="py-2 px-3 text-right font-mono text-emerald-700 font-semibold">{row.userBaru}</td>
+                        <td className="py-2 px-3 text-right font-mono text-blue-700 font-semibold">{row.userDiedit}</td>
+                        <td className="py-2 px-3 text-right font-mono text-slate-900 font-bold">{row.total}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -921,6 +1205,125 @@ alkes.perusahaan-anda.co.id {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Purge / Pulihkan Simulasi / Reset Penuh */}
+      {modalPurge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                  modalPurge === 'restore' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'
+                }`}>
+                  {modalPurge === 'restore' ? <RotateCcw className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    {modalPurge === 'purge' && 'Konfirmasi Purge Data Dummy'}
+                    {modalPurge === 'restore' && 'Pulihkan Data Simulasi Standar'}
+                    {modalPurge === 'reset' && 'Reset Penuh State Aplikasi'}
+                  </h3>
+                  <p className="text-2xs text-slate-500">
+                    Perubahan disinkronkan secara atomik ke server &amp; perangkat lain
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalPurge(null)}
+                disabled={sedangMemprosesPurge}
+                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 text-xs text-slate-700">
+              {modalPurge === 'purge' && (
+                <>
+                  <p>
+                    Sistem akan menghapus <strong className="text-rose-700">{ringkasanAsal.totalDummy} rekaman dummy bawaan</strong> dari semua modul operasional sekaligus menyambung ulang rantai hash SHA-256 gudang dan jurnal keuangan.
+                  </p>
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
+                    <div className="font-bold">Tetap Dipertahankan 100%:</div>
+                    <ul className="list-disc pl-4 space-y-0.5 text-2xs">
+                      <li><strong>{ringkasanAsal.totalUserBaru}</strong> data baru yang diinput pengguna</li>
+                      <li>Bagan Akun (CoA), periode buku terbuka, dan tetapan tarif pajak</li>
+                      <li>Seluruh akun RBAC server &amp; akun developer tersembunyi</li>
+                      <li>Draf/terbitan Website, identitas Quotation, dan pengaturan e-Katalog PDF</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pertahankanEditUser}
+                        onChange={(e) => setPertahankanEditUser(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        Pertahankan rekaman bawaan yang sudah pernah diedit oleh pengguna ({ringkasanAsal.totalUserDiedit} rekaman)
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pertahankanStrukturGudang}
+                        onChange={(e) => setPertahankanStrukturGudang(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        Pertahankan struktur gudang fisik, daftar lokasi rak/bin, dan aturan put-away (isi bin terpakai tetap direset mengikuti stok tersisa)
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {modalPurge === 'restore' && (
+                <p>
+                  Koleksi operasional akan diisi ulang dengan contoh data simulasi awal agar tim dapat melakukan demonstrasi atau uji alur CDAKB/ISO 13485. Pengaturan situs, quotation, RBAC, CoA, dan pajak tetap terjaga.
+                </p>
+              )}
+
+              {modalPurge === 'reset' && (
+                <p className="text-rose-800 bg-rose-50 border border-rose-200 p-3 rounded-xl">
+                  <strong>Peringatan:</strong> Reset penuh menghapus seluruh state sinkronisasi data aplikasi (kecuali akun &amp; peran RBAC server) lalu memuat ulang halaman ke kondisi awal sistem. Gunakan opsi <strong>Purge Data Dummy</strong> bila Anda hanya ingin membuang contoh dummy tanpa menghapus data input pengguna.
+                </p>
+              )}
+            </div>
+
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setModalPurge(null)}
+                disabled={sedangMemprosesPurge}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => void eksekusiAksiData()}
+                disabled={sedangMemprosesPurge}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold text-white cursor-pointer disabled:opacity-50 ${
+                  modalPurge === 'restore'
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {sedangMemprosesPurge
+                  ? 'Memproses...'
+                  : modalPurge === 'purge'
+                    ? 'Ya, Purge Data Dummy'
+                    : modalPurge === 'restore'
+                      ? 'Ya, Pulihkan Simulasi'
+                      : 'Ya, Reset Penuh'}
+              </button>
+            </div>
           </div>
         </div>
       )}

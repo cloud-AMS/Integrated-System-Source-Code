@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { HasilValidasiSO, PenjualanAlkes, SkemaHargaAlkes } from '../../../../types';
 import {
@@ -64,13 +65,43 @@ const toneLimit = (status: ReturnType<typeof statusLimitKredit>['status']): Tone
   status === 'Diblokir' ? 'rose' : status === 'Perlu Persetujuan Manajemen' ? 'amber' : 'emerald';
 
 export default function SalesOrderModule() {
-  const [pesanan, setPesanan] = useState<PenjualanAlkes[]>(db.getPenjualan());
-  const [pelanggan] = useState(db.getPelangganB2B());
-  const [skema] = useState<SkemaHargaAlkes[]>(db.getSkemaHarga());
-  const [kontrak] = useState(db.getKontrakHarga());
-  const [izinEdar] = useState(db.getIzinEdar());
-  const [stok, setStok] = useState(db.getStokGudang());
-  const [produk] = useState(db.getPengetahuanProduk());
+  const dbTick = useDbTick([
+    'penjualan',
+    'pelanggan_b2b',
+    'sales_skema_harga',
+    'sales_kontrak_harga',
+    'izin_edar',
+    'stok_gudang',
+    'sales_pengetahuan_produk'
+  ]);
+  const pesanan = useMemo<PenjualanAlkes[]>(() => {
+    void dbTick;
+    return db.getPenjualan();
+  }, [dbTick]);
+  const pelanggan = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const skema = useMemo<SkemaHargaAlkes[]>(() => {
+    void dbTick;
+    return db.getSkemaHarga();
+  }, [dbTick]);
+  const kontrak = useMemo(() => {
+    void dbTick;
+    return db.getKontrakHarga();
+  }, [dbTick]);
+  const izinEdar = useMemo(() => {
+    void dbTick;
+    return db.getIzinEdar();
+  }, [dbTick]);
+  const stok = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const produk = useMemo(() => {
+    void dbTick;
+    return db.getPengetahuanProduk();
+  }, [dbTick]);
   const acuanFefo = useMemo(() => buatTanggalAcuan(TANGGAL_ACUAN_BENIH), []);
 
   const [kataKunci, setKataKunci] = useState('');
@@ -225,22 +256,18 @@ export default function SalesOrderModule() {
     };
 
     db.addPenjualan(item);
-    setPesanan(db.getPenjualan());
     setTolakanValidasi(null);
     setFormTerbuka(false);
   };
 
   const mundurkanStatus = (item: PenjualanAlkes, statusBaru: PenjualanAlkes['statusKirim']) => {
     db.updatePenjualan(item.id, { statusKirim: statusBaru });
-    setPesanan(db.getPenjualan());
   };
 
   const kirimPesanan = (item: PenjualanAlkes) => {
     const waktuKirim = waktuMutasiMonoton(acuanFefo, db.getJejakPergerakan());
     const hasil = db.catatPengirimanSalesOrder(item.id, waktuKirim);
     setPenolakanKirim(hasil.boleh ? null : { id: item.id, sebab: hasil.keterangan });
-    setPesanan(db.getPenjualan());
-    setStok(db.getStokGudang());
   };
 
   const simpanRevisi = (e: React.FormEvent) => {
@@ -250,7 +277,6 @@ export default function SalesOrderModule() {
       totalHarga: Number(formRevisi.totalHarga),
       statusKirim: formRevisi.statusKirim
     });
-    setPesanan(db.getPenjualan());
     setRevisiTarget(null);
   };
 

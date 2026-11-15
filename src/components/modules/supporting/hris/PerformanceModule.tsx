@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { KpiKaryawan } from '../../../../types';
 import { hitungOee } from '../../../../utils/hris';
@@ -16,9 +17,19 @@ import { Badge, Panel, Stat, Modal, inputClass, labelClass, tombolPrimer, tombol
 const toneCapaian = (persen: number): Tone => (persen >= 95 ? 'emerald' : persen >= 80 ? 'blue' : persen >= 60 ? 'amber' : 'rose');
 
 export default function PerformanceModule() {
-  const [kpi, setKpi] = useState<KpiKaryawan[]>(db.getKpiKaryawan());
-  const [umpanBalik] = useState(db.getUmpanBalik360());
-  const [karyawan] = useState(db.getKaryawanHRIS());
+  const dbTick = useDbTick(['hris_kpi', 'hris_umpan_balik_360', 'hris_karyawan']);
+  const kpi = useMemo<KpiKaryawan[]>(() => {
+    void dbTick;
+    return db.getKpiKaryawan();
+  }, [dbTick]);
+  const umpanBalik = useMemo(() => {
+    void dbTick;
+    return db.getUmpanBalik360();
+  }, [dbTick]);
+  const karyawan = useMemo(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
   const [oee, setOee] = useState({ ketersediaan: 88.2, performa: 94.5, kualitas: 97.6 });
   const [modalKpi, setModalKpi] = useState(false);
   const [form, setForm] = useState({
@@ -71,7 +82,6 @@ export default function PerformanceModule() {
       capaianPersen: Number(form.capaianPersen)
     };
     db.addKpiKaryawan(baru);
-    setKpi(db.getKpiKaryawan());
     setModalKpi(false);
     setForm({ ...form, indikator: '', target: '', realisasi: '' });
   };

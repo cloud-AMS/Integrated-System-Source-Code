@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import {
   Building2,
   Check,
@@ -161,11 +162,25 @@ export default function QuotationModule({
   currentRole: UserRole;
   pelangganAwal?: PelangganB2B | null;
 }) {
-  const pelangganList = useMemo(() => db.getPelangganB2B(), []);
-  const skemaHargaList = useMemo(() => db.getSkemaHarga(), []);
+  const dbTick = useDbTick([
+    'pelanggan_b2b',
+    'sales_skema_harga',
+    'izin_edar',
+    'stok_gudang',
+    'sales_pengetahuan_produk'
+  ]);
+  const pelangganList = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const skemaHargaList = useMemo(() => {
+    void dbTick;
+    return db.getSkemaHarga();
+  }, [dbTick]);
 
   // Gabungkan produk sistem (Izin Edar + Pengetahuan Produk + Stok + Katalog Rujukan + Skema Harga)
   const produkSistem = useMemo<ProdukSistemOption[]>(() => {
+    void dbTick;
     const sumber = {
       izinEdar: db.getIzinEdar(),
       stok: db.getStokGudang(),
@@ -203,7 +218,7 @@ export default function QuotationModule({
         stokTersedia: p.stokTersedia
       };
     });
-  }, [skemaHargaList]);
+  }, [skemaHargaList, dbTick]);
 
   const [riwayat, setRiwayat] = useState<DokumenQuotation[]>(() => bacaRiwayatQuotation());
   const [identitas, setIdentitas] = useState<IdentitasPerusahaanQuotation>(() =>

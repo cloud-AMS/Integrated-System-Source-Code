@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   AmbangStok,
@@ -45,12 +46,38 @@ export default function OptimasiStokTab({
   onNavigateModule,
   onPerubahanData
 }: Props) {
-  const [ambangList, setAmbangList] = useState<AmbangStok[]>(() => db.getAmbangStok());
-  const [stokList, setStokList] = useState<StokGudang[]>(() => db.getStokGudang());
-  const [poList, setPoList] = useState<PurchaseOrderAlkes[]>(() => db.getPurchaseOrder());
-  const [pemasokList] = useState(() => db.getPemasok());
-  const [gudangList] = useState(() => db.getGudangFisik());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [stokList, ambangList]);
+  const dbTick = useDbTick([
+    'gudang_ambang_stok',
+    'stok_gudang',
+    'purchase_order',
+    'pemasok',
+    'gudang_fisik',
+    'konfigurasi_gudang'
+  ]);
+  const ambangList = useMemo<AmbangStok[]>(() => {
+    void dbTick;
+    return db.getAmbangStok();
+  }, [dbTick]);
+  const stokList = useMemo<StokGudang[]>(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const poList = useMemo<PurchaseOrderAlkes[]>(() => {
+    void dbTick;
+    return db.getPurchaseOrder();
+  }, [dbTick]);
+  const pemasokList = useMemo(() => {
+    void dbTick;
+    return db.getPemasok();
+  }, [dbTick]);
+  const gudangList = useMemo(() => {
+    void dbTick;
+    return db.getGudangFisik();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [filterRop, setFilterRop] = useState<'Semua' | 'Aman' | 'Perlu Pesan' | 'Kritis'>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'peringatan'; teks: string } | null>(null);
@@ -78,9 +105,6 @@ export default function OptimasiStokTab({
   } | null>(null);
 
   const segarkan = () => {
-    setAmbangList(db.getAmbangStok());
-    setStokList(db.getStokGudang());
-    setPoList(db.getPurchaseOrder());
     onPerubahanData();
   };
 

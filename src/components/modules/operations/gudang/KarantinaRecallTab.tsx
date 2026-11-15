@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   PenarikanProduk,
@@ -55,13 +56,35 @@ const toneRecall = (st: PenarikanProduk['status']): Tone => {
 };
 
 export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahanData }: Props) {
-  const [recallList, setRecallList] = useState<PenarikanProduk[]>(() => db.getPenarikanProduk());
-  const [returList, setReturList] = useState<ProdukKembalian[]>(() => db.getProdukKembalian());
-  const [stokList, setStokList] = useState<StokGudang[]>(() => db.getStokGudang());
-  const [sjList] = useState(() => db.getSuratJalan());
-  const [unitSerialList, setUnitSerialList] = useState(() => db.getUnitSerial());
+  const dbTick = useDbTick([
+    'penarikan_produk',
+    'produk_kembalian',
+    'stok_gudang',
+    'gudang_surat_jalan',
+    'unit_serial'
+  ]);
+  const recallList = useMemo<PenarikanProduk[]>(() => {
+    void dbTick;
+    return db.getPenarikanProduk();
+  }, [dbTick]);
+  const returList = useMemo<ProdukKembalian[]>(() => {
+    void dbTick;
+    return db.getProdukKembalian();
+  }, [dbTick]);
+  const stokList = useMemo<StokGudang[]>(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const sjList = useMemo(() => {
+    void dbTick;
+    return db.getSuratJalan();
+  }, [dbTick]);
+  const unitSerialList = useMemo(() => {
+    void dbTick;
+    return db.getUnitSerial();
+  }, [dbTick]);
 
-  const [betsCari, setBetsCari] = useState('LOT-2024-PM44');
+  const [betsCari, setBetsCari] = useState(() => db.getStokGudang()[0]?.nomorBatch ?? '');
   const [modalRecallBaru, setModalRecallBaru] = useState(false);
   const [filterKarantina, setFilterKarantina] = useState<'Semua' | 'QUARANTINE' | 'DAMAGED' | 'EXPIRED_LOCK'>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -80,15 +103,12 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
   const identitas = identitasPeranGudang(currentRole);
 
   const segarkan = () => {
-    setRecallList(db.getPenarikanProduk());
-    setReturList(db.getProdukKembalian());
-    setStokList(db.getStokGudang());
-    setUnitSerialList(db.getUnitSerial());
     onPerubahanData();
   };
 
   // Analisis dampak recall real-time atas nomor batch yang dipilih
   const evaluasiDampak = useMemo(() => {
+    void dbTick;
     const bersih = betsCari.trim().toUpperCase();
     const dampak = dampakRecallBets({
       nomorBatch: bersih,
@@ -98,7 +118,7 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
     });
     const ketelusuran = bersih ? db.cariKetelusuran(bersih) : null;
     return { bersih, dampak, ketelusuran };
-  }, [betsCari, stokList, sjList, unitSerialList]);
+  }, [betsCari, stokList, sjList, unitSerialList, dbTick]);
 
   const eksekusiKunciBetsRecall = () => {
     const { bersih, dampak, ketelusuran } = evaluasiDampak;

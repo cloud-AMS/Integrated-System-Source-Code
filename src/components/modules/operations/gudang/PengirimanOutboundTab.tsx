@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { PenjualanAlkes, StatusSuratJalan, SuratJalan } from '../../../../types';
 import { gerbangSuratJalan, susunRutePicking } from '../../../../utils/gudang';
@@ -41,10 +42,29 @@ export default function PengirimanOutboundTab({
   onOpenPrintModal,
   onPerubahanData
 }: Props) {
-  const [sjList, setSjList] = useState<SuratJalan[]>(() => db.getSuratJalan());
-  const [pesananList, setPesananList] = useState<PenjualanAlkes[]>(() => db.getPenjualan());
-  const [binList] = useState(() => db.getLokasiBin());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [sjList]);
+  const dbTick = useDbTick([
+    'gudang_surat_jalan',
+    'penjualan',
+    'lokasi_bin',
+    'stok_gudang',
+    'konfigurasi_gudang'
+  ]);
+  const sjList = useMemo<SuratJalan[]>(() => {
+    void dbTick;
+    return db.getSuratJalan();
+  }, [dbTick]);
+  const pesananList = useMemo<PenjualanAlkes[]>(() => {
+    void dbTick;
+    return db.getPenjualan();
+  }, [dbTick]);
+  const binList = useMemo(() => {
+    void dbTick;
+    return db.getLokasiBin();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [filterStatus, setFilterStatus] = useState<'Semua' | StatusSuratJalan>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -61,8 +81,6 @@ export default function PengirimanOutboundTab({
   });
 
   const segarkan = () => {
-    setSjList(db.getSuratJalan());
-    setPesananList(db.getPenjualan());
     onPerubahanData();
   };
 

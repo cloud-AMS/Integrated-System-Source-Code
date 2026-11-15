@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { KunjunganMedRep, PenjualanAlkes, PraOrderMedRep } from '../../../../types';
 import { alokasikanFEFO, validasiNomorIzinEdar, verifikasiCheckInKunjungan } from '../../../../utils/sales';
@@ -38,12 +39,38 @@ const toneTerverifikasi = (terverifikasi: boolean | null): Tone =>
   terverifikasi === true ? 'emerald' : terverifikasi === false ? 'rose' : 'amber';
 
 export default function SalesForceModule() {
-  const [kunjungan, setKunjungan] = useState<KunjunganMedRep[]>(db.getKunjunganMedRep());
-  const [praOrder, setPraOrder] = useState<PraOrderMedRep[]>(db.getPraOrder());
-  const [produk] = useState(db.getPengetahuanProduk());
-  const [pelanggan] = useState(db.getPelangganB2B());
-  const [izinEdar] = useState(db.getIzinEdar());
-  const [stok] = useState(db.getStokGudang());
+  const dbTick = useDbTick([
+    'sales_kunjungan',
+    'sales_pra_order',
+    'sales_pengetahuan_produk',
+    'pelanggan_b2b',
+    'izin_edar',
+    'stok_gudang'
+  ]);
+  const kunjungan = useMemo<KunjunganMedRep[]>(() => {
+    void dbTick;
+    return db.getKunjunganMedRep();
+  }, [dbTick]);
+  const praOrder = useMemo<PraOrderMedRep[]>(() => {
+    void dbTick;
+    return db.getPraOrder();
+  }, [dbTick]);
+  const produk = useMemo(() => {
+    void dbTick;
+    return db.getPengetahuanProduk();
+  }, [dbTick]);
+  const pelanggan = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const izinEdar = useMemo(() => {
+    void dbTick;
+    return db.getIzinEdar();
+  }, [dbTick]);
+  const stok = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
 
   const [filterTujuan, setFilterTujuan] = useState<KunjunganMedRep['tujuanKunjungan'] | 'Semua'>('Semua');
   const [kataKunci, setKataKunci] = useState('');
@@ -83,7 +110,6 @@ export default function SalesForceModule() {
     const lon = Number(koordinat.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
     db.catatCheckInKunjungan(modalCheckIn.id, { lat, lon }, new Date().toTimeString().slice(0, 5));
-    setKunjungan(db.getKunjunganMedRep());
     setModalCheckIn(null);
     setKoordinat({ lat: '', lon: '' });
   };
@@ -99,7 +125,6 @@ export default function SalesForceModule() {
     e.preventDefault();
     if (!modalKonversi || !formKonversi.nomorBatch) return;
     db.konversiPraOrderKeSalesOrder(modalKonversi.id, formKonversi.jalurPenjualan, formKonversi.nomorBatch.toUpperCase());
-    setPraOrder(db.getPraOrder());
     setModalKonversi(null);
     setFormKonversi({ ...formKonversi, nomorBatch: '' });
   };

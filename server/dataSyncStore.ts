@@ -47,7 +47,8 @@ export function mapSyncKeyToResource(key: string): RbacResourceId {
     key.startsWith('sales_') ||
     key.startsWith('surat_') ||
     key.startsWith('listmonk_') ||
-    key.startsWith('quotation_')
+    key.startsWith('quotation_') ||
+    key.startsWith('catalog_')
   ) {
     return 'sales-marketing';
   }
@@ -62,6 +63,7 @@ export function mapSyncKeyToResource(key: string): RbacResourceId {
   if (key === 'transaksi' || key === 'transaksi_keuangan' || key.startsWith('keuangan_')) {
     return 'finance-akuntansi';
   }
+  if (key === 'sistem_data_manifest') return 'it-traceability';
   if (key === 'audit_trail') return 'audit-trail';
   if (key === 'rb_akun' || key === 'rb_role') return 'rbac-admin';
   return 'overview';
@@ -70,6 +72,9 @@ export function mapSyncKeyToResource(key: string): RbacResourceId {
 export function canWriteSyncKey(role: RoleDefinition, key: string): boolean {
   // Log audit operasional dicatat otomatis saat user sah beraktivitas di modulnya
   if (key === 'audit_trail') return true;
+
+  // Manifest asal data (dummy vs user) diperbarui otomatis saat user sah menulis koleksi
+  if (key === 'sistem_data_manifest') return true;
 
   const resource = mapSyncKeyToResource(key);
   const perms = role.permissions[resource];
@@ -177,6 +182,55 @@ export class ServerDataSyncStore {
     this.state.entries[key] = entry;
     this.persist();
     return { entry, revision: nextRevision };
+  }
+
+  public setBatch(
+    updates: Record<string, unknown>,
+    deletes: string[] = [],
+    actorUsername: string
+  ): {
+    updated: Record<string, SyncEntry>;
+    deleted: string[];
+    revision: number;
+  } {
+    const updated: Record<string, SyncEntry> = {};
+    const deleted: string[] = [];
+    const now = new Date().toISOString();
+    let changed = false;
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (!isValidSyncKey(key)) continue;
+      const prev = this.state.entries[key];
+      const entry: SyncEntry = {
+        value,
+        version: (prev?.version ?? 0) + 1,
+        updatedAt: now,
+        updatedBy: actorUsername
+      };
+      this.state.entries[key] = entry;
+      updated[key] = entry;
+      changed = true;
+    }
+
+    for (const key of deletes) {
+      if (!isValidSyncKey(key)) continue;
+      if (Object.prototype.hasOwnProperty.call(this.state.entries, key)) {
+        delete this.state.entries[key];
+        deleted.push(key);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.state.revision += 1;
+      this.persist();
+    }
+
+    return {
+      updated,
+      deleted,
+      revision: this.state.revision
+    };
   }
 
   public deleteKey(key: string): { deleted: boolean; revision: number } {

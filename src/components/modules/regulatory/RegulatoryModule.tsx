@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { IzinEdarAlkes, SertifikatPerusahaan } from '../../../types';
 import { 
   Building2, 
@@ -16,9 +17,10 @@ import {
 } from 'lucide-react';
 
 export default function RegulatoryModule() {
+  const dbTick = useDbTick(['izin_edar', 'sertifikat_perusahaan']);
   const [activeTab, setActiveTab] = useState<'nie' | 'sertifikat' | 'validasi'>('nie');
-  const [izinList, setIzinList] = useState<IzinEdarAlkes[]>(db.getIzinEdar());
-  const [sertifikatList] = useState<SertifikatPerusahaan[]>(db.getSertifikat());
+  const izinList = useMemo<IzinEdarAlkes[]>(() => { void dbTick; return db.getIzinEdar(); }, [dbTick]);
+  const sertifikatList = useMemo<SertifikatPerusahaan[]>(() => { void dbTick; return db.getSertifikat(); }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -98,7 +100,6 @@ export default function RegulatoryModule() {
     };
 
     db.addIzinEdar(newItem);
-    setIzinList(db.getIzinEdar());
     setIsModalOpen(false);
   };
 

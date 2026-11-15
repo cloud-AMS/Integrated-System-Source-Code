@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { KonfigurasiGudang, StatusStokFisik } from '../../../../types';
 import { nilaiKesiapanAuditCdb, ringkasanKpiGudang, type PemeriksaanKesiapanAudit } from '../../../../utils/gudang';
@@ -15,7 +16,7 @@ import { GudangTabId, TAB_NOMOR_KE_ID, toneStatusStok } from './ui';
 
 interface Props {
   dariAcuan: Date;
-  refreshTrigger: number;
+  refreshTrigger?: number;
   onPilihTab: (tab: GudangTabId) => void;
   onPerubahanData: () => void;
 }
@@ -28,15 +29,26 @@ const LABEL_STATUS_STOK: Record<StatusStokFisik, string> = {
   EXPIRED_LOCK: 'EXPIRED_LOCK — Terkunci Batas ED'
 };
 
-export default function DasborAuditTab({ dariAcuan, refreshTrigger, onPilihTab, onPerubahanData }: Props) {
+export default function DasborAuditTab({ dariAcuan, refreshTrigger = 0, onPilihTab, onPerubahanData }: Props) {
+  const dbTick = useDbTick(['all']);
   const [filterAudit, setFilterAudit] = useState<'Semua' | PemeriksaanKesiapanAudit['status']>('Semua');
   const [modalPengaturan, setModalPengaturan] = useState(false);
-  const [konfigurasi, setKonfigurasi] = useState<KonfigurasiGudang>(() => db.getKonfigurasiGudang());
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
   const [drafKonfig, setDrafKonfig] = useState<KonfigurasiGudang>(konfigurasi);
   const [umpanBalik, setUmpanBalik] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!modalPengaturan) {
+      setDrafKonfig(konfigurasi);
+    }
+  }, [konfigurasi, modalPengaturan]);
+
   const data = useMemo(() => {
     void refreshTrigger;
+    void dbTick;
     const daftarStok = db.getStokGudang();
     const daftarPergerakan = db.getJejakPergerakan();
     const daftarTerima = db.getTerimaBarang();
@@ -81,7 +93,7 @@ export default function DasborAuditTab({ dariAcuan, refreshTrigger, onPilihTab, 
     });
 
     return { kpi, audit, cfg };
-  }, [dariAcuan, refreshTrigger, konfigurasi]);
+  }, [dariAcuan, refreshTrigger, dbTick]);
 
   const daftarPemeriksaan = useMemo(() => {
     if (filterAudit === 'Semua') return data.audit.pemeriksaan;
@@ -106,8 +118,6 @@ export default function DasborAuditTab({ dariAcuan, refreshTrigger, onPilihTab, 
   const simpanPengaturan = (e: React.FormEvent) => {
     e.preventDefault();
     db.saveKonfigurasiGudang(drafKonfig);
-    const terbaru = db.getKonfigurasiGudang();
-    setKonfigurasi(terbaru);
     setModalPengaturan(false);
     setUmpanBalik('Konfigurasi ambang regulasi & endpoint Kemenkes RI / LKPP diperbarui dan tercatat pada jejak audit.');
     onPerubahanData();

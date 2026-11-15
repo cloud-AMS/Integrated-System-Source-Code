@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { PelangganB2B, ProspekAlkes, TahapProspek, TeritorialPenjualan } from '../../../../types';
 import { statusLimitKredit, selisihHari } from '../../../../utils/sales';
@@ -39,9 +40,25 @@ export default function CrmProspekModule({
 }: {
   onBuatQuotation?: (pelanggan: PelangganB2B) => void;
 } = {}) {
-  const [pelanggan, setPelanggan] = useState<PelangganB2B[]>(db.getPelangganB2B());
-  const [prospek, setProspek] = useState<ProspekAlkes[]>(db.getProspek());
-  const [teritorial] = useState<TeritorialPenjualan[]>(db.getTeritorial());
+  const dbTick = useDbTick([
+    'pelanggan_b2b',
+    'sales_prospek',
+    'sales_teritorial',
+    'sales_kunjungan',
+    'penjualan'
+  ]);
+  const pelanggan = useMemo<PelangganB2B[]>(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const prospek = useMemo<ProspekAlkes[]>(() => {
+    void dbTick;
+    return db.getProspek();
+  }, [dbTick]);
+  const teritorial = useMemo<TeritorialPenjualan[]>(() => {
+    void dbTick;
+    return db.getTeritorial();
+  }, [dbTick]);
   const [kataKunci, setKataKunci] = useState('');
   const [filterRayon, setFilterRayon] = useState<string>('Semua');
   const [detail, setDetail] = useState<PelangganB2B | null>(null);
@@ -87,7 +104,6 @@ export default function CrmProspekModule({
     const indeks = URUTAN_TAHAP.indexOf(prospekDipilih.tahap);
     const berikutnya = indeks < 0 ? 'Gagal' : URUTAN_TAHAP[Math.min(indeks + 1, URUTAN_TAHAP.length - 1)];
     db.majukanTahapProspek(prospekDipilih.id, berikutnya);
-    setProspek(db.getProspek());
   };
 
   const kunjunganPelanggan = (id: string) => db.getKunjunganMedRep().filter((k) => k.pelangganId === id);

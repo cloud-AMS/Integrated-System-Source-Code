@@ -392,18 +392,49 @@ export default function Navbar({
 
         <div className="flex-1" />
 
-        {/* Status Server / PocketBase */}
-        <div
-          title={connStatus.statusLabel}
-          className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-            connStatus.isPocketBaseConnected
-              ? 'bg-slate-100 text-slate-800 border-slate-300'
-              : 'bg-amber-50 text-amber-900 border-amber-300'
-          }`}
-        >
-          <CloudCheck className={`w-3.5 h-3.5 ${connStatus.isPocketBaseConnected ? 'text-blue-600' : 'text-amber-600'}`} />
-          <span className="text-xs">{connStatus.isPocketBaseConnected ? 'PocketBase Realtime' : 'Mode Cache Lokal'}</span>
-        </div>
+        {/* Status Sinkronisasi Server Real-Time */}
+        {(() => {
+          const pendingCount = connStatus.pendingCount ?? 0;
+          const syncState = connStatus.syncState ?? 'idle';
+          const aktifRealtime = connStatus.isRealtimeSyncConnected || connStatus.isPocketBaseConnected;
+          const aktifServer = aktifRealtime || connStatus.isServerSyncActive;
+
+          let toneClass = 'bg-amber-50 text-amber-900 border-amber-300';
+          let iconClass = 'text-amber-600';
+          let label = 'Mode Cache Lokal';
+
+          if (syncState === 'offline') {
+            toneClass = 'bg-amber-50 text-amber-900 border-amber-300';
+            iconClass = 'text-amber-600';
+            label = pendingCount > 0 ? `Offline (${pendingCount} Antre)` : 'Offline (Lokal)';
+          } else if (syncState === 'syncing') {
+            toneClass = 'bg-blue-50 text-blue-900 border-blue-300';
+            iconClass = 'text-blue-600 animate-pulse';
+            label = 'Menyinkronkan...';
+          } else if (pendingCount > 0) {
+            toneClass = 'bg-amber-50 text-amber-900 border-amber-300';
+            iconClass = 'text-amber-600';
+            label = `${pendingCount} Antre Sync`;
+          } else if (aktifRealtime) {
+            toneClass = 'bg-emerald-50 text-emerald-900 border-emerald-200';
+            iconClass = 'text-emerald-600';
+            label = 'Server Sync Realtime';
+          } else if (aktifServer) {
+            toneClass = 'bg-slate-100 text-slate-800 border-slate-300';
+            iconClass = 'text-blue-600';
+            label = 'Server Sync Aktif';
+          }
+
+          return (
+            <div
+              title={connStatus.statusLabel}
+              className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${toneClass}`}
+            >
+              <CloudCheck className={`w-3.5 h-3.5 ${iconClass}`} />
+              <span className="text-xs">{label}</span>
+            </div>
+          );
+        })()}
 
         {/* PWA Install Button */}
         <PWAInstallButton />

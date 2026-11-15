@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import DeveloperNotes from '../common/DeveloperNotes';
 import { db } from '../../services/pocketbase';
+import { useDbTick } from '../../hooks/useDbSync';
 import {
   Building2, 
   Award, 
@@ -121,56 +122,34 @@ export default function ExecutiveOverview({
     if (!bolehAksesModul(mod, aksesEfektif)) return;
     onSelectModule(mod);
   };
-  const [izinList, setIzinList] = useState(db.getIzinEdar());
-  const [sertifikatList] = useState(db.getSertifikat());
-  const [stokList] = useState(db.getStokGudang());
-  const [logSuhuList, setLogSuhuList] = useState(db.getLogSuhu());
-  const [layananList] = useState(db.getLayananTeknis());
-  const [capaList, setCapaList] = useState(db.getCAPA());
-  const [ktdList] = useState(db.getLaporanKTD());
-  const [recallList] = useState(db.getPenarikanProduk());
-  const [penjualanList, setPenjualanList] = useState(db.getPenjualan());
-  const [karyawanList] = useState(db.getKaryawanHRIS());
-  const [tenderList, setTenderList] = useState(db.getTender());
-  const [absensiList] = useState(db.getAbsensi());
-  const [teritorialList] = useState(db.getTeritorial());
-  const [riwayatBulanan, setRiwayatBulanan] = useState(db.getRiwayatPenjualanBulanan());
-  const [bmrList] = useState(db.getBetsProduksi());
-  
+  const dbTick = useDbTick(['all']);
+
+  const izinList = useMemo(() => { void dbTick; return db.getIzinEdar(); }, [dbTick]);
+  const sertifikatList = useMemo(() => { void dbTick; return db.getSertifikat(); }, [dbTick]);
+  const stokList = useMemo(() => { void dbTick; return db.getStokGudang(); }, [dbTick]);
+  const logSuhuList = useMemo(() => { void dbTick; return db.getLogSuhu(); }, [dbTick]);
+  const capaList = useMemo(() => { void dbTick; return db.getCAPA(); }, [dbTick]);
+  const penjualanList = useMemo(() => { void dbTick; return db.getPenjualan(); }, [dbTick]);
+  const karyawanList = useMemo(() => { void dbTick; return db.getKaryawanHRIS(); }, [dbTick]);
+  const tenderList = useMemo(() => { void dbTick; return db.getTender(); }, [dbTick]);
+  const absensiList = useMemo(() => { void dbTick; return db.getAbsensi(); }, [dbTick]);
+  const teritorialList = useMemo(() => { void dbTick; return db.getTeritorial(); }, [dbTick]);
+  const riwayatBulanan = useMemo(() => { void dbTick; return db.getRiwayatPenjualanBulanan(); }, [dbTick]);
+  const bmrList = useMemo(() => { void dbTick; return db.getBetsProduksi(); }, [dbTick]);
+
   // Chart tab state: 'pendapatan' | 'suhu' | 'kepatuhan'
   const [chartTab, setChartTab] = useState<'pendapatan' | 'suhu' | 'kepatuhan'>('pendapatan');
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const unsub1 = db.subscribe('izin_edar', () => setIzinList(db.getIzinEdar()));
-    const unsub2 = db.subscribe('log_suhu', () => setLogSuhuList(db.getLogSuhu()));
-    const unsub3 = db.subscribe('penjualan', () => setPenjualanList(db.getPenjualan()));
-    const unsub4 = db.subscribe('capa', () => setCapaList(db.getCAPA()));
-    const unsub5 = db.subscribe('sales_tender', () => setTenderList(db.getTender()));
-    const unsub6 = db.subscribe('sales_riwayat_bulanan', () => setRiwayatBulanan(db.getRiwayatPenjualanBulanan()));
-    return () => {
-      unsub1();
-      unsub2();
-      unsub3();
-      unsub4();
-      unsub5();
-      unsub6();
-    };
-  }, []);
-
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIzinList(db.getIzinEdar());
-      setLogSuhuList(db.getLogSuhu());
-      setPenjualanList(db.getPenjualan());
-      setCapaList(db.getCAPA());
-      setTenderList(db.getTender());
-      setRiwayatBulanan(db.getRiwayatPenjualanBulanan());
+    try {
+      await db.syncNow();
+    } finally {
       setLastUpdated(new Date().toLocaleTimeString());
       setIsRefreshing(false);
-    }, 600);
+    }
   };
 
   const niePerluPerpanjangan = izinList.filter(i => i.status === 'Perpanjangan' || i.statusPerpanjangan === 'Harus Diperpanjang Segera');

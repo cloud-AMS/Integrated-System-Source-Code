@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { DistribusiApd, InsidenK3, RekamMcu } from '../../../../types';
 import { hitungSisaHari } from '../../../../utils/hris';
@@ -26,10 +27,23 @@ const toneHasilMcu = (hasil: RekamMcu['hasil']): Tone =>
 const JAM_KERJA_BULANAN = 8 * 22;
 
 export default function HSEModule() {
-  const [insiden, setInsiden] = useState<InsidenK3[]>(db.getInsidenK3());
-  const [mcu] = useState<RekamMcu[]>(db.getRekamMcu());
-  const [apd, setApd] = useState<DistribusiApd[]>(db.getDistribusiApd());
-  const [karyawan] = useState(db.getKaryawanHRIS());
+  const dbTick = useDbTick(['hris_insiden_k3', 'hris_mcu', 'hris_apd', 'hris_karyawan']);
+  const insiden = useMemo<InsidenK3[]>(() => {
+    void dbTick;
+    return db.getInsidenK3();
+  }, [dbTick]);
+  const mcu = useMemo<RekamMcu[]>(() => {
+    void dbTick;
+    return db.getRekamMcu();
+  }, [dbTick]);
+  const apd = useMemo<DistribusiApd[]>(() => {
+    void dbTick;
+    return db.getDistribusiApd();
+  }, [dbTick]);
+  const karyawan = useMemo(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
   const [modalInsiden, setModalInsiden] = useState(false);
   const [modalApd, setModalApd] = useState(false);
 
@@ -81,7 +95,6 @@ export default function HSEModule() {
       hariKehilangan: Number(formInsiden.hariKehilangan) || 0
     };
     db.addInsidenK3(baru);
-    setInsiden(db.getInsidenK3());
     setModalInsiden(false);
     setFormInsiden({ ...formInsiden, area: '', kronologi: '', tindakanKorektif: '', hariKehilangan: 0 });
   };
@@ -102,7 +115,6 @@ export default function HSEModule() {
       tandaTerima: false
     };
     db.addDistribusiApd(baru);
-    setApd(db.getDistribusiApd());
     setModalApd(false);
     setFormApd({ ...formApd, jenisApd: '' });
   };
@@ -110,13 +122,11 @@ export default function HSEModule() {
   const tandaiTerima = (id: string) => {
     const diperbarui = apd.map((a) => (a.id === id ? { ...a, tandaTerima: true } : a));
     db.saveDistribusiApd(diperbarui);
-    setApd(diperbarui);
   };
 
   const ubahStatusInsiden = (id: string, status: InsidenK3['status']) => {
     const diperbarui = insiden.map((i) => (i.id === id ? { ...i, status } : i));
     db.saveInsidenK3(diperbarui);
-    setInsiden(diperbarui);
   };
 
   return (

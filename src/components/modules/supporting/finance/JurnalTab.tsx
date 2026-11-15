@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { db } from '../../../../services/pocketbase';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import type { JurnalKeuangan } from '../../../../types';
 import { KODE_AKUN, balikanJurnal, bukuBesar, verifikasiRantaiJurnal } from '../../../../utils/akuntansi';
 import { Badge, Modal, Panel, Stat, chipFilter, formatRupiah, formatTanggal, tombolBahaya, tombolPrimer, tombolSekunder } from '../../../ui';
@@ -25,9 +26,10 @@ export default function JurnalTab({
   const [modalBalik, setModalBalik] = useState<JurnalKeuangan | null>(null);
   const [alasanBalik, setAlasanBalik] = useState('');
 
-  const daftar = useMemo(() => db.getJurnalKeuangan(), []);
-  const akun = useMemo(() => db.getCoA(), []);
-  const periode = useMemo(() => db.getPeriodeBuku(), []);
+  const dbTick = useDbTick(['keuangan_jurnal', 'keuangan_coa', 'keuangan_periode']);
+  const daftar = useMemo(() => { void dbTick; return db.getJurnalKeuangan(); }, [dbTick]);
+  const akun = useMemo(() => { void dbTick; return db.getCoA(); }, [dbTick]);
+  const periode = useMemo(() => { void dbTick; return db.getPeriodeBuku(); }, [dbTick]);
   const rantai = useMemo(() => verifikasiRantaiJurnal(daftar), [daftar]);
 
   const tersaring = useMemo(() => {

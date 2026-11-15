@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { JejakPergerakan, OpnameStok, UserRole } from '../../../../types';
 import {
@@ -32,10 +33,29 @@ const toneOpname = (st: OpnameStok['status']): Tone => {
 };
 
 export default function OpnameCycleCountTab({ currentRole, dariAcuan, onPerubahanData }: Props) {
-  const [opnameList, setOpnameList] = useState<OpnameStok[]>(() => db.getOpnameStok());
-  const [pergerakanList, setPergerakanList] = useState<JejakPergerakan[]>(() => db.getJejakPergerakan());
-  const [gudangList] = useState(() => db.getGudangFisik());
-  const konfigurasi = useMemo(() => db.getKonfigurasiGudang(), [opnameList]);
+  const dbTick = useDbTick([
+    'gudang_opname',
+    'gudang_pergerakan',
+    'gudang_fisik',
+    'stok_gudang',
+    'konfigurasi_gudang'
+  ]);
+  const opnameList = useMemo<OpnameStok[]>(() => {
+    void dbTick;
+    return db.getOpnameStok();
+  }, [dbTick]);
+  const pergerakanList = useMemo<JejakPergerakan[]>(() => {
+    void dbTick;
+    return db.getJejakPergerakan();
+  }, [dbTick]);
+  const gudangList = useMemo(() => {
+    void dbTick;
+    return db.getGudangFisik();
+  }, [dbTick]);
+  const konfigurasi = useMemo(() => {
+    void dbTick;
+    return db.getKonfigurasiGudang();
+  }, [dbTick]);
 
   const [aktifOpnameId, setAktifOpnameId] = useState<string>(
     () => opnameList.find((o) => o.status === 'Berjalan')?.id ?? opnameList[0]?.id ?? ''
@@ -48,18 +68,13 @@ export default function OpnameCycleCountTab({ currentRole, dariAcuan, onPerubaha
     metode: 'Blind Count' as OpnameStok['metode']
   });
 
-  const [hasilIntegritas, setHasilIntegritas] = useState(() => verifikasiRantaiHash(pergerakanList));
+  const hasilIntegritas = useMemo(() => verifikasiRantaiHash(pergerakanList), [pergerakanList]);
   const [cariJejak, setCariJejak] = useState('');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
 
   const identitas = identitasPeranGudang(currentRole);
 
   const segarkan = () => {
-    const op = db.getOpnameStok();
-    const mov = db.getJejakPergerakan();
-    setOpnameList(op);
-    setPergerakanList(mov);
-    setHasilIntegritas(verifikasiRantaiHash(mov));
     onPerubahanData();
   };
 
@@ -431,7 +446,6 @@ export default function OpnameCycleCountTab({ currentRole, dariAcuan, onPerubaha
             type="button"
             onClick={() => {
               const cek = verifikasiRantaiHash(db.getJejakPergerakan());
-              setHasilIntegritas(cek);
               setPesan({
                 tipe: cek.utuh ? 'sukses' : 'tolak',
                 teks: `Hasil Pindai Integritas SHA-256: ${cek.keterangan}`

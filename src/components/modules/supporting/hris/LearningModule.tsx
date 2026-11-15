@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import type { PelatihanPersonil, SkillMatrix } from '../../../../types';
 import { statusSertifikat, hitungSisaHari } from '../../../../utils/hris';
@@ -33,11 +34,24 @@ const PELATIHAN_WAJIB = [
 ];
 
 export default function LearningModule() {
+  const dbTick = useDbTick(['pelatihan', 'sertifikasi_pegawai', 'hris_skill_matrix', 'hris_karyawan']);
   const [subTab, setSubTab] = useState<'pelatihan' | 'skill' | 'sertifikasi' | 'peringatan'>('pelatihan');
-  const [pelatihanList, setPelatihanList] = useState<PelatihanPersonil[]>(db.getPelatihan());
-  const [pegawaiList] = useState(db.getSertifikasiPegawai());
-  const [skillList, setSkillList] = useState<SkillMatrix[]>(db.getSkillMatrix());
-  const [karyawan] = useState(db.getKaryawanHRIS());
+  const pelatihanList = useMemo<PelatihanPersonil[]>(() => {
+    void dbTick;
+    return db.getPelatihan();
+  }, [dbTick]);
+  const pegawaiList = useMemo(() => {
+    void dbTick;
+    return db.getSertifikasiPegawai();
+  }, [dbTick]);
+  const skillList = useMemo<SkillMatrix[]>(() => {
+    void dbTick;
+    return db.getSkillMatrix();
+  }, [dbTick]);
+  const karyawan = useMemo(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalSkill, setModalSkill] = useState(false);
 
@@ -83,7 +97,6 @@ export default function LearningModule() {
 
     db.addPelatihan(newItem);
     db.logAudit('HRIS — Learning & Competency', 'Penjadwalan pelatihan wajib karyawan', newItem.id);
-    setPelatihanList(db.getPelatihan());
     setIsModalOpen(false);
   };
 
@@ -101,7 +114,6 @@ export default function LearningModule() {
       penilai: formSkill.penilai
     };
     db.addSkillMatrix(baru);
-    setSkillList(db.getSkillMatrix());
     setModalSkill(false);
     setFormSkill({ ...formSkill, mesinAtauProses: '' });
   };

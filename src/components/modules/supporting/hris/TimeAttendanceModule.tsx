@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import DeveloperNotes from '../../../common/DeveloperNotes';
 import { db } from '../../../../services/pocketbase';
 import type { LogAbsensi, PerhitunganLembur, SumberAbsensi } from '../../../../types';
@@ -52,10 +53,23 @@ const toneStatus = (status: LogAbsensi['status']): Tone => {
 };
 
 export default function TimeAttendanceModule() {
-  const [karyawan] = useState(db.getKaryawanHRIS());
-  const [shift] = useState(db.getJadwalShift());
-  const [absensi, setAbsensi] = useState<LogAbsensi[]>(db.getAbsensi());
-  const [lembur, setLembur] = useState<PerhitunganLembur[]>(db.getLembur());
+  const dbTick = useDbTick(['hris_karyawan', 'hris_shift', 'hris_absensi', 'hris_lembur']);
+  const karyawan = useMemo(() => {
+    void dbTick;
+    return db.getKaryawanHRIS();
+  }, [dbTick]);
+  const shift = useMemo(() => {
+    void dbTick;
+    return db.getJadwalShift();
+  }, [dbTick]);
+  const absensi = useMemo<LogAbsensi[]>(() => {
+    void dbTick;
+    return db.getAbsensi();
+  }, [dbTick]);
+  const lembur = useMemo<PerhitunganLembur[]>(() => {
+    void dbTick;
+    return db.getLembur();
+  }, [dbTick]);
   const [tanggalFilter, setTanggalFilter] = useState('Semua');
   const [modalLembur, setModalLembur] = useState(false);
   const [formLembur, setFormLembur] = useState({
@@ -84,7 +98,6 @@ export default function TimeAttendanceModule() {
       lokasi: `Mobile App v2.4 (${osPreview.toUpperCase()}) — GPS Lat ${TITIK_PABRIK.lat} / Lon ${TITIK_PABRIK.lon}`
     };
     db.addAbsensi(baru);
-    setAbsensi(db.getAbsensi());
   };
 
   const karyawanDipilih = karyawan.find((k) => k.id === formLembur.karyawanId);
@@ -116,7 +129,6 @@ export default function TimeAttendanceModule() {
       status: 'Menunggu Persetujuan'
     };
     db.addLembur(baru);
-    setLembur(db.getLembur());
     setModalLembur(false);
     setFormLembur({ karyawanId: '', tanggal: new Date().toISOString().split('T')[0], jamLembur: 1 });
   };
@@ -124,12 +136,12 @@ export default function TimeAttendanceModule() {
   const ubahStatusLembur = (id: string, status: PerhitunganLembur['status']) => {
     const diperbarui = lembur.map((l) => (l.id === id ? { ...l, status } : l));
     db.saveLembur(diperbarui);
-    setLembur(diperbarui);
   };
 
   const catatAbsensiGeofence = () => {
     if (!hasilGeofence.dalamPagar) return;
     const karyawanGps = karyawan.find((k) => k.nama.toLowerCase() === gps.nama.trim().toLowerCase()) || karyawan[0];
+    if (!karyawanGps) return;
     const sekarang = new Date();
     const jamMasuk = `${String(sekarang.getHours()).padStart(2, '0')}:${String(sekarang.getMinutes()).padStart(2, '0')}`;
     const baru: LogAbsensi = {
@@ -144,7 +156,6 @@ export default function TimeAttendanceModule() {
       lokasi: `GPS ${gps.lat} / ${gps.lon} — ${hasilGeofence.label}`
     };
     db.addAbsensi(baru);
-    setAbsensi(db.getAbsensi());
   };
 
   return (

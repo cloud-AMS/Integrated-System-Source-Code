@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { db } from '../../../services/pocketbase';
+import { useDbTick } from '../../../hooks/useDbSync';
 import { InspeksiQC, AuditInternalIso13485, DetailPemeriksaanDokumen } from '../../../types';
 import { 
   CheckCircle2, 
@@ -24,9 +25,10 @@ import AuditReportModal from './AuditReportModal';
 import { unduhAuditInternalCsv } from '../../../utils/auditInternalIso13485';
 
 export default function QCModule() {
+  const dbTick = useDbTick(['inspeksi_qc', 'audit_internal_iso']);
   const [activeTab, setActiveTab] = useState<'inspeksi' | 'audit-iso'>('inspeksi');
-  const [inspeksiList, setInspeksiList] = useState<InspeksiQC[]>(db.getInspeksiQC());
-  const [auditList, setAuditList] = useState<AuditInternalIso13485[]>(() => db.getAuditInternal('QC'));
+  const inspeksiList = useMemo<InspeksiQC[]>(() => { void dbTick; return db.getInspeksiQC(); }, [dbTick]);
+  const auditList = useMemo<AuditInternalIso13485[]>(() => { void dbTick; return db.getAuditInternal('QC'); }, [dbTick]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterHasil, setFilterHasil] = useState<string>('semua');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -64,7 +66,6 @@ export default function QCModule() {
 
     setTimeout(() => {
       const hasil = db.jalankanAuditOtomatisQC();
-      setAuditList(db.getAuditInternal('QC'));
       setIsScanning(false);
       setAuditNotice(`Audit kepatuhan QC selesai! Indeks Kepatuhan: ${hasil.skorKepatuhan}% (${hasil.dokumenSesuai} Berkas Sesuai, ${hasil.temuanMinor} Minor NC, ${hasil.temuanMajor} Mayor NC).`);
       setTimeout(() => setAuditNotice(null), 8000);
@@ -117,7 +118,6 @@ export default function QCModule() {
     };
 
     db.addInspeksiQC(newItem);
-    setInspeksiList(db.getInspeksiQC());
     setIsModalOpen(false);
   };
 

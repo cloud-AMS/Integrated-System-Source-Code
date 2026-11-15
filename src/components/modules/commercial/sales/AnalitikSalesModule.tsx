@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import { PenjualanAlkes, PurchaseOrderAlkes } from '../../../../types';
 import { proyeksikanPermintaan, statusLimitKredit } from '../../../../utils/sales';
@@ -29,13 +30,44 @@ const labelBulan = (bulan: string) => {
 };
 
 export default function AnalitikSalesModule() {
-  const [riwayat] = useState(db.getRiwayatPenjualanBulanan());
-  const [pesanan] = useState<PenjualanAlkes[]>(db.getPenjualan());
-  const [teritorial] = useState(db.getTeritorial());
-  const [pelanggan] = useState(db.getPelangganB2B());
-  const [prospek] = useState(db.getProspek());
-  const [stok] = useState(db.getStokGudang());
-  const [pemasok] = useState(db.getPemasok());
+  const dbTick = useDbTick([
+    'sales_riwayat_bulanan',
+    'penjualan',
+    'sales_teritorial',
+    'pelanggan_b2b',
+    'sales_prospek',
+    'sales_kunjungan',
+    'stok_gudang',
+    'pemasok'
+  ]);
+  const riwayat = useMemo(() => {
+    void dbTick;
+    return db.getRiwayatPenjualanBulanan();
+  }, [dbTick]);
+  const pesanan = useMemo<PenjualanAlkes[]>(() => {
+    void dbTick;
+    return db.getPenjualan();
+  }, [dbTick]);
+  const teritorial = useMemo(() => {
+    void dbTick;
+    return db.getTeritorial();
+  }, [dbTick]);
+  const pelanggan = useMemo(() => {
+    void dbTick;
+    return db.getPelangganB2B();
+  }, [dbTick]);
+  const prospek = useMemo(() => {
+    void dbTick;
+    return db.getProspek();
+  }, [dbTick]);
+  const stok = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const pemasok = useMemo(() => {
+    void dbTick;
+    return db.getPemasok();
+  }, [dbTick]);
   const [terbitPO, setTerbitPO] = useState<string[]>([]);
 
   const [leadTimeHari, setLeadTimeHari] = useState(21);
@@ -81,6 +113,7 @@ export default function AnalitikSalesModule() {
   }, [riwayat]);
 
   const perMedRep = useMemo(() => {
+    void dbTick;
     const nama = new Map<string, { prospek: number; pipeline: number; kunjungan: number }>();
     prospek.forEach((p) => {
       const sebelumnya = nama.get(p.medRep) ?? { prospek: 0, pipeline: 0, kunjungan: 0 };
@@ -97,7 +130,7 @@ export default function AnalitikSalesModule() {
     return Array.from(nama.entries())
       .map(([medRep, angka]) => ({ medRep, ...angka }))
       .sort((a, b) => b.pipeline - a.pipeline);
-  }, [prospek]);
+  }, [prospek, dbTick]);
 
   const totalUnit = riwayat.reduce((total, r) => total + r.unitTerjual, 0);
   const totalNilai = riwayat.reduce((total, r) => total + r.nilaiPenjualan, 0);

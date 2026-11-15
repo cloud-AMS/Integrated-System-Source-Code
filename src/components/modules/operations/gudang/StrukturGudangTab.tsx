@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   AturanSimpan,
@@ -47,9 +48,19 @@ const toneTipeGudang = (tipe: TipeGudang): Tone => {
 };
 
 export default function StrukturGudangTab({ onPerubahanData }: Props) {
-  const [gudangList, setGudangList] = useState<GudangFisik[]>(() => db.getGudangFisik());
-  const [binList, setBinList] = useState<LokasiBin[]>(() => db.getLokasiBin());
-  const [aturanList, setAturanList] = useState<AturanSimpan[]>(() => db.getAturanSimpan());
+  const dbTick = useDbTick(['gudang_fisik', 'lokasi_bin', 'aturan_simpan', 'stok_gudang']);
+  const gudangList = useMemo<GudangFisik[]>(() => {
+    void dbTick;
+    return db.getGudangFisik();
+  }, [dbTick]);
+  const binList = useMemo<LokasiBin[]>(() => {
+    void dbTick;
+    return db.getLokasiBin();
+  }, [dbTick]);
+  const aturanList = useMemo<AturanSimpan[]>(() => {
+    void dbTick;
+    return db.getAturanSimpan();
+  }, [dbTick]);
 
   const [filterGudangId, setFilterGudangId] = useState<string>('Semua');
   const [modalGudang, setModalGudang] = useState(false);
@@ -109,9 +120,6 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
   });
 
   const segarkan = () => {
-    setGudangList(db.getGudangFisik());
-    setBinList(db.getLokasiBin());
-    setAturanList(db.getAturanSimpan());
     onPerubahanData();
   };
 

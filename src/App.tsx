@@ -62,7 +62,8 @@ function modulUntukKunciSync(key: string): RbacResourceId | 'all' {
     key.startsWith('sales_') ||
     key.startsWith('surat_') ||
     key.startsWith('listmonk_') ||
-    key.startsWith('quotation_')
+    key.startsWith('quotation_') ||
+    key.startsWith('catalog_')
   ) {
     return 'sales-marketing';
   }
@@ -72,6 +73,7 @@ function modulUntukKunciSync(key: string): RbacResourceId | 'all' {
   if (key === 'transaksi' || key === 'transaksi_keuangan' || key.startsWith('keuangan_')) {
     return 'finance-akuntansi';
   }
+  if (key === 'sistem_data_manifest') return 'it-traceability';
   if (key === 'audit_trail') return 'audit-trail';
   return 'overview';
 }

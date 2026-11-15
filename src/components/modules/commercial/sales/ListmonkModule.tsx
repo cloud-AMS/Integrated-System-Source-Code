@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
 import {
   DaftarSurat,
@@ -84,16 +85,47 @@ function formatDurasi(detik: number) {
 }
 
 export default function ListmonkModule({ currentRole }: { currentRole: UserRole }) {
+  const dbTick = useDbTick([
+    'surat_daftar',
+    'surat_pelanggan',
+    'surat_kampanye',
+    'surat_templat',
+    'surat_media',
+    'surat_transaksional',
+    'surat_konfigurasi'
+  ]);
   const [tampilan, setTampilan] = useState<Tampilan>('dashboard');
   const [pesan, setPesan] = useState('');
 
-  const [daftar, setDaftar] = useState<DaftarSurat[]>(db.getDaftarSurat());
-  const [pelanggan, setPelanggan] = useState<PelangganSurat[]>(db.getPelangganSurat());
-  const [kampanye, setKampanye] = useState<KampanyeSurat[]>(db.getKampanyeSurat());
-  const [templat, setTemplat] = useState<TemplatSurat[]>(db.getTemplatSurat());
-  const [media, setMedia] = useState<MediaSurat[]>(db.getMediaSurat());
-  const [transaksional, setTransaksional] = useState<PesanTransaksional[]>(db.getPesanTransaksional());
-  const [konfigurasi, setKonfigurasi] = useState<KonfigurasiSurat>(db.getKonfigurasiSurat());
+  const daftar = useMemo<DaftarSurat[]>(() => {
+    void dbTick;
+    return db.getDaftarSurat();
+  }, [dbTick]);
+  const pelanggan = useMemo<PelangganSurat[]>(() => {
+    void dbTick;
+    return db.getPelangganSurat();
+  }, [dbTick]);
+  const kampanye = useMemo<KampanyeSurat[]>(() => {
+    void dbTick;
+    return db.getKampanyeSurat();
+  }, [dbTick]);
+  const templat = useMemo<TemplatSurat[]>(() => {
+    void dbTick;
+    return db.getTemplatSurat();
+  }, [dbTick]);
+  const media = useMemo<MediaSurat[]>(() => {
+    void dbTick;
+    return db.getMediaSurat();
+  }, [dbTick]);
+  const transaksional = useMemo<PesanTransaksional[]>(() => {
+    void dbTick;
+    return db.getPesanTransaksional();
+  }, [dbTick]);
+  const [konfigurasi, setKonfigurasi] = useState<KonfigurasiSurat>(() => db.getKonfigurasiSurat());
+
+  useEffect(() => {
+    setKonfigurasi(db.getKonfigurasiSurat());
+  }, [dbTick]);
 
   const bolehKirim = PERAN_PENGIRIM.includes(currentRole);
 
@@ -190,19 +222,16 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
 
   const konfirmasiDaftar = (d: DaftarSurat) => {
     db.ubahDaftarSurat(d.id, { status: 'confirmed' });
-    setDaftar(db.getDaftarSurat());
     tampilkanPesan(`Daftar "${d.nama}" dikonfirmasi — sekarang boleh dipakai mengirim.`);
   };
 
   const ubahOptinDaftar = (d: DaftarSurat, optin: DaftarSurat['optin']) => {
     db.ubahDaftarSurat(d.id, { optin });
-    setDaftar(db.getDaftarSurat());
     tampilkanPesan(`Metode opt-in "${d.nama}" diubah ke ${optin} (sama dengan PUT /api/lists/${d.id}).`);
   };
 
   const ubahStatusSubscriber = (p: PelangganSurat, status: PelangganSurat['status'], alasan: string) => {
     db.ubahStatusPelangganSurat(p.id, status, alasan);
-    setPelanggan(db.getPelangganSurat());
     setSubscriberDetail((d) => (d && d.id === p.id ? { ...d, status } : d));
   };
 
@@ -226,7 +255,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
           : 'Langsung confirmed karena metode opt-in daftar ini single.'
     }));
     db.tambahPelangganSurat(baru, `Impor CSV ${baru.length} baris ke daftar ${daftarTarget?.nama ?? targetId}`);
-    setPelanggan(db.getPelangganSurat());
     setImporTeks('');
     tampilkanPesan(
       `${baru.length} baris diimpor, ${hasilImpor.ditolak.length} ditolak, ${hasilImpor.duplikat.length} duplikat dilewati.`
@@ -241,13 +269,11 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
     }
     if (aksi === 'block') {
       ids.forEach((id) => db.ubahStatusPelangganSurat(id, 'Blocked', 'Aksi blocklist berbasis query (PUT /api/subscribers/query/blocklist)'));
-      setPelanggan(db.getPelangganSurat());
       tampilkanPesan(`${ids.length} subscriber masuk blocklist dari hasil query.`);
       return;
     }
     const targetId = imporDaftar;
     db.ubahKeanggotaanDaftar(ids, targetId, aksi);
-    setPelanggan(db.getPelangganSurat());
     tampilkanPesan(`${ids.length} subscriber dipindahkan ${aksi === 'add' ? 'ke' : 'dari'} daftar ${namaDaftar(targetId)}.`);
   };
 
@@ -259,7 +285,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       'Penjadwalan kampanye buletin',
       currentRole === 'pjt' ? 'Penanggung Jawab (PJT)' : 'Manajer Pemasaran'
     );
-    setKampanye(db.getKampanyeSurat());
     setJadwalkanTarget(null);
     setSudahValidasiPjt(false);
     tampilkanPesan(`${jadwalkalTarget.nomorKampanye} terjadwal untuk ${formatTanggal(tanggalJadwal)}.`);
@@ -277,13 +302,11 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       'Mulai kirim kampanye (PUT /api/campaigns/{id}/start)',
       currentRole === 'pjt' ? 'Penanggung Jawab (PJT)' : 'Manajer Pemasaran'
     );
-    setKampanye(db.getKampanyeSurat());
     tampilkanPesan(`${k.nomorKampanye} masuk antrian kirim.`);
   };
 
   const ubahStatusKampanye = (k: KampanyeSurat, status: KampanyeSurat['status'], aktivitas: string) => {
     db.ubahKampanyeSurat(k.id, { status }, aktivitas, currentRole === 'pjt' ? 'Penanggung Jawab (PJT)' : 'Manajer Pemasaran');
-    setKampanye(db.getKampanyeSurat());
   };
 
   const prosesBatch = (k: KampanyeSurat) => {
@@ -294,7 +317,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       `Eksekusi satu batch antrian (batch_size ${konfigurasi.batchSize})`,
       currentRole === 'pjt' ? 'Penanggung Jawab (PJT)' : 'Manajer Pemasaran'
     );
-    setKampanye(db.getKampanyeSurat());
     setKampanyeDetail((d) => (d && d.id === k.id ? hasil.kampanye : d));
     tampilkanPesan(hasil.pesan);
   };
@@ -328,7 +350,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       'Manajer Pemasaran',
       'Sales & Marketing'
     );
-    setKampanye(db.getKampanyeSurat());
     tampilkanPesan(`Draf ${salinan.nomorKampanye} dibuat sebagai salinan ${k.nomorKampanye}.`);
   };
 
@@ -345,7 +366,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
 
   const simpanTemplat = (t: TemplatSurat, body: string) => {
     db.saveTemplatSurat(templat.map((x) => (x.id === t.id ? { ...x, bodyHtml: body } : x)));
-    setTemplat(db.getTemplatSurat());
     db.logAudit('Sales & Marketing — Newsletter', 'Sunting body template email (Go template)', t.nama, 'Manajer Pemasaran', 'Sales & Marketing', [
       { kolom: 'bodyHtml', nilaiLama: `${t.bodyHtml.length} karakter`, nilaiBaru: `${body.length} karakter` }
     ]);
@@ -368,7 +388,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       penanggungJawab: 'Manajer Pemasaran'
     };
     db.saveMediaSurat([baru, ...db.getMediaSurat()]);
-    setMedia(db.getMediaSurat());
     setMediaBaru({ namaFile: '', url: '', tipeMime: 'image/jpeg', ukuranKB: 0 });
     db.logAudit('Sales & Marketing — Newsletter', 'Penambahan aset media library (POST /api/media)', baru.namaFile, 'Manajer Pemasaran', 'Sales & Marketing');
     tampilkanPesan(`${baru.namaFile} terdaftar pada media library.`);
@@ -376,7 +395,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
 
   const hapusMedia = (m: MediaSurat) => {
     db.saveMediaSurat(db.getMediaSurat().filter((x) => x.id !== m.id));
-    setMedia(db.getMediaSurat());
     db.logAudit('Sales & Marketing — Newsletter', 'Penghapusan aset media (DELETE /api/media/{id})', m.namaFile, 'Manajer Pemasaran', 'Sales & Marketing');
   };
 
@@ -396,7 +414,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
       keperluan: pesanBaru.keperluan || 'Permintaan manual dari modul'
     };
     db.savePesanTransaksional([baru, ...db.getPesanTransaksional()]);
-    setTransaksional(db.getPesanTransaksional());
     setPesanBaru({ surel: '', subjek: '', keperluan: '' });
     db.logAudit('Sales & Marketing — Newsletter', 'Antrean pesan transaksional (POST /api/messages/email)', baru.surel, 'Manajer Pemasaran', 'Sales & Marketing');
     tampilkanPesan(
@@ -412,7 +429,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
     db.savePesanTransaksional(
       db.getPesanTransaksional().map((x) => (x.id === t.id ? { ...x, status: gagal ? 'failed' : 'sent', dikirimPada: gagal ? x.dikirimPada : hariIni } : x))
     );
-    setTransaksional(db.getPesanTransaksional());
     db.logAudit(
       'Sales & Marketing — Newsletter',
       gagal ? 'Retransmisi gagal (SMTP menolak dengan 550)' : 'Retransmisi pesan transaksional berhasil',
@@ -425,7 +441,6 @@ export default function ListmonkModule({ currentRole }: { currentRole: UserRole 
 
   const simpanKonfigurasi = (patch: Partial<KonfigurasiSurat>) => {
     db.saveKonfigurasiSurat(patch);
-    setKonfigurasi(db.getKonfigurasiSurat());
     tampilkanPesan('Pengaturan disimpan — sama seperti PUT /api/settings.');
   };
 

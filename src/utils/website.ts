@@ -1285,6 +1285,25 @@ export function simpanMediaWebsite(media: MediaWebsite): MediaWebsite[] {
   return baru;
 }
 
+export function hapusMediaWebsite(id: string): MediaWebsite[] {
+  const baru = daftarMediaWebsite().filter((m) => m.id !== id);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(WEBSITE_MEDIA_KEY, JSON.stringify(baru));
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('ams:local-setting-write', {
+          detail: { key: 'website_media_v1', value: baru }
+        })
+      );
+    }
+  } catch {
+    /* abaikan */
+  }
+  return baru;
+}
+
 /** Nilai gambar bisa berupa URL biasa atau rujukan `media:<id>` ke penyimpanan lokal. */
 export function selesaikanGambar(referensi?: string): string | undefined {
   if (!referensi) return undefined;
