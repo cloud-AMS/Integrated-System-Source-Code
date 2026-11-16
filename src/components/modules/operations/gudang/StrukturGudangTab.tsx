@@ -6,10 +6,11 @@ import {
   GudangFisik,
   IzinEdarAlkes,
   LokasiBin,
+  StatusZonaCdakb,
   StokGudang,
   TipeGudang
 } from '../../../../types';
-import { kodeBinDariLokasi, tentukanTempatSimpan } from '../../../../utils/gudang';
+import { kodeBinDariLokasi, statusZonaBin, statusZonaGudang, tentukanTempatSimpan, zonaBolehPicking } from '../../../../utils/gudang';
 import { Compass, Plus, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { Badge, BarCapaian, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
 
@@ -45,6 +46,13 @@ const toneTipeGudang = (tipe: TipeGudang): Tone => {
   if (tipe === 'Gudang Karantina') return 'amber';
   if (tipe === 'Gudang Rusak (Bad Stock)') return 'rose';
   return 'slate';
+};
+
+const toneZonaCdakb = (zona: StatusZonaCdakb): Tone => {
+  if (zona === 'RELEASED') return 'emerald';
+  if (zona === 'QUARANTINE') return 'amber';
+  if (zona === 'RETURN') return 'blue';
+  return 'rose';
 };
 
 export default function StrukturGudangTab({ onPerubahanData }: Props) {
@@ -152,6 +160,15 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
   const totalKapasitas = binList.reduce((t, b) => t + b.kapasitas, 0);
   const totalTerpakai = binList.reduce((t, b) => t + b.terpakai, 0);
   const persenOkupansi = totalKapasitas > 0 ? Math.round((totalTerpakai / totalKapasitas) * 100) : 0;
+
+  const binTertutupPicking = useMemo(
+    () =>
+      binList.filter((b) => {
+        const induk = gudangList.find((g) => g.id === b.gudangId);
+        return induk ? !zonaBolehPicking(statusZonaBin(b, induk)) : false;
+      }).length,
+    [binList, gudangList]
+  );
 
   const simpanGudang = (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +302,7 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
           label="Unit Gudang Aktif"
           value={`${gudangList.filter((g) => g.isActive).length} / ${gudangList.length}`}
@@ -305,6 +322,12 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
           tone={persenOkupansi > 85 ? 'rose' : 'emerald'}
         />
         <Stat
+          label="Bin Tertutup untuk Picking"
+          value={binTertutupPicking}
+          hint="Zona QUARANTINE/REJECT/RECALL diblokir dari Sales & FEFO"
+          tone={binTertutupPicking > 0 ? 'rose' : 'emerald'}
+        />
+        <Stat
           label="Aturan Directed Put-Away"
           value={aturanList.filter((a) => a.isActive).length}
           hint="Prioritas angka terkecil dieksekusi lebih dulu"
@@ -315,7 +338,7 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
       {/* Multi-Warehouse Setup */}
       <Panel
         judul="Multi-Warehouse Setup (Isolasi Ruang Fisik CDAKB)"
-        keterangan="Setiap zona fisik memiliki penanggung jawab tetap dan pemisahan tegas antara rak barang layak jual, rantai dingin, karantina mutu, retur fasyankes, serta barang rusak."
+        keterangan="Setiap zona fisik memiliki penanggung jawab tetap dan pemisahan tegas antara rak barang layak jual, rantai dingin, karantina mutu, retur fasyankes, serta barang rusak. Status zona mengikuti mst_locations: hanya RELEASED yang terbuka untuk Sales & picking — QUARANTINE/REJECT/RECALL tertutup otomatis."
         aksi={
           <button type="button" onClick={() => setModalGudang(true)} className={tombolPrimerGudang}>
             <Plus className="w-4 h-4" />
@@ -329,6 +352,7 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
               <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
                 <th className="py-3 px-4">Kode & Nama Gudang</th>
                 <th className="py-3 px-4">Tipe Ruang</th>
+                <th className="py-3 px-4">Zona CDAKB</th>
                 <th className="py-3 px-4">Zona Suhu Standar</th>
                 <th className="py-3 px-4">Penanggung Jawab</th>
                 <th className="py-3 px-4">Jumlah Bin</th>
@@ -339,6 +363,7 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
             <tbody className="divide-y divide-slate-100">
               {gudangList.map((g) => {
                 const jmlBin = binList.filter((b) => b.gudangId === g.id).length;
+                const zona = statusZonaGudang(g);
                 return (
                   <tr key={g.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4">
@@ -347,6 +372,12 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
                     </td>
                     <td className="py-3 px-4">
                       <Badge tone={toneTipeGudang(g.tipe)}>{g.tipe}</Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge tone={toneZonaCdakb(zona)}>{zona}</Badge>
+                      <div className="text-2xs text-slate-500 mt-1">
+                        {zonaBolehPicking(zona) ? 'Terbuka untuk Sales & picking' : 'Tertutup untuk Sales & picking'}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-700">{g.zonaSuhu}</td>
                     <td className="py-3 px-4 text-slate-700">{g.penanggungJawab}</td>
@@ -421,6 +452,7 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
                 <th className="py-3 px-4">Kode Bin (Lorong-Baris-Rak-Laci)</th>
                 <th className="py-3 px-4">Gudang & Kategori</th>
                 <th className="py-3 px-4">Zona Suhu</th>
+                <th className="py-3 px-4">Zona CDAKB</th>
                 <th className="py-3 px-4">Tag RFID & Jarak Dock</th>
                 <th className="py-3 px-4 w-56">Okupansi Kapasitas</th>
               </tr>
@@ -428,6 +460,8 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
             <tbody className="divide-y divide-slate-100">
               {binTampil.map((b) => {
                 const persen = b.kapasitas > 0 ? Math.round((b.terpakai / b.kapasitas) * 100) : 0;
+                const induk = gudangList.find((g) => g.id === b.gudangId);
+                const zona = induk ? statusZonaBin(b, induk) : 'RELEASED';
                 return (
                   <tr key={b.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4">
@@ -439,6 +473,12 @@ export default function StrukturGudangTab({ onPerubahanData }: Props) {
                       <div className="text-2xs text-slate-500">{b.kategoriTersimpan}</div>
                     </td>
                     <td className="py-3 px-4 text-slate-700">{b.zonaSuhu}</td>
+                    <td className="py-3 px-4">
+                      <Badge tone={toneZonaCdakb(zona)}>{zona}</Badge>
+                      {!zonaBolehPicking(zona) && (
+                        <div className="text-2xs text-rose-700 mt-1">Diblokir dari FEFO / Sales</div>
+                      )}
+                    </td>
                     <td className="py-3 px-4 font-mono text-slate-600 tabular-nums">
                       <div>{b.rfidTagId}</div>
                       <div className="text-2xs text-slate-500">{b.jarakDariDockMeter} m dari dock</div>

@@ -293,10 +293,16 @@ export default function RantaiDinginTab({ dariAcuan, onPerubahanData }: Props) {
                 <div className="text-2xl font-extrabold text-slate-900">{sensor.suhu}°C</div>
                 <div className="text-xs font-semibold text-slate-600">{sensor.kelembaban}% RH</div>
               </div>
+              {sensor.isDeviasi && (
+                <div className="text-2xs font-bold text-rose-700 mb-2">DEVIASI terdeteksi otomatis terhadap batas zona</div>
+              )}
               <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-2xs text-slate-500 font-mono">
                 <span>ID: {sensor.id}</span>
                 <span>{sensor.waktu}</span>
               </div>
+              {sensor.dicatatOleh && (
+                <div className="text-2xs text-slate-500 mt-1">Dicatat: {sensor.dicatatOleh}</div>
+              )}
             </div>
           ))}
         </div>

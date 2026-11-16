@@ -26,6 +26,11 @@ export const TEMPLATES_SITUS: { id: TemplateSitus; nama: string; deskripsi: stri
     id: 'remedi-minimal',
     nama: 'REMEDI Minimal',
     deskripsi: 'Hero ringkas rata kiri, header tanpa garis, fokus ke katalog produk.'
+  },
+  {
+    id: 'remedi-vscode',
+    nama: 'REMEDI Studio (VS Code)',
+    deskripsi: 'Header gelap ber-blur; hero dengan panel gambar menempel yang berganti mengikuti scroll, animasi masuk halus, dan seksi yang muncul saat digulir.'
   }
 ];
 

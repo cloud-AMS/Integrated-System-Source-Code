@@ -2,20 +2,30 @@ import { useMemo, useState } from 'react';
 import { useDbTick } from '../../../../hooks/useDbSync';
 import DeveloperNotes from '../../../common/DeveloperNotes';
 import { db } from '../../../../services/pocketbase';
-import { KirimanSatuSehat, SinkronisasiLkpp } from '../../../../types';
+import { KirimanSatuSehat, SinkronisasiLkpp, UserRole } from '../../../../types';
 import {
+  KOLOM_EREPOR,
+  bangunBarisEReport,
   bangunBundleFhir,
   bangunPayloadLkpp,
+  eksporCsvEReport,
+  eksporXlsEReport,
   gerbangKonfirmasiStokSales,
+  namaBerkasEReport,
+  periodeEReport,
   stokBebas,
-  validasiKirimanSatuSehat
+  validasiKirimanSatuSehat,
+  type MitraEReport
 } from '../../../../utils/gudang';
 import {
   CheckCircle2,
   Code2,
   Copy,
+  Download,
   FileJson,
+  FileSpreadsheet,
   Globe,
+  History,
   Plus,
   RefreshCw,
   Send,
@@ -23,8 +33,10 @@ import {
   Wrench
 } from 'lucide-react';
 import { Badge, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
+import { identitasPeranGudang } from './ui';
 
 interface Props {
+  currentRole?: UserRole;
   dariAcuan: Date;
   onPerubahanData: () => void;
 }
@@ -42,12 +54,18 @@ const toneFhir = (st: KirimanSatuSehat['status']): Tone => {
   return 'rose';
 };
 
-export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Props) {
+export default function GerbangPemerintahTab({ currentRole = 'kepala_gudang', dariAcuan, onPerubahanData }: Props) {
   const dbTick = useDbTick([
-    'gudang_lkpp',
+    'gudang_lkpp_sync',
     'gudang_satusehat',
+    'gudang_ereport',
+    'gudang_pergerakan',
+    'gudang_surat_jalan',
     'stok_gudang',
-    'konfigurasi_gudang'
+    'izin_edar',
+    'sales_pelanggan',
+    'pemasok',
+    'gudang_pengaturan'
   ]);
   const lkppList = useMemo<SinkronisasiLkpp[]>(() => {
     void dbTick;
@@ -65,6 +83,42 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
     void dbTick;
     return db.getKonfigurasiGudang();
   }, [dbTick]);
+  const pergerakanList = useMemo(() => {
+    void dbTick;
+    return db.getJejakPergerakan();
+  }, [dbTick]);
+  const sjList = useMemo(() => {
+    void dbTick;
+    return db.getSuratJalan();
+  }, [dbTick]);
+  const izinList = useMemo(() => {
+    void dbTick;
+    return db.getIzinEdar();
+  }, [dbTick]);
+  const riwayatEkspor = useMemo(() => {
+    void dbTick;
+    return db.getRiwayatEksporEReport();
+  }, [dbTick]);
+  const mitraEReport = useMemo<MitraEReport[]>(() => {
+    void dbTick;
+    return [
+      ...db.getPelangganB2B().map((p) => ({
+        nama: p.namaInstalasi,
+        kodeSaranaKemenkes: p.kodeSaranaKemenkes,
+        kodeProvinsi: p.kodeProvinsi,
+        kodeKota: p.kodeKota
+      })),
+      ...db.getPemasok().map((p) => ({
+        nama: p.namaPemasok,
+        kodeSaranaKemenkes: p.kodeSaranaKemenkes,
+        kodeProvinsi: p.kodeProvinsi,
+        kodeKota: p.kodeKota
+      }))
+    ];
+  }, [dbTick]);
+
+  const [tahunEReport, setTahunEReport] = useState(() => dariAcuan.getFullYear());
+  const [semesterEReport, setSemesterEReport] = useState<1 | 2>(() => (dariAcuan.getMonth() < 6 ? 1 : 2));
 
   const [skuCekGerbang, setSkuCekGerbang] = useState('IVD-STD-06');
   const [filterLkpp, setFilterLkpp] = useState<'Semua' | SinkronisasiLkpp['status']>('Semua');
@@ -121,6 +175,53 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
     () => gerbangKonfirmasiStokSales({ daftarLkpp: lkppList, kodeSKU: skuCekGerbang }),
     [lkppList, skuCekGerbang]
   );
+
+  const identitas = identitasPeranGudang(currentRole);
+  const periode = useMemo(() => periodeEReport(tahunEReport, semesterEReport), [tahunEReport, semesterEReport]);
+  const barisEReport = useMemo(
+    () =>
+      bangunBarisEReport({
+        periode,
+        daftarStok: stokList,
+        daftarPergerakan: pergerakanList,
+        daftarSuratJalan: sjList,
+        daftarIzinEdar: izinList,
+        daftarMitra: mitraEReport
+      }),
+    [periode, stokList, pergerakanList, sjList, izinList, mitraEReport]
+  );
+  const barisBermasalah = useMemo(() => barisEReport.filter((b) => b.catatanValidasi.length > 0), [barisEReport]);
+
+  const unduhEReport = (format: 'CSV' | 'XLS') => {
+    if (barisEReport.length === 0) {
+      setPesan({
+        tipe: 'tolak',
+        teks: `Tidak ada mutasi penyaluran (OUTBOUND_SALES) pada periode ${periode.kode} — tidak ada baris yang dapat diekspor.`
+      });
+      return;
+    }
+    const isi = format === 'CSV' ? eksporCsvEReport(barisEReport) : eksporXlsEReport(barisEReport);
+    const blob = new Blob([isi], {
+      type: format === 'CSV' ? 'text/csv;charset=utf-8' : 'application/vnd.ms-excel;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const tautan = document.createElement('a');
+    tautan.href = url;
+    tautan.download = namaBerkasEReport(periode.kode, format);
+    document.body.appendChild(tautan);
+    tautan.click();
+    tautan.remove();
+    URL.revokeObjectURL(url);
+    const entri = db.catatEksporEReport(
+      { periode, jumlahBaris: barisEReport.length, format, pengguna: identitas.pengguna },
+      dariAcuan
+    );
+    setPesan({
+      tipe: 'sukses',
+      teks: `${entri.namaBerkas} diunduh (${barisEReport.length} baris). Surat jalan DELIVERED periode ini ditandai terekspor; riwayat tercatat atas nama ${entri.pengguna}.`
+    });
+    segarkan();
+  };
 
   const antrekanLkpp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +386,8 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
         items={[
           'Tab Kemenkes RI adalah antrean & pratinjau payload — belum terhubung ke e-Katalog LKPP maupun SATUSEHAT (tidak ada kredensial, endpoint produksi, atau pengiriman nyata).',
           'Antrean LKPP dan kiriman FHIR hanya tersimpan di perangkat (localStorage); tidak ada yang otomatis terkirim ke mana pun.',
-          'Status "Gagal/Ditolak" adalah penolakan validasi lokal (payload/akun kosong), bukan respons server pemerintah.'
+          'Status "Gagal/Ditolak" adalah penolakan validasi lokal (payload/akun kosong), bukan respons server pemerintah.',
+          'Ekspor e-Report semesteran menghasilkan berkas CSV/XLS lokal dari buku besar mutasi; tidak ada pengiriman otomatis ke portal e-Report Kemenkes.'
         ]}
       />
       {pesan && (
@@ -315,7 +417,7 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
       )}
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
           label="Antrean & Log e-Katalog LKPP"
           value={lkppList.length}
@@ -338,6 +440,12 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
           value={fhirBermasalah}
           hint="Wajib perbaikan kode fasyankes / suhu rantai dingin"
           tone={fhirBermasalah > 0 ? 'amber' : 'emerald'}
+        />
+        <Stat
+          label="Ekspor e-Report Semesteran"
+          value={riwayatEkspor.length}
+          hint={`${sjList.filter((s) => s.status === 'Diterima Penerima' && !s.sudahEksporEReport).length} surat jalan DELIVERED masih antre`}
+          tone="blue"
         />
       </div>
 
@@ -612,6 +720,153 @@ export default function GerbangPemerintahTab({ dariAcuan, onPerubahanData }: Pro
               ))}
             </tbody>
           </table>
+        </div>
+      </Panel>
+
+      {/* Panel 3: e-Report Distribusi Semesteran Alkes Kemenkes RI */}
+      <Panel
+        judul="e-Report Distribusi Semesteran Alat Kesehatan — Kemenkes RI"
+        keterangan="Pemetaan otomatis buku besar mutasi (trx_stock_movements) ke format 10 kolom e-Report: Stok Awal (1 Jan / 1 Jul) + Pemasukan (INBOUND) − Penyaluran (OUTBOUND_SALES − RETURN_IN) = Stok Akhir. Baris dibentuk per (batch, sarana tujuan); surat jalan DELIVERED ber-POD menjadi antrean ekspor periode berjalan."
+      >
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 mb-4">
+          <div>
+            <label className={labelClass}>Tahun Laporan</label>
+            <input
+              type="number"
+              min={2020}
+              max={2100}
+              value={tahunEReport}
+              onChange={(e) => setTahunEReport(Number(e.target.value) || dariAcuan.getFullYear())}
+              className={`${inputClass} tabular-nums w-28`}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Semester</label>
+            <select
+              value={semesterEReport}
+              onChange={(e) => setSemesterEReport(Number(e.target.value) as 1 | 2)}
+              className={inputClass}
+            >
+              <option value={1}>S1 — 1 Januari s.d. 30 Juni</option>
+              <option value={2}>S2 — 1 Juli s.d. 31 Desember</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => unduhEReport('CSV')} className={tombolPrimerGudang}>
+              <Download className="w-3.5 h-3.5" />
+              Ekspor CSV (Excel)
+            </button>
+            <button type="button" onClick={() => unduhEReport('XLS')} className={tombolSekunder}>
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Ekspor XLS
+            </button>
+          </div>
+          <div className="text-2xs text-slate-500 sm:ml-auto sm:text-right">
+            Periode <strong className="font-mono text-slate-700">{periode.kode}</strong> ({periode.mulai} s.d. {periode.akhir})
+            <div>{barisEReport.length} baris · {barisBermasalah.length} perlu perbaikan</div>
+          </div>
+        </div>
+
+        {barisBermasalah.length > 0 && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-2xs text-rose-900 mb-3 space-y-1">
+            <div className="font-semibold flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5" />
+              Validasi e-Report menemukan {barisBermasalah.length} baris bermasalah:
+            </div>
+            <ul className="list-disc pl-4 space-y-0.5">
+              {barisBermasalah.map((b) => (
+                <li key={`${b.nomorBatch}-${b.namaSaranaTujuan}`}>
+                  <span className="font-mono font-semibold">{b.nomorBatch}</span> → {b.namaSaranaTujuan}: {b.catatanValidasi.join('; ')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full text-xs text-left">
+            <thead>
+              <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                {KOLOM_EREPOR.map((k) => (
+                  <th key={k.kunci} className="py-2.5 px-3 whitespace-nowrap">{k.label}</th>
+                ))}
+                <th className="py-2.5 px-3">Validasi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {barisEReport.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="py-4 px-3 text-center text-slate-500 text-2xs">
+                    Tidak ada mutasi penyaluran (OUTBOUND_SALES) pada periode {periode.kode}.
+                  </td>
+                </tr>
+              ) : (
+                barisEReport.map((b) => (
+                  <tr
+                    key={`${b.nomorBatch}-${b.namaSaranaTujuan}`}
+                    className={b.catatanValidasi.length ? 'bg-rose-50/60' : 'hover:bg-slate-50'}
+                  >
+                    {KOLOM_EREPOR.map((k) => (
+                      <td
+                        key={k.kunci}
+                        className={`py-2 px-3 ${typeof b[k.kunci] === 'number' ? 'tabular-nums font-semibold text-slate-900' : 'text-slate-700'} ${k.kunci === 'nomorIzinEdar' || k.kunci === 'nomorBatch' ? 'font-mono text-2xs' : ''}`}
+                      >
+                        {String(b[k.kunci])}
+                      </td>
+                    ))}
+                    <td className="py-2 px-3">
+                      {b.catatanValidasi.length === 0 ? (
+                        <Badge tone="emerald">Lolos</Badge>
+                      ) : (
+                        <Badge tone="rose">{b.catatanValidasi.length} catatan</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-2xs text-slate-500 mt-2">
+          Identitas saldo wajib: Stok Akhir = Stok Awal + Pemasukan − Penyaluran. Berkas diunduh lokal (CSV ber-BOM UTF-8 / XLS);
+          pengiriman ke portal e-Report Kemenkes dilakukan backend terpisah setelah ditinjau PJT.
+        </p>
+
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <div className="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-slate-500" />
+            Riwayat Ekspor e-Report ({riwayatEkspor.length})
+          </div>
+          {riwayatEkspor.length === 0 ? (
+            <p className="text-2xs text-slate-500">Belum ada ekspor tercatat.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <th className="py-2 px-3">Periode</th>
+                    <th className="py-2 px-3">Waktu</th>
+                    <th className="py-2 px-3">Pengguna</th>
+                    <th className="py-2 px-3">Baris</th>
+                    <th className="py-2 px-3">Berkas</th>
+                    <th className="py-2 px-3">Format</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {riwayatEkspor.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50">
+                      <td className="py-2 px-3 font-mono font-semibold text-slate-900">{r.periode}</td>
+                      <td className="py-2 px-3 font-mono text-2xs text-slate-600">{r.waktu}</td>
+                      <td className="py-2 px-3 text-slate-700">{r.pengguna}</td>
+                      <td className="py-2 px-3 tabular-nums">{r.jumlahBaris}</td>
+                      <td className="py-2 px-3 font-mono text-2xs text-slate-600">{r.namaBerkas}</td>
+                      <td className="py-2 px-3"><Badge tone={r.format === 'CSV' ? 'blue' : 'emerald'}>{r.format}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </Panel>
 

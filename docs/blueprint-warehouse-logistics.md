@@ -202,3 +202,52 @@ export interface StokGudang {
 - Aturan & data: `alokasikanFEFO` [utils/sales.ts:148](file:///C:/Users/DESKTOP/Documents/Qoder/2026-11-04/6fa62ac9/repo/src/utils/sales.ts#L148), `catatPengirimanSalesOrder` [services/pocketbase.ts:1032](file:///C:/Users/DESKTOP/Documents/Qoder/2026-11-04/6fa62ac9/repo/src/services/pocketbase.ts#L1032), `cariKetelusuran` L1264, `logAudit` L1086, `bentangPerubahan` L637, seed `INITIAL_STOK_GUDANG` [data/initialData.ts:324](file:///C:/Users/DESKTOP/Documents/Qoder/2026-11-04/6fa62ac9/repo/src/data/initialData.ts#L324).
 - Primitif desain: [commercial/sales/ui.tsx:41](file:///C:/Users/DESKTOP/Documents/Qoder/2026-11-04/6fa62ac9/repo/src/components/modules/commercial/sales/ui.tsx#L41) dst; token ukuran huruf `src/index.css` blok `@theme`.
 - Preseden pola "modul mesin luar": [sales/ListmonkModule.tsx](file:///C:/Users/DESKTOP/Documents/Qoder/2026-11-04/6fa62ac9/repo/src/components/modules/commercial/sales/ListmonkModule.tsx).
+
+## Lampiran C — pemetaan ERD referensi → aplikasi (realisasi 13 tab)
+
+Bagian ini memetakan skema ERD relasional referensi (mst_products, mst_locations, mst_partners, inv_batches, inv_serial_numbers, inv_stock_balances, trx_stock_movements, qc_env_logs) ke kondisi real aplikasi: tipe domain Indonesia, penyimpanan file-based sync (`gudang-logistik`), dan 13 tab modul Gudang & Logistik. Semua kolom referensi hadir sebagai field opsional pada tipe yang sudah ada — tidak ada tabel baru yang memecah arsitektur sync.
+
+### C.1 Tabel referensi → tipe & koleksi aplikasi
+
+| Tabel referensi | Tipe aplikasi (`src/types/index.ts`) | Field kunci (referensi → aplikasi) | UI |
+| --- | --- | --- | --- |
+| `mst_products` | `IzinEdarAlkes` + `StokGudang` | `sku_code`→`kodeSKU`/`skuCode`; `nie_number`→`nomorIzinEdar` (wajib, format `KEMENKES RI AKL/AKD …` divalidasi `validasiFormatNIE`); `akl_akd`→prefix NIE; `risk_class`→`kelasRisiko` (A–D); `storage_condition`→`kondisiSimpan` (AMBIENT/COOL/COLD_CHAIN); `min_temp`/`max_temp`→`suhuMinC`/`suhuMaxC`; `tracking_type`→`tipeLacak` (BATCH_ONLY/SERIAL_NUMBER) | Tab 13 panel 1, Tab 3 |
+| `mst_locations` | `GudangFisik` + `LokasiBin` | `zone_status`→`statusZona` (`StatusZonaCdakb`: QUARANTINE/RELEASED/REJECT/RETURN/RECALL); resolusi `statusZonaGudang`/`statusZonaBin` (override bin menang); gerbang `zonaBolehPicking` hanya RELEASED | Tab 2 (kolom Zona CDAKB + KPI bin tertutup), Tab 13 panel 2 |
+| `mst_partners` | `PemasokAlkes` + `PelangganB2B` | `partner_type`→`tipeMitra` (PRINCIPAL/DISTRIBUTOR/FASYANKES/RETAIL); `kemenkes_facility_code`/IDAK→`kodeSaranaKemenkes`; `npwp`→`npwp`; `province_code`/`city_code`→`kodeProvinsi`/`kodeKota` | Tab 13 panel 3 (kesiapan e-Report per mitra) |
+| `inv_batches` | atribut batch pada `StokGudang` | `batch_number`→`nomorBatch`; `manufacturing_date`→`tanggalProduksi`; `expiry_date`→`tanggalKedaluwarsa` (basis FEFO); `coa_document_url`→`coaUrl` | Tab 3 (badge tipe lacak, Prod, tautan CoA), form Tab 6 |
+| `inv_serial_numbers` | `UnitSerialAlkes` + `StokGudang.nomorSerial`/`rfidTagId` | `current_status`→`statusSerialErpDariUnit` (IN_STOCK/SOLD/RETURNED/SCRAPPED dari tahap siklus hidup unit) | Tab 3 & 10 (scanner serial) |
+| `inv_stock_balances` | `StokGudang` | `qty_on_hand`→`jumlahStok`; `qty_reserved`→`qtyDipesan` (FEFO sadar-kunci tidak melewati kuota pesanan aktif) | Tab 3, alokasi FEFO |
+| `trx_stock_movements` | `JejakPergerakan` (append-only, rantai hash SHA-256) | `trx_type`→`tipeTrx` (INBOUND/QC_RELEASE/QC_REJECT/OUTBOUND_SALES/RETURN_IN/DESTRUCTION, dipetakan `petaTipeTrx` dari tipe log lama); `approved_by_pjt`→`disetujuiPjt`; bentuk kanonik hash tidak berubah sehingga rantai lama tetap utuh | Tab 8 (hash log), Tab 10 |
+| `qc_env_logs` | `LogSuhu` | `temperature_c`→`suhu`; `humidity_rh`→`kelembaban`; `is_deviation`→`isDeviasi` (otomatis via `deviasiSuhu` terhadap batas zona); pencatat→`dicatatOleh` | Tab 4 (badge DEVIASI otomatis) |
+
+### C.2 Alur kerja 4 tahap → implementasi
+
+1. **Inbound & Gerbang Karantina (PJT).** Penerimaan baru otomatis berstatus QUARANTINE; notifikasi menunggu PJT. Hanya peran `pjt`/`qa_manager` (`identitasPeranGudang` → `bolehVerifikasiPjt`) yang dapat memutus `putusanPjtKarantina(stokId, 'RELEASE'|'REJECT')`: RELEASE menulis pergerakan `QC_RELEASE` + `disetujuiPjt` dan membuka stok ke AVAILABLE/RELEASED; REJECT menulis `QC_REJECT` → DAMAGED. UI: Tab 6 (KPI "QUARANTINE Menunggu PJT", tombol Release Stok).
+2. **Smart Picking FEFO + hard-control.** `alokasiFEFOSadarKunci` menolak berurutan: ED kedaluwarsa → NIE kedaluwarsa/bermasalah (`blokirNIEProduk`) → syarat umur ED minimum pelanggan (mis. < 6 bulan) → zona tertutup (`zonaBolehPicking`) → kunci status (QUARANTINE/RECALL/DAMAGED/EXPIRED_LOCK) → kalibrasi alat berat → kuota `qtyDipesan`. Pencocokan barcode SKU/batch/serial di Tab 10. UI: Tab 3 + 10.
+3. **Outbound & POD → DELIVERED → antrean e-Report.** Surat jalan mencetak strip NIE/batch/ED per baris. `unggahPodSuratJalan` mensyaratkan status Dimuat/Terkirim + bukti terima + nama penerima; hasilnya `Diterima Penerima` (DELIVERED), `antreEReport: true`, `sudahEksporEReport: false`. UI: Tab 7 (modal POD 3 field, tombol "Konfirmasi DELIVERED", badge antre/terekspor).
+4. **One-Click Traceability & beku RECALL (< 24 jam).** `lacakBatchSatuKlik(batch)` memetakan total pemasukan prinsipal, sisa fisik per bin, unit serial terdampak, dan daftar lengkap fasyankes penerima beserta nomor SJ + tanggal. `bekukanRecallBatch` mengunci serentak sisa stok ke RECALL + pergerakan `Penarikan Recall` (`RECALL/{tahun}/{batch}`) dan mengantarkan LKPP & FHIR SATUSEHAT; batch tanpa sisa stok ditolak. UI: Tab 11.
+
+### C.3 e-Report Kemenkes semesteran → 10 kolom wajib
+
+`periodeEReport(tahun, 1|2)` membatasi S1 (1 Jan–30 Jun) / S2 (1 Jul–31 Des). `KOLOM_EREPOR` dan `bangunBarisEReport` menghasilkan tepat 10 kolom sesuai referensi:
+
+| # | Kolom referensi | Sumber di aplikasi |
+| --- | --- | --- |
+| 1 | Nomor Izin Edar (NIE) | `validasiFormatNIE` atas NIE registri/stok |
+| 2 | Nama Produk | `izin.namaAlkes` (fallback nama stok) |
+| 3 | Tipe/Ukuran | `izin.tipeModel` (fallback SKU) |
+| 4 | Nomor Batch/Lot | kelompok `sku\|batch\|dokumenRujukan` pergerakan OUTBOUND |
+| 5 | Stok Awal Periode | `hitungSaldoAwalPeriode` (saldo pergerakan sebelum awal periode) |
+| 6 | Jumlah Pemasukan | SUM pergerakan INBOUND batch terkait |
+| 7 | Jumlah Penyaluran | OUTBOUND_SALES − RETURN_IN (retur mitra per SJ dikurangkan) |
+| 8 | Stok Akhir Periode | jumlah stok batch saat ini; identitas awal+masuk−penyaluran=akhir diverifikasi per baris |
+| 9 | Nama Sarana Tujuan | mitra penerima surat jalan |
+| 10 | Kode Sarana/Wilayah | `kodeSaranaKemenkes / kodeProvinsi / kodeKota` |
+
+Kolom tambahan `catatanValidasi` menandai: format NIE salah, produk tak terhubung registri NIE, identitas saldo tidak sinkron, kode sarana mitra kosong, dan NIE bermasalah pada akhir periode. Ekspor: `eksporCsvEReport` (BOM UTF-8 + CRLF agar Excel Indonesia benar) dan `eksporXlsEReport` (tabel HTML); `namaBerkasEReport` → `e-Report-Alkes-Kemenkes-{periode}.{csv|xls}`. `catatEksporEReport` menulis riwayat (koleksi `gudang_ereport`, seed `INITIAL_RIWAYAT_EKSPOR_EREPOR`) dan menandai SJ DELIVERED dalam periode sebagai terekspor. UI: Tab 12 (pemilih tahun/semester, pratinjau 10 kolom, kotak validasi, tombol CSV/XLS, riwayat ekspor).
+
+### C.4 Penjaga & status verifikasi
+
+- `npm run cek:semua` = `cek:benih` (integritas seed + rantai hash) && `cek:fefo` && `cek:gudang` (39 pemeriksaan M6, termasuk jumlah tab dinamis) && `cek:ereport` ([scripts/cek-ereport-gudang.ts](file:///C:/Users/antra/Documents/Default%20Project/AMS%20Integrated%20System/scripts/cek-ereport-gudang.ts): 10 kolom, identitas saldo semester, gerbang zona/NIE/ED, putusan PJT, POD DELIVERED, beku RECALL, riwayat ekspor, rantai hash pasca-mutasi). Semua mutasi uji memakai acuan benih 2024-06-15.
+- `npm run lint` (tsc --noEmit) bersih; `npm run test` 225 uji vitest lulus.
+- Verifikasi browser (instance terisolasi port 3010, data scratch, akun bootstrap resmi): login → modul Gudang 13 tab; Tab 13 tiga panel master data; Tab 2 kolom Zona CDAKB + KPI 7 bin tertutup; Tab 3 badge BATCH_ONLY/SERIAL_NUMBER + CoA + tanggal produksi + chip RECALL; Tab 6 gerbang PJT; Tab 7 modal POD + strip NIE/ED; Tab 11 lacak LOT-2024-PM44 (34 masuk / 32 sisa / 4 serial / 2 SJ penerima); Tab 12 pratinjau 2024-S1 cocok dengan hitungan seed (PM44 0+34−2=32; DNG12 0+320−20=300) + riwayat ERP-001; Tab 4 pencatat sensor tampil, deviasi konsisten dengan seed.

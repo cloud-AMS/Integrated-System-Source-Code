@@ -66,7 +66,8 @@ import {
   INITIAL_AMBANG_STOK,
   INITIAL_KEJADIAN_SCANNER,
   INITIAL_SINKRONISASI_LKPP,
-  INITIAL_KIRIMAN_SATU_SEHAT
+  INITIAL_KIRIMAN_SATU_SEHAT,
+  INITIAL_RIWAYAT_EKSPOR_EREPOR
 } from '../data/initialData';
 import {
   INITIAL_JURNAL_KEUANGAN,
@@ -153,6 +154,7 @@ export const KATALOG_KOLEKSI_DATA: readonly DefinisiKoleksiData[] = [
   { key: 'gudang_scanner', label: 'Log Scanner & RFID', modul: 'Gudang & Logistik', kategori: 'operasional' },
   { key: 'gudang_lkpp_sync', label: 'Antrean Sinkronisasi LKPP', modul: 'Gudang & Logistik', kategori: 'operasional' },
   { key: 'gudang_satusehat', label: 'Kiriman FHIR SATUSEHAT', modul: 'Gudang & Logistik', kategori: 'operasional' },
+  { key: 'gudang_ereport', label: 'Riwayat Ekspor e-Report Kemenkes', modul: 'Gudang & Logistik', kategori: 'operasional' },
 
   // Technical, Production & Purchasing
   { key: 'layanan_teknis', label: 'Tiket Teknisi & Kalibrasi', modul: 'After-Sales & Teknisi', kategori: 'operasional' },
@@ -254,6 +256,7 @@ const INITIAL_SEEDS_MAP: Record<string, unknown[]> = {
   gudang_scanner: INITIAL_KEJADIAN_SCANNER,
   gudang_lkpp_sync: INITIAL_SINKRONISASI_LKPP,
   gudang_satusehat: INITIAL_KIRIMAN_SATU_SEHAT,
+  gudang_ereport: INITIAL_RIWAYAT_EKSPOR_EREPOR,
   layanan_teknis: INITIAL_LAYANAN_TEKNIS,
   bets_produksi: INITIAL_BETS_PRODUKSI,
   pemasok: INITIAL_PEMASOK,

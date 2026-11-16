@@ -1,0 +1,27 @@
+name: ams_flutterflow_verify
+description: Harness verifikasi + aplikasi referensi untuk kit FlutterFlow AMS Mobile (kode custom_code dibangkitkan dari flutterflow/dart).
+publish_to: "none"
+version: 2.4.0
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  go_router: ^18.1.4
+  http: ^1.6.0
+  geolocator: ^14.1.2
+  camera: ^0.12.2
+  flutter_secure_storage: ^11.2.0
+  uuid: ^4.6.0
+  intl: ^0.20.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  geolocator_platform_interface: ^4.4.1
+
+flutter:
+  uses-material-design: true

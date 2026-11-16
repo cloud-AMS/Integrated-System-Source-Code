@@ -1,6 +1,7 @@
 import type {
   AmbangStok,
   AturanSimpan,
+  BarisEReport,
   BarisOpname,
   CAPARecord,
   GudangFisik,
@@ -14,17 +15,21 @@ import type {
   LogSuhu,
   OpnameStok,
   PenarikanProduk,
+  StatusSerialErp,
   StatusStokFisik,
+  StatusZonaCdakb,
   StokGudang,
   SuratJalan,
   SinkronisasiLkpp,
   TerimaBarang,
+  TipePergerakan,
+  TipeTrxErp,
   UnitSerialAlkes
 } from '../types';
 
 const MS_PER_HARI = 86400000;
 const GENESIS = '0'.repeat(64);
-const STATUS_TERKUNCI: StatusStokFisik[] = ['QUARANTINE', 'DAMAGED', 'EXPIRED_LOCK'];
+const STATUS_TERKUNCI: StatusStokFisik[] = ['QUARANTINE', 'DAMAGED', 'EXPIRED_LOCK', 'RECALL'];
 
 function tanggalHari(dari: Date) {
   return dari.toISOString().split('T')[0];
@@ -249,6 +254,11 @@ export function alokasiFEFOSadarKunci(params: {
   kodeSKU?: string;
   daftarUnit?: UnitSerialAlkes[];
   dari?: Date;
+  // --- Hard-control ERD CDAKB: NIE kedaluwarsa, syarat ED pelanggan, zona tertutup ---
+  daftarIzinEdar?: IzinEdarAlkes[];
+  minimalUmurEdBulan?: number;
+  daftarBin?: LokasiBin[];
+  daftarGudang?: GudangFisik[];
 }): {
   usulan: UsulanAlokasiFEFO[];
   totalDiambil: number;
@@ -279,6 +289,31 @@ export function alokasiFEFOSadarKunci(params: {
       batchKedaluwarsaDilewati += stok.jumlahStok;
       catat(`kedaluwarsa ${stok.tanggalKedaluwarsa}`);
       continue;
+    }
+    if (params.daftarIzinEdar) {
+      const blokirNie = blokirNIEProduk(cariIzinEdar(params.daftarIzinEdar, stok), dari);
+      if (blokirNie) {
+        catat(`NIE — ${blokirNie}`);
+        continue;
+      }
+    }
+    if (params.minimalUmurEdBulan !== undefined) {
+      const sisaBulan = sisaBulanED(stok.tanggalKedaluwarsa, dari);
+      if (sisaBulan < params.minimalUmurEdBulan) {
+        catat(`sisa ED ${sisaBulan} bulan di bawah syarat pelanggan ${params.minimalUmurEdBulan} bulan`);
+        continue;
+      }
+    }
+    if (params.daftarBin && params.daftarGudang && stok.binId) {
+      const bin = params.daftarBin.find((b) => b.id === stok.binId);
+      const gudang = bin ? params.daftarGudang.find((g) => g.id === bin.gudangId) : undefined;
+      if (bin && gudang) {
+        const zona = statusZonaBin(bin, gudang);
+        if (!zonaBolehPicking(zona)) {
+          catat(`zona ${zona} tertutup untuk Sales/picking (CDAKB)`);
+          continue;
+        }
+      }
     }
     const status = statusUnitStok(stok);
     if (status === 'QUARANTINE') {
@@ -856,12 +891,17 @@ export function dampakRecallBets(params: {
   };
 }
 
-export function patchKunciStok(stok: StokGudang, alasan: string, waktu: Date = new Date()): {
-  statusStok: 'QUARANTINE';
+export function patchKunciStok(
+  stok: StokGudang,
+  alasan: string,
+  waktu: Date = new Date(),
+  status: 'QUARANTINE' | 'RECALL' = 'QUARANTINE'
+): {
+  statusStok: 'QUARANTINE' | 'RECALL';
   tanggalDikunci: string;
   alasanKunci: string;
 } {
-  return { statusStok: 'QUARANTINE', tanggalDikunci: tanggalHari(waktu), alasanKunci: alasan };
+  return { statusStok: status, tanggalDikunci: tanggalHari(waktu), alasanKunci: alasan };
 }
 
 export function gerbangPenutupanRecall(recall: PenarikanProduk): { bolehDitutup: boolean; sebab: string[] } {
@@ -1386,5 +1426,307 @@ export function ringkasanKpiGudang(input: {
     antreOutbound,
     umurKunciEdHari: input.konfigurasi.umurKunciEdHari,
     keterangan: `${unitBebas} dari ${totalUnit} unit bebas dialokasikan; ${antreInbound} dokumen menunggu release dan ${antreOutbound} surat jalan menunggu keberangkatan`
+  };
+}
+
+// ==================== Aturan 13 — ERD CDAKB, hard-control NIE/ED/zona, e-Report Kemenkes ====================
+// Pemetaan skema referensi (mst_products / mst_locations / mst_partners / inv_batches /
+// inv_serial_numbers / inv_stock_balances / trx_stock_movements / qc_env_logs) ke domain
+// aplikasi: IzinEdarAlkes = master produk, GudangFisik+LokasiBin = master lokasi,
+// PemasokAlkes+PelangganB2B = master mitra, StokGudang = saldo per lokasi,
+// JejakPergerakan = buku besar mutasi immutable, LogSuhu = log lingkungan.
+
+export function statusZonaGudang(gudang: GudangFisik): StatusZonaCdakb {
+  if (gudang.statusZona) return gudang.statusZona;
+  switch (gudang.tipe) {
+    case 'Gudang Karantina':
+      return 'QUARANTINE';
+    case 'Gudang Rusak (Bad Stock)':
+      return 'REJECT';
+    case 'Gudang Retur':
+      return 'RETURN';
+    default:
+      return 'RELEASED';
+  }
+}
+
+export function statusZonaBin(bin: LokasiBin, gudang: GudangFisik): StatusZonaCdakb {
+  return bin.statusZona ?? statusZonaGudang(gudang);
+}
+
+/** Hanya zona RELEASED yang boleh dilihat Sales dan masuk rute picking (kunci CDAKB). */
+export function zonaBolehPicking(zona: StatusZonaCdakb): boolean {
+  return zona === 'RELEASED';
+}
+
+const PETA_TIPE_TRX: Partial<Record<TipePergerakan, TipeTrxErp>> = {
+  Penerimaan: 'INBOUND',
+  'QC Release': 'QC_RELEASE',
+  Karantina: 'QC_REJECT',
+  Pengiriman: 'OUTBOUND_SALES',
+  'Retur Masuk': 'RETURN_IN',
+  Pemusnahan: 'DESTRUCTION'
+};
+
+export function petaTipeTrx(tipe: TipePergerakan): TipeTrxErp | null {
+  return PETA_TIPE_TRX[tipe] ?? null;
+}
+
+/** Tanda mutasi terhadap saldo total: pemindahan internal & QC tidak mengubah total unit. */
+export function tandaTrx(tipe: TipePergerakan): -1 | 0 | 1 {
+  const trx = petaTipeTrx(tipe);
+  if (trx === 'INBOUND' || trx === 'RETURN_IN') return 1;
+  if (trx === 'OUTBOUND_SALES' || trx === 'DESTRUCTION') return -1;
+  return 0;
+}
+
+export function bersihkanNIE(nomor: string): string {
+  return nomor.trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+export function validasiFormatNIE(nomor: string): { bersih: string; valid: boolean; pesan: string } {
+  const bersih = bersihkanNIE(nomor);
+  const valid = /^KEMENKES RI (AKL|AKD) \d{9,13}$/.test(bersih);
+  return {
+    bersih,
+    valid,
+    pesan: valid ? 'Format NIE sesuai pola KEMENKES RI AKL/AKD' : `Format NIE tidak sesuai pola e-Report: "${bersih || '(kosong)'}"`
+  };
+}
+
+export function cariIzinEdar(
+  daftar: IzinEdarAlkes[],
+  stok: Pick<StokGudang, 'nomorIzinEdar' | 'namaAlkes'>
+): IzinEdarAlkes | undefined {
+  const nomor = bersihkanNIE(stok.nomorIzinEdar ?? '');
+  if (nomor) {
+    const tepat = daftar.find((i) => bersihkanNIE(i.nomorIzinEdar) === nomor);
+    if (tepat) return tepat;
+  }
+  const nama = stok.namaAlkes.trim().toLowerCase();
+  return daftar.find((i) => nama.startsWith(i.namaAlkes.trim().toLowerCase()) || i.namaAlkes.trim().toLowerCase().startsWith(nama));
+}
+
+/** Hard-control Tahap 2: NIE kedaluwarsa memblokir picking/outbound tanpa kecuali. */
+export function blokirNIEProduk(izin: IzinEdarAlkes | undefined, dari: Date = new Date()): string | null {
+  if (!izin) return 'NIE tidak terdaftar pada registri izin edar';
+  if (izin.status === 'Kedaluwarsa' || izin.tanggalKedaluwarsa < tanggalHari(dari))
+    return `NIE ${izin.nomorIzinEdar} kedaluwarsa ${izin.tanggalKedaluwarsa}`;
+  return null;
+}
+
+export function sisaBulanED(tanggalKedaluwarsa: string, dari: Date = new Date()): number {
+  const [t, b, h] = tanggalKedaluwarsa.split('-').map(Number);
+  const [ts, bs, hs] = tanggalHari(dari).split('-').map(Number);
+  if (!t || !b || !h) return 0;
+  let bulan = (t - ts) * 12 + (b - bs);
+  if (h < hs) bulan -= 1;
+  return Math.max(bulan, 0);
+}
+
+export function minimalUmurEdBulanEfektif(konfigurasi: KonfigurasiGudang): number {
+  return konfigurasi.minimalUmurEdBulanPelanggan ?? 6;
+}
+
+/** qc_env_logs.is_deviasi: TRUE otomatis bila pembacaan melewati batas aman zona. */
+export function deviasiSuhu(suhu: number, zona: string, konfigurasi: KonfigurasiGudang): boolean {
+  const cold = zona.toLowerCase().includes('cold');
+  const min = cold ? konfigurasi.coldChainMinSuhu : 15;
+  const max = cold ? konfigurasi.coldChainMaxSuhu : 30;
+  return suhu < min || suhu > max;
+}
+
+export function statusSerialErpDariUnit(unit: UnitSerialAlkes): StatusSerialErp {
+  if (unit.statusErp) return unit.statusErp;
+  switch (unit.statusUnit) {
+    case 'Terjual':
+      return 'SOLD';
+    case 'Ditarik (Recall)':
+      return 'RETURNED';
+    default:
+      return 'IN_STOCK';
+  }
+}
+
+export interface PeriodeEReport {
+  kode: string;
+  mulai: string;
+  akhir: string;
+}
+
+export function periodeEReport(tahun: number, semester: 1 | 2): PeriodeEReport {
+  return semester === 1
+    ? { kode: `${tahun}-S1`, mulai: `${tahun}-01-01`, akhir: `${tahun}-06-30` }
+    : { kode: `${tahun}-S2`, mulai: `${tahun}-07-01`, akhir: `${tahun}-12-31` };
+}
+
+function dalamPeriode(waktu: string, periode: PeriodeEReport): boolean {
+  const hari = waktu.slice(0, 10);
+  return hari >= periode.mulai && hari <= periode.akhir;
+}
+
+/** Stok awal periode = saldo kartu stok digital per tanggal mulai periode (1 Jan / 1 Jul). */
+export function hitungSaldoAwalPeriode(params: {
+  daftarPergerakan: JejakPergerakan[];
+  kodeSKU: string;
+  nomorBatch: string;
+  mulai: string;
+}): number {
+  return params.daftarPergerakan
+    .filter((m) => m.kodeSKU === params.kodeSKU && m.nomorBatch === params.nomorBatch && m.waktu.slice(0, 10) < params.mulai)
+    .reduce((total, m) => total + tandaTrx(m.tipe) * m.jumlah, 0);
+}
+
+export interface MitraEReport {
+  nama: string;
+  kodeSaranaKemenkes?: string;
+  kodeProvinsi?: string;
+  kodeKota?: string;
+}
+
+export const KOLOM_EREPOR: { kunci: keyof BarisEReport; label: string }[] = [
+  { kunci: 'nomorIzinEdar', label: 'Nomor Izin Edar (NIE)' },
+  { kunci: 'namaProduk', label: 'Nama Produk' },
+  { kunci: 'tipeUkuran', label: 'Tipe / Ukuran' },
+  { kunci: 'nomorBatch', label: 'Nomor Batch / Lot' },
+  { kunci: 'stokAwalPeriode', label: 'Stok Awal Periode' },
+  { kunci: 'jumlahPemasukan', label: 'Jumlah Pemasukan' },
+  { kunci: 'jumlahPenyaluran', label: 'Jumlah Penyaluran' },
+  { kunci: 'stokAkhirPeriode', label: 'Stok Akhir Periode' },
+  { kunci: 'namaSaranaTujuan', label: 'Nama Sarana Tujuan' },
+  { kunci: 'kodeSaranaWilayah', label: 'Kode Sarana / Wilayah' }
+];
+
+/**
+ * Pemetaan tabel ERP ke format laporan distribusi semesteran e-Report Alkes Kemenkes RI.
+ * Baris dibentuk per (batch, sarana tujuan) dari mutasi OUTBOUND_SALES periode berjalan;
+ * stok awal/akhir diambil dari kartu stok digital dan wajib lolos identitas saldo.
+ */
+export function bangunBarisEReport(params: {
+  periode: PeriodeEReport;
+  daftarStok: StokGudang[];
+  daftarPergerakan: JejakPergerakan[];
+  daftarSuratJalan: SuratJalan[];
+  daftarIzinEdar: IzinEdarAlkes[];
+  daftarMitra: MitraEReport[];
+}): BarisEReport[] {
+  const { periode, daftarPergerakan, daftarSuratJalan } = params;
+  const keluar = daftarPergerakan.filter((m) => petaTipeTrx(m.tipe) === 'OUTBOUND_SALES' && dalamPeriode(m.waktu, periode));
+  const retur = daftarPergerakan.filter((m) => petaTipeTrx(m.tipe) === 'RETURN_IN' && dalamPeriode(m.waktu, periode));
+  const masuk = daftarPergerakan.filter((m) => petaTipeTrx(m.tipe) === 'INBOUND' && dalamPeriode(m.waktu, periode));
+
+  const kelompok = new Map<string, { sku: string; batch: string; nomorSJ: string; qty: number }>();
+  keluar.forEach((m) => {
+    const kunci = `${m.kodeSKU}|${m.nomorBatch}|${m.dokumenRujukan}`;
+    const ada = kelompok.get(kunci);
+    if (ada) ada.qty += m.jumlah;
+    else kelompok.set(kunci, { sku: m.kodeSKU, batch: m.nomorBatch, nomorSJ: m.dokumenRujukan, qty: m.jumlah });
+  });
+
+  const baris: BarisEReport[] = [];
+  for (const grup of kelompok.values()) {
+    const stokBatch = params.daftarStok.filter((s) => s.kodeSKU === grup.sku && s.nomorBatch === grup.batch);
+    const contoh = stokBatch[0] ?? params.daftarStok.find((s) => s.kodeSKU === grup.sku);
+    if (!contoh) continue;
+    const sj = daftarSuratJalan.find((s) => s.nomorSuratJalan === grup.nomorSJ);
+    const mitra = params.daftarMitra.find((m) => m.nama === (sj?.fasyankesTujuan ?? grup.nomorSJ));
+    const izin = cariIzinEdar(params.daftarIzinEdar, contoh);
+    const nie = validasiFormatNIE(izin?.nomorIzinEdar ?? contoh.nomorIzinEdar);
+
+    const awal = hitungSaldoAwalPeriode({ daftarPergerakan, kodeSKU: grup.sku, nomorBatch: grup.batch, mulai: periode.mulai });
+    const pemasukan = masuk.filter((m) => m.kodeSKU === grup.sku && m.nomorBatch === grup.batch).reduce((t, m) => t + m.jumlah, 0);
+    const keluarBatch = keluar.filter((m) => m.kodeSKU === grup.sku && m.nomorBatch === grup.batch).reduce((t, m) => t + m.jumlah, 0);
+    const returBatch = retur.filter((m) => m.kodeSKU === grup.sku && m.nomorBatch === grup.batch).reduce((t, m) => t + m.jumlah, 0);
+    const returMitra = retur
+      .filter((m) => m.kodeSKU === grup.sku && m.nomorBatch === grup.batch && m.dokumenRujukan === grup.nomorSJ)
+      .reduce((t, m) => t + m.jumlah, 0);
+    const akhir = stokBatch.reduce((t, s) => t + s.jumlahStok, 0);
+    const penyaluranBatch = keluarBatch - returBatch;
+
+    const catatan: string[] = [];
+    if (!nie.valid) catatan.push(nie.pesan);
+    if (!izin) catatan.push('Nama produk tidak terhubung ke registri NIE — samakan dengan sertifikat izin edar');
+    if (awal + pemasukan - penyaluranBatch !== akhir)
+      catatan.push(`Stok akhir tidak sinkron: awal ${awal} + masuk ${pemasukan} - penyaluran ${penyaluranBatch} ≠ saldo ${akhir}`);
+    if (!mitra?.kodeSaranaKemenkes) catatan.push('Kode sarana Kemenkes/IDAK mitra belum diisi — wajib untuk pemetaan tujuan e-Report');
+    const blokir = blokirNIEProduk(izin, new Date(`${periode.akhir}T00:00:00Z`));
+    if (blokir) catatan.push(`NIE bermasalah pada akhir periode: ${blokir}`);
+
+    baris.push({
+      periode: periode.kode,
+      nomorIzinEdar: nie.bersih,
+      namaProduk: izin?.namaAlkes ?? contoh.namaAlkes,
+      tipeUkuran: izin?.tipeModel ?? contoh.kodeSKU,
+      nomorBatch: grup.batch,
+      stokAwalPeriode: awal,
+      jumlahPemasukan: pemasukan,
+      jumlahPenyaluran: grup.qty - returMitra,
+      stokAkhirPeriode: akhir,
+      namaSaranaTujuan: mitra?.nama ?? sj?.fasyankesTujuan ?? grup.nomorSJ,
+      kodeSaranaWilayah: [mitra?.kodeSaranaKemenkes, mitra?.kodeProvinsi, mitra?.kodeKota].filter(Boolean).join(' / ') || '-',
+      catatanValidasi: catatan
+    });
+  }
+  return baris.sort((a, b) => a.namaProduk.localeCompare(b.namaProduk) || a.nomorBatch.localeCompare(b.nomorBatch) || a.namaSaranaTujuan.localeCompare(b.namaSaranaTujuan));
+}
+
+function selCsv(nilai: string | number): string {
+  const teks = String(nilai);
+  return /[",\n\r;]/.test(teks) ? `"${teks.replace(/"/g, '""')}"` : teks;
+}
+
+/** CSV ber-BOM UTF-8 agar Excel Indonesia membaca kolom & diakritik dengan benar. */
+export function eksporCsvEReport(baris: BarisEReport[]): string {
+  const kepala = KOLOM_EREPOR.map((k) => selCsv(k.label)).join(',');
+  const isi = baris.map((b) => KOLOM_EREPOR.map((k) => selCsv(b[k.kunci] as string | number)).join(','));
+  return `﻿${[kepala, ...isi].join('\r\n')}\r\n`;
+}
+
+/** Spreadsheet XML/HTML yang dibuka Excel sebagai .xls tanpa pustaka tambahan. */
+export function eksporXlsEReport(baris: BarisEReport[]): string {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const kepala = KOLOM_EREPOR.map((k) => `<th>${esc(k.label)}</th>`).join('');
+  const isi = baris
+    .map((b) => `<tr>${KOLOM_EREPOR.map((k) => `<td>${esc(String(b[k.kunci]))}</td>`).join('')}</tr>`)
+    .join('');
+  return `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8" /></head><body><table border="1"><thead><tr>${kepala}</tr></thead><tbody>${isi}</tbody></table></body></html>`;
+}
+
+export function namaBerkasEReport(periode: string, format: 'CSV' | 'XLS'): string {
+  return `e-Report-Alkes-Kemenkes-${periode}.${format === 'CSV' ? 'csv' : 'xls'}`;
+}
+
+/** Tahap 4 — one-click traceability: total masuk, sisa stok (dibekukan RECALL), daftar penerima. */
+export function lacakBatchSatuKlik(params: {
+  nomorBatch: string;
+  daftarStok: StokGudang[];
+  daftarPergerakan: JejakPergerakan[];
+  daftarSuratJalan: SuratJalan[];
+  daftarUnit?: UnitSerialAlkes[];
+  alasan?: string;
+  dari?: Date;
+}) {
+  const dari = params.dari ?? new Date();
+  const dampak = dampakRecallBets({
+    nomorBatch: params.nomorBatch,
+    daftarStok: params.daftarStok,
+    daftarSuratJalan: params.daftarSuratJalan,
+    daftarUnit: params.daftarUnit
+  });
+  const totalMasuk = params.daftarPergerakan
+    .filter((m) => m.nomorBatch === params.nomorBatch && petaTipeTrx(m.tipe) === 'INBOUND')
+    .reduce((t, m) => t + m.jumlah, 0);
+  const alasan = params.alasan ?? `Recall batch ${params.nomorBatch} — pembekuan otomatis satu klik`;
+  const patchBeku = dampak.barisTerkunci.map((b) => ({
+    stokId: b.stokId,
+    statusStok: 'RECALL' as const,
+    tanggalDikunci: tanggalHari(dari),
+    alasanKunci: alasan
+  }));
+  return {
+    ...dampak,
+    totalMasuk,
+    patchBeku,
+    keterangan: `${totalMasuk} unit masuk dari prinsipal; ${dampak.totalUnitGudang} unit sisa di gudang dibekukan ke zona RECALL; ${dampak.daftarPenerima.length} fasyankes penerima batch terdaftar beserta surat jalan & tanggal kirim`
   };
 }

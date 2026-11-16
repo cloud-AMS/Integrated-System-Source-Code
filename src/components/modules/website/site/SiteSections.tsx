@@ -131,33 +131,47 @@ export function TombolSitus({
   );
 }
 
+/**
+ * Bingkai foto situs. `rasio` mengikuti rekomendasi ukuran pada CMS (mis. hero 1200×800,
+ * banner 1600×900, produk 1000×1000); foto dipertahankan utuh dengan object-contain
+ * sehingga tidak ada bagian yang terpotong walau rasio unggahan berbeda.
+ */
 function GambarSitus({
   rujukan,
   alt,
   kelas,
+  rasio,
+  latar = 'bg-slate-100',
+  kelasGambar,
   prioritas = false
 }: {
   rujukan?: string;
   alt: string;
   kelas: string;
+  rasio?: string;
+  latar?: string;
+  kelasGambar?: string;
   prioritas?: boolean;
 }) {
   const url = selesaikanGambar(rujukan);
+  const gaya = rasio ? { aspectRatio: rasio } : undefined;
   if (!url) {
     return (
-      <div className={`${kelas} bg-slate-100 border border-slate-200 flex items-center justify-center`}>
+      <div style={gaya} className={`${kelas} ${latar} border border-slate-200 flex items-center justify-center`}>
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 px-3 text-center">{alt}</span>
       </div>
     );
   }
   return (
-    <img
-      src={url}
-      alt={alt}
-      loading={prioritas ? 'eager' : 'lazy'}
-      fetchPriority={prioritas ? 'high' : 'auto'}
-      className={`${kelas} object-cover`}
-    />
+    <div style={gaya} className={`${kelas} ${latar} overflow-hidden flex items-center justify-center`}>
+      <img
+        src={url}
+        alt={alt}
+        loading={prioritas ? 'eager' : 'lazy'}
+        fetchPriority={prioritas ? 'high' : 'auto'}
+        className={`w-full h-full object-contain ${kelasGambar ?? ''}`}
+      />
+    </div>
   );
 }
 
@@ -186,7 +200,7 @@ export function SeksiHero({ cfg, ke }: PropsSeksi) {
           </div>
         </div>
         <div className="relative">
-          <GambarSitus rujukan={hero.gambarUrl} alt="Foto produk atau fasilitas" kelas="w-full rounded-2xl" prioritas />
+          <GambarSitus rujukan={hero.gambarUrl} alt="Foto produk atau fasilitas" kelas="w-full rounded-2xl" rasio="3 / 2" prioritas />
           <div className="mt-4 grid grid-cols-2 gap-3">
             {cfg.kepercayaan.item
               .filter((l) => l.isActive)
@@ -221,7 +235,14 @@ export function SeksiSlide({ cfg, ke }: PropsSeksi) {
     <section className="bg-slate-50 border-b border-slate-200">
       <div className={`${WADAH} py-8`}>
         <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900">
-          <GambarSitus rujukan={slide.imageUrl} alt={slide.judul} kelas="w-full h-[220px] sm:h-[320px] opacity-70" />
+          <GambarSitus
+            rujukan={slide.imageUrl}
+            alt={slide.judul}
+            kelas="w-full rounded-2xl"
+            rasio="16 / 9"
+            latar="bg-slate-900"
+            kelasGambar="opacity-70"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-900/45 to-transparent flex items-center">
             <div className="p-6 sm:p-10 max-w-xl">
               {slide.eyebrow && (
@@ -302,6 +323,15 @@ export function SeksiSolusi({ cfg, ke }: PropsSeksi) {
                 onClick={() => ke('produk', kunciFilter)}
                 className="group text-left bg-white border border-slate-200 rounded-2xl p-5 hover:border-[color-mix(in_srgb,var(--brand)_45%,white)] hover:shadow-sm transition-all cursor-pointer flex flex-col"
               >
+                {s.imageUrl && (
+                  <GambarSitus
+                    rujukan={s.imageUrl}
+                    alt={s.judul}
+                    kelas="w-full rounded-xl mb-3.5"
+                    rasio="4 / 3"
+                    latar="bg-slate-50"
+                  />
+                )}
                 <div className="flex items-center justify-between gap-2">
                   <Sparkles className="w-5 h-5 text-[var(--brand)] shrink-0" />
                   <span className="text-2xs font-semibold tabular-nums text-slate-500">
@@ -380,7 +410,7 @@ export function SeksiMerek({ cfg, ke }: PropsSeksi) {
           {daftar.map((m) => (
             <div key={m.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50">
               {m.imageUrl ? (
-                <GambarSitus rujukan={m.imageUrl} alt={m.nama} kelas="w-full h-16 rounded-xl mb-3" />
+                <GambarSitus rujukan={m.imageUrl} alt={m.nama} kelas="w-full rounded-xl mb-3" rasio="2 / 1" latar="bg-white" />
               ) : (
                 <div className="w-full h-16 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3">
                   <span className="text-lg font-bold text-slate-700">{m.nama.slice(0, 2).toUpperCase()}</span>
@@ -542,7 +572,7 @@ export function SeksiArtikel({ cfg }: { cfg: KonfigurasiSitus }) {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-7">
           {daftar.map((a) => (
             <article key={a.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-              <GambarSitus rujukan={a.imageUrl} alt={a.judul} kelas="w-full h-40" />
+              <GambarSitus rujukan={a.imageUrl} alt={a.judul} kelas="w-full" rasio="1200 / 630" />
               <div className="p-5">
                 <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">
                   {a.kategori} · {a.tanggal}
@@ -573,7 +603,7 @@ export function SeksiGaleri({ cfg }: { cfg: KonfigurasiSitus }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-7">
           {daftar.map((g) => (
             <figure key={g.id} className="border border-slate-200 rounded-2xl overflow-hidden">
-              <GambarSitus rujukan={g.imageUrl} alt={g.judul} kelas="w-full h-36" />
+              <GambarSitus rujukan={g.imageUrl} alt={g.judul} kelas="w-full" rasio="3 / 2" />
               <figcaption className="p-3">
                 <p className="text-xs font-bold text-slate-800">{g.judul}</p>
                 {g.keterangan && <p className="text-2xs text-slate-500 mt-0.5">{g.keterangan}</p>}
@@ -663,7 +693,7 @@ export function SeksiTentang({ cfg }: { cfg: KonfigurasiSitus }) {
           </div>
         </div>
         <div>
-          <GambarSitus rujukan={seksi.imageUrl} alt="Profil perusahaan" kelas="w-full h-56 rounded-2xl" />
+          <GambarSitus rujukan={seksi.imageUrl} alt="Profil perusahaan" kelas="w-full rounded-2xl" rasio="3 / 2" />
           {seksi.capaian.length > 0 && (
             <div className="grid grid-cols-2 gap-3 mt-4">
               {seksi.capaian.map((c, i) => (

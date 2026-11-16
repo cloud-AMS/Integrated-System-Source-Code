@@ -67,7 +67,8 @@ import {
   KejadianScanner,
   SinkronisasiLkpp,
   KirimanSatuSehat,
-  KonfigurasiGudang
+  KonfigurasiGudang,
+  RiwayatEksporEReport
 } from '../types';
 
 export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
@@ -84,7 +85,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2028-04-15',
     status: 'Aktif',
     statusPerpanjangan: 'Aman',
-    keterangan: 'Telah terdaftar e-Katalog LKPP dan lolos uji keselamatan listrik IEC 60601-1'
+    keterangan: 'Telah terdaftar e-Katalog LKPP dan lolos uji keselamatan listrik IEC 60601-1',
+    skuCode: 'ALKES-PM-01',
+    aklAkd: 'AKL',
+    kondisiSimpan: 'COOL',
+    suhuMinC: 15,
+    suhuMaxC: 25,
+    tipeLacak: 'SERIAL_NUMBER'
   },
   {
     id: 'NIE-002',
@@ -99,7 +106,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2027-09-10',
     status: 'Aktif',
     statusPerpanjangan: 'Aman',
-    keterangan: 'Produksi perakitan dalam negeri (TKDN 43.5%). Sertifikasi CPAKB aktif.'
+    keterangan: 'Produksi perakitan dalam negeri (TKDN 43.5%). Sertifikasi CPAKB aktif.',
+    skuCode: 'ALKES-SP-02',
+    aklAkd: 'AKD',
+    kondisiSimpan: 'COOL',
+    suhuMinC: 15,
+    suhuMaxC: 25,
+    tipeLacak: 'SERIAL_NUMBER'
   },
   {
     id: 'NIE-003',
@@ -114,7 +127,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2027-01-20',
     status: 'Aktif',
     statusPerpanjangan: 'Aman',
-    keterangan: 'Penyimpanan Cold Chain wajib 2°C - 8°C. Sensor suhu aktif terhubung.'
+    keterangan: 'Penyimpanan Cold Chain wajib 2°C - 8°C. Sensor suhu aktif terhubung.',
+    skuCode: 'IVD-DNG-03',
+    aklAkd: 'AKL',
+    kondisiSimpan: 'COLD_CHAIN',
+    suhuMinC: 2,
+    suhuMaxC: 8,
+    tipeLacak: 'BATCH_ONLY'
   },
   {
     id: 'NIE-004',
@@ -129,7 +148,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2026-11-05',
     status: 'Perpanjangan',
     statusPerpanjangan: 'Harus Diperpanjang Segera',
-    keterangan: 'Masa berlaku kurang dari 6 bulan. Dokumen perpanjangan diajukan ke Ditjen Farmalkes.'
+    keterangan: 'Masa berlaku kurang dari 6 bulan. Dokumen perpanjangan diajukan ke Ditjen Farmalkes.',
+    skuCode: 'STR-BNG-04',
+    aklAkd: 'AKD',
+    kondisiSimpan: 'AMBIENT',
+    suhuMinC: 15,
+    suhuMaxC: 30,
+    tipeLacak: 'BATCH_ONLY'
   },
   {
     id: 'NIE-005',
@@ -144,7 +169,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2029-02-01',
     status: 'Aktif',
     statusPerpanjangan: 'Aman',
-    keterangan: 'Layanan purna jual & suku cadang dijamin 5 tahun sesuai regulasi Kemenkes.'
+    keterangan: 'Layanan purna jual & suku cadang dijamin 5 tahun sesuai regulasi Kemenkes.',
+    skuCode: 'ALKES-USG-05',
+    aklAkd: 'AKL',
+    kondisiSimpan: 'COOL',
+    suhuMinC: 15,
+    suhuMaxC: 25,
+    tipeLacak: 'SERIAL_NUMBER'
   },
   {
     id: 'NIE-006',
@@ -159,7 +190,13 @@ export const INITIAL_IZIN_EDAR: IzinEdarAlkes[] = [
     tanggalKedaluwarsa: '2028-11-20',
     status: 'Aktif',
     statusPerpanjangan: 'Aman',
-    keterangan: 'Izin pemanfaatan sumber radiasi pendamping sertifikat BAPETEN; unit disimpan di lorong B03 terkunci dan wajib uji fungsi berkala.'
+    keterangan: 'Izin pemanfaatan sumber radiasi pendamping sertifikat BAPETEN; unit disimpan di lorong B03 terkunci dan wajib uji fungsi berkala.',
+    skuCode: 'ALKES-XR-09',
+    aklAkd: 'AKL',
+    kondisiSimpan: 'COOL',
+    suhuMinC: 15,
+    suhuMaxC: 25,
+    tipeLacak: 'SERIAL_NUMBER'
   }
 ];
 
@@ -467,7 +504,10 @@ export const INITIAL_STOK_GUDANG: StokGudang[] = [
     statusStok: 'AVAILABLE',
     qtyDipesan: 4,
     jalur: 'B',
-    rfidTagId: 'RFID-PAL-B0103-PM44'
+    rfidTagId: 'RFID-PAL-B0103-PM44',
+    tanggalProduksi: '2024-03-18',
+    coaUrl: '/docs/coa/LOT-2024-PM44.pdf',
+    tipeLacak: 'SERIAL_NUMBER'
   },
   {
     id: 'STK-002',
@@ -487,7 +527,10 @@ export const INITIAL_STOK_GUDANG: StokGudang[] = [
     statusStok: 'AVAILABLE',
     qtyDipesan: 11,
     jalur: 'B',
-    rfidTagId: 'RFID-PAL-B0201-SP12'
+    rfidTagId: 'RFID-PAL-B0201-SP12',
+    tanggalProduksi: '2024-02-20',
+    coaUrl: '/docs/coa/LOT-2024-SP12.pdf',
+    tipeLacak: 'SERIAL_NUMBER'
   },
   {
     id: 'STK-003',
@@ -507,7 +550,10 @@ export const INITIAL_STOK_GUDANG: StokGudang[] = [
     statusStok: 'AVAILABLE',
     qtyDipesan: 0,
     jalur: 'A',
-    rfidTagId: 'RFID-PAL-C0101-DNG12'
+    rfidTagId: 'RFID-PAL-C0101-DNG12',
+    tanggalProduksi: '2024-04-02',
+    coaUrl: '/docs/coa/LOT-2024-DNG12.pdf',
+    tipeLacak: 'BATCH_ONLY'
   },
   {
     id: 'STK-004',
@@ -754,7 +800,9 @@ export const INITIAL_LOG_SUHU: LogSuhu[] = [
     suhu: 4.2,
     kelembaban: 58,
     waktu: '10 Menit yang lalu',
-    status: 'Normal'
+    status: 'Normal',
+    isDeviasi: false,
+    dicatatOleh: 'Siti Rahma (Koordinator Cold Chain)'
   },
   {
     id: 'SMR-02',
@@ -829,6 +877,7 @@ export const INITIAL_GUDANG_FISIK: GudangFisik[] = [
     zonaSuhu: 'Ruang Sejuk AC (15°C - 25°C)',
     jumlahBin: 8,
     isActive: true,
+    statusZona: 'RELEASED',
     catatan: 'Gudang induk berizin SDAK. Lorong B untuk elektromedik, lorong D untuk non-elektromedik steril dan tidak steril; tiap lorong memiliki termohigrometer terkalibrasi KAN.'
   },
   {
@@ -840,6 +889,7 @@ export const INITIAL_GUDANG_FISIK: GudangFisik[] = [
     zonaSuhu: 'Cold Chain (2°C - 8°C)',
     jumlahBin: 3,
     isActive: true,
+    statusZona: 'RELEASED',
     catatan: 'Rentang wajib 2°C - 8°C dengan pencatatan minimal dua kali sehari. Ekskursi suhu lebih dari 30 menit wajib formulir CAPA dan penahanan batch otomatis.'
   },
   {
@@ -851,6 +901,7 @@ export const INITIAL_GUDANG_FISIK: GudangFisik[] = [
     zonaSuhu: 'Ruang Sejuk AC (15°C - 25°C)',
     jumlahBin: 3,
     isActive: true,
+    statusZona: 'QUARANTINE',
     catatan: 'Fisik terkunci dan terpisah dari stok layak jual. Bin K01 berpendingin untuk menampung reagen dengan rantai dingin diragukan.'
   },
   {
@@ -862,6 +913,7 @@ export const INITIAL_GUDANG_FISIK: GudangFisik[] = [
     zonaSuhu: 'Ruang Sejuk AC (15°C - 25°C)',
     jumlahBin: 2,
     isActive: true,
+    statusZona: 'RETURN',
     catatan: 'Menampung retur fasyankes dan hasil penarikan recall sampai keputusan disposition QA (rilis, retur pemasok, atau pemusnahan).'
   },
   {
@@ -873,6 +925,7 @@ export const INITIAL_GUDANG_FISIK: GudangFisik[] = [
     zonaSuhu: 'Suhu Kamar (< 30°C)',
     jumlahBin: 2,
     isActive: true,
+    statusZona: 'REJECT',
     catatan: 'Barang rusak, kedaluwarsa, dan ditolak penerimaan. Seluruh keluar masuk wajib berita acara dan tercatat pada log pergerakanImmutable.'
   }
 ];
@@ -1233,6 +1286,9 @@ export const INITIAL_TERIMA_BARANG: TerimaBarang[] = [
         qtyDitolak: 0,
         satuan: 'Unit',
         binTujuanId: 'BIN-B01-03-01',
+        tanggalProduksi: '2024-03-18',
+        coaUrl: '/docs/coa/LOT-2024-PM44.pdf',
+        daftarSerial: ['AMS-V12P-2406-0031', 'AMS-V12P-2406-0032'],
         alasanPenolakan: ''
       }
     ],
@@ -1525,6 +1581,10 @@ export const INITIAL_SURAT_JALAN: SuratJalan[] = [
     nomorPaketLkpp: 'Paket LKPP/2024/0091873',
     statusSyncLkpp: 'Tersinkron',
     penanggungJawab: 'apt. Dewi Kartika, S.Si (PJT)',
+    buktiTerimaUrl: '/docs/pod/SJ-CDAKB-2024-SP-EKAT-2024-118.pdf',
+    namaPenerimaPod: 'dr. Hendra Wijaya (Kepala Instalasi Farmasi RSUD Pasar Minggu)',
+    tanggalPod: '2024-05-21',
+    sudahEksporEReport: true,
     catatan: 'Berita acara serah terima ditandatangani penerima barang; dua unit patient monitor beserta sertifikat kalibrasi terlampir.'
   },
   {
@@ -2591,8 +2651,21 @@ export const KONFIGURASI_GUDANG_AWAL: KonfigurasiGudang = {
   prefixSuratJalan: 'SJ/CDAKB',
   endpointLkpp: 'https://apio.lkpp.go.id/v1/sinkronisasi-inventaris',
   endpointSatuSehat: 'https://api-satusehat.kemkes.go.id/v2/fhir/Bundle',
-  klienSatuSehatTerdaftar: false
+  klienSatuSehatTerdaftar: false,
+  minimalUmurEdBulanPelanggan: 6
 };
+
+export const INITIAL_RIWAYAT_EKSPOR_EREPOR: RiwayatEksporEReport[] = [
+  {
+    id: 'ERP-001',
+    periode: '2024-S1',
+    waktu: '2024-07-05T09:30:00+07:00',
+    pengguna: 'apt. Dewi Kartika, S.Si (PJT)',
+    jumlahBaris: 2,
+    namaBerkas: 'e-Report-Alkes-Kemenkes-2024-S1.csv',
+    format: 'CSV'
+  }
+];
 
 export const INITIAL_LAYANAN_TEKNIS: LayananTeknis[] = [
   {
@@ -2684,7 +2757,8 @@ export const INITIAL_PEMASOK: PemasokAlkes[] = [
     statusAuditMutu: 'Terkualifikasi',
     skorEvaluasi: 96,
     tanggalEvaluasiTerakhir: '2024-01-10',
-    kontak: 'medical-asia@mindray.com'
+    kontak: 'medical-asia@mindray.com',
+    tipeMitra: 'PRINCIPAL'
   },
   {
     id: 'SPL-02',
@@ -2695,7 +2769,8 @@ export const INITIAL_PEMASOK: PemasokAlkes[] = [
     statusAuditMutu: 'Terkualifikasi',
     skorEvaluasi: 94,
     tanggalEvaluasiTerakhir: '2024-02-15',
-    kontak: 'global-support@sdbiosensor.com'
+    kontak: 'global-support@sdbiosensor.com',
+    tipeMitra: 'PRINCIPAL'
   },
   {
     id: 'SPL-03',
@@ -2706,7 +2781,12 @@ export const INITIAL_PEMASOK: PemasokAlkes[] = [
     statusAuditMutu: 'Terkualifikasi',
     skorEvaluasi: 92,
     tanggalEvaluasiTerakhir: '2024-03-01',
-    kontak: 'distribusi@kftd.co.id'
+    kontak: 'distribusi@kftd.co.id',
+    tipeMitra: 'DISTRIBUTOR',
+    kodeSaranaKemenkes: '910248201',
+    npwp: '01.234.567.8-901.000',
+    kodeProvinsi: '31',
+    kodeKota: '31.75'
   }
 ];
 
@@ -4328,7 +4408,12 @@ export const INITIAL_PELANGGAN_B2B: PelangganB2B[] = [
     piutangBerjalan: 120000000,
     tanggalJatuhTempoPiutang: '2026-12-15',
     termsOfPaymentHari: 45,
-    statusPelanggan: 'Aktif'
+    statusPelanggan: 'Aktif',
+    tipeMitra: 'FASYANKES',
+    kodeSaranaKemenkes: '3174012',
+    npwp: '02.345.678.9-012.000',
+    kodeProvinsi: '31',
+    kodeKota: '31.74'
   },
   {
     id: 'PLG-002',
@@ -4347,7 +4432,12 @@ export const INITIAL_PELANGGAN_B2B: PelangganB2B[] = [
     piutangBerjalan: 260000000,
     tanggalJatuhTempoPiutang: '2026-11-30',
     termsOfPaymentHari: 60,
-    statusPelanggan: 'Aktif'
+    statusPelanggan: 'Aktif',
+    tipeMitra: 'FASYANKES',
+    kodeSaranaKemenkes: '3174023',
+    npwp: '02.456.789.0-013.000',
+    kodeProvinsi: '31',
+    kodeKota: '31.74'
   },
   {
     id: 'PLG-003',
@@ -4366,7 +4456,12 @@ export const INITIAL_PELANGGAN_B2B: PelangganB2B[] = [
     piutangBerjalan: 95000000,
     tanggalJatuhTempoPiutang: '2026-10-15',
     termsOfPaymentHari: 30,
-    statusPelanggan: 'Aktif'
+    statusPelanggan: 'Aktif',
+    tipeMitra: 'FASYANKES',
+    kodeSaranaKemenkes: '3273045',
+    npwp: '03.567.890.1-014.000',
+    kodeProvinsi: '32',
+    kodeKota: '32.73'
   },
   {
     id: 'PLG-004',
@@ -4385,7 +4480,12 @@ export const INITIAL_PELANGGAN_B2B: PelangganB2B[] = [
     piutangBerjalan: 88000000,
     tanggalJatuhTempoPiutang: '2027-01-20',
     termsOfPaymentHari: 45,
-    statusPelanggan: 'Aktif'
+    statusPelanggan: 'Aktif',
+    tipeMitra: 'FASYANKES',
+    kodeSaranaKemenkes: '3578056',
+    npwp: '04.678.901.2-015.000',
+    kodeProvinsi: '35',
+    kodeKota: '35.78'
   },
   {
     id: 'PLG-005',
@@ -5140,7 +5240,8 @@ export const INITIAL_UNIT_SERIAL: UnitSerialAlkes[] = [
     nomorSalesOrder: 'SP-EKAT-2024-118',
     nomorInvoice: 'FTR/2024/05/0218',
     tanggalKirim: '2024-05-18',
-    statusUnit: 'Terjual'
+    statusUnit: 'Terjual',
+    statusErp: 'SOLD'
   },
   {
     id: 'SNS-002',
@@ -5151,7 +5252,8 @@ export const INITIAL_UNIT_SERIAL: UnitSerialAlkes[] = [
     nomorSalesOrder: 'SP-EKAT-2024-118',
     nomorInvoice: 'FTR/2024/05/0218',
     tanggalKirim: '2024-05-18',
-    statusUnit: 'Terjual'
+    statusUnit: 'Terjual',
+    statusErp: 'SOLD'
   },
   {
     id: 'SNS-003',

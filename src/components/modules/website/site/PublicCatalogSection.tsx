@@ -143,11 +143,11 @@ function cariLogoMerek(cfg: KonfigurasiSitus, produsen: string): string | undefi
 function VisualProduk({
   produk,
   cfg,
-  tinggiKelas = 'h-44'
+  kelasWadah = 'aspect-square'
 }: {
   produk: ProdukWebsite;
   cfg: KonfigurasiSitus;
-  tinggiKelas?: string;
+  kelasWadah?: string;
 }) {
   const [gagalFoto, setGagalFoto] = useState(false);
   const [gagalLogo, setGagalLogo] = useState(false);
@@ -156,14 +156,14 @@ function VisualProduk({
 
   if (fotoUrl && !gagalFoto) {
     return (
-      <div className={`relative w-full ${tinggiKelas} bg-white border-b border-slate-100 overflow-hidden`}>
+      <div className={`relative w-full ${kelasWadah} bg-white border-b border-slate-100 overflow-hidden`}>
         <img
           src={fotoUrl}
           alt={produk.nama}
           loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setGagalFoto(true)}
-          className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03]"
+          className="w-full h-full object-contain p-3"
         />
       </div>
     );
@@ -171,7 +171,7 @@ function VisualProduk({
 
   return (
     <div
-      className={`relative w-full ${tinggiKelas} bg-slate-50/90 border-b border-slate-100 px-5 py-4 flex flex-col justify-between overflow-hidden`}
+      className={`relative w-full ${kelasWadah} bg-slate-50/90 border-b border-slate-100 px-5 py-4 flex flex-col justify-between overflow-hidden`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-2xs font-mono text-slate-400 uppercase tracking-wider truncate">
@@ -1107,7 +1107,7 @@ function ModalDetailProduk({
         <div className="p-5 sm:p-6 grid md:grid-cols-[0.9fr_1.1fr] gap-6">
           <div className="space-y-4">
             <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <VisualProduk produk={produk} cfg={cfg} tinggiKelas="h-56" />
+              <VisualProduk produk={produk} cfg={cfg} kelasWadah="aspect-square" />
             </div>
 
             {/* Kotak Legalitas & Distribusi CDAKB */}

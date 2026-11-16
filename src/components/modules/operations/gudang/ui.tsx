@@ -15,7 +15,8 @@ export type GudangTabId =
   | 'optimasi'
   | 'scanner'
   | 'recall'
-  | 'pemerintah';
+  | 'pemerintah'
+  | 'master-data';
 
 export const TAB_NOMOR_KE_ID: Record<number, GudangTabId> = {
   1: 'dasbor',
@@ -29,7 +30,8 @@ export const TAB_NOMOR_KE_ID: Record<number, GudangTabId> = {
   9: 'optimasi',
   10: 'scanner',
   11: 'recall',
-  12: 'pemerintah'
+  12: 'pemerintah',
+  13: 'master-data'
 };
 
 /** Tanggal acuan benih (M3/M4 kontrak) agar batch 2024–2025 tidak dinilai kedaluwarsa oleh jam sistem 2026. */
@@ -88,6 +90,7 @@ export function toneStatusStok(status?: StatusStokFisik): Tone {
       return 'amber';
     case 'DAMAGED':
     case 'EXPIRED_LOCK':
+    case 'RECALL':
       return 'rose';
   }
 }

@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "AMS Mobile",
+    "slug": "ams-mobile",
+    "version": "2.4.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "ams-mobile",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f7f8f8",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anugrahmitra.ams",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "AMS memerlukan lokasi GPS untuk memverifikasi geofence absensi Anda.",
+        "NSCameraUsageDescription": "AMS memerlukan kamera untuk selfie bukti absensi."
+      }
+    },
+    "android": {
+      "package": "com.anugrahmitra.ams",
+      "adaptiveIcon": {
+        "backgroundColor": "#f7f8f8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "AMS memerlukan lokasi GPS untuk memverifikasi geofence absensi Anda."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AMS memerlukan kamera untuk selfie bukti absensi."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000"
+    }
+  }
+}

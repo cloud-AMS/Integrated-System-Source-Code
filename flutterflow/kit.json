@@ -1,0 +1,150 @@
+{
+  "nama": "AMS Mobile — FlutterFlow Kit",
+  "versi": "2.4.0-cdakb",
+  "induk": "AMS Integrated System — PT Anugrahmitra Selaras",
+  "sumberKebenaran": {
+    "aturanHris": "src/utils/hris.ts",
+    "kontrakAbsensi": "server/attendance.ts",
+    "tokenDesain": "src/index.css",
+    "blueprint": "docs/mobile-apps.md"
+  },
+  "flutterMinimal": "3.27.0",
+  "catatanFlutter": "Widget memakai Color.withValues(alpha:) yang tersedia sejak Flutter 3.27. FlutterFlow per November 2026 memakai Flutter di atas versi ini.",
+  "dependencies": [
+    { "name": "http", "version": "^1.6.0", "untuk": "Klien REST ke backend AMS (amsApi, AmsAuthPhoto)." },
+    { "name": "geolocator", "version": "^14.1.2", "untuk": "Izin lokasi, GPS akurasi tinggi, deteksi mock GPS." },
+    { "name": "camera", "version": "^0.12.2", "untuk": "Selfie kamera depan sebagai bukti absensi." },
+    { "name": "flutter_secure_storage", "version": "^11.2.0", "untuk": "Token sesi, cache sesi, dan deviceId di Keychain/Keystore." },
+    { "name": "uuid", "version": "^4.6.0", "untuk": "deviceId stabil dan idempotencyKey per pengiriman absensi." },
+    { "name": "intl", "version": "^0.20.3", "untuk": "Format Rupiah potongan keterlambatan." }
+  ],
+  "disediakanFlutterFlow": [
+    { "name": "flutter", "untuk": "Material UI." },
+    { "name": "go_router", "untuk": "Navigasi antar halaman (sudah ada di setiap proyek FlutterFlow); jangan tambahkan versi sendiri agar tidak bentrok." }
+  ],
+  "appState": [
+    {
+      "name": "amsState",
+      "type": "JSON",
+      "default": {},
+      "persisted": false,
+      "desc": "Satu-satunya variabel App State yang perlu dibuat. Seluruh kit membaca/menulis lewat sini; sesi dan token tetap di penyimpanan aman, bukan di state UI."
+    }
+  ],
+  "kunciPenyimpananAman": [
+    { "key": "ams_session_token", "isi": "Bearer token dari /api/auth/login" },
+    { "key": "ams_session_cache", "isi": "JSON respons login (user, role, permissions, expiresAt) untuk boot offline" },
+    { "key": "ams_device_id", "isi": "UUID perangkat untuk audit anti-spoof" }
+  ],
+  "bentukState": {
+    "apiBaseUrl": "String — alamat backend AMS, contoh http://10.0.2.2:3010 (emulator) atau https://ams.perusahaan.co.id",
+    "user": "JSON — {username, fullName, email, roleId, roleName, department}",
+    "roleName": "String",
+    "permissions": "JSON — matriks RBAC {moduleId: [aksi]}",
+    "expiresAt": "String ISO-8601",
+    "deviceId": "String UUID",
+    "geo": "JSON — {lokasi:[{id,nama,lat,lon,radiusMeter}], akurasiMaksMeter}",
+    "akurasiMaks": "double — ambang akurasi GPS dari server (default 50)",
+    "titik": "JSON|null — {lat, lon, akurasiMeter, mock}",
+    "geofence": "JSON|null — {lokasiId, nama, radiusMeter, jarakMeter, dalamPagar, label}",
+    "selfie": "String — data URL base64, dikosongkan setelah terkirim",
+    "hariIni": "JSON|null — rekaman absensi hari ini dari server",
+    "riwayat": "List — 60 rekaman terakhir dari server",
+    "hasil": "JSON|null — respons clock-in/out {record, geofence, revision, sudahAda?}",
+    "galat": "String — pesan galat terakhir untuk ditampilkan UI",
+    "sukses": "String — pesan sukses terakhir",
+    "memuat": "bool — indikator loading global"
+  },
+  "tema": {
+    "warna": {
+      "aksen": "#00AAFF",
+      "info": "#6366F1",
+      "sekunder": "#FF4400",
+      "sukses": "#059669",
+      "suksesTua": "#047857",
+      "peringatan": "#F59E0B",
+      "bahaya": "#E11D48",
+      "ink": "#111111",
+      "slate700": "#3D3D3D",
+      "muted": "#7A7A7A",
+      "slate300": "#D2D5D5",
+      "border": "#E3E5E5",
+      "slate100": "#F1F2F2",
+      "latar": "#F7F8F8",
+      "surface": "#FFFFFF"
+    },
+    "tipografi": {
+      "sans": "Quicksand",
+      "mono": "JetBrains Mono",
+      "skala": { "judul": 20, "kartuJudul": 14, "isi": 12, "kecil": 10.5, "labelKapital": 9.5 }
+    },
+    "bentuk": { "radiusKartu": 16, "radiusTombol": 12, "radiusBadge": 999, "tinggiTombolPrimer": 50 }
+  },
+  "halaman": [
+    {
+      "nama": "Login",
+      "rute": "/login",
+      "initial": true,
+      "widget": ["AmsLoginPanel"],
+      "aksi": [{ "trigger": "On Page Load", "action": "amsBoot" }],
+      "catatan": "AmsLoginPanel sudah menavigasi sendiri ke /beranda saat login berhasil."
+    },
+    {
+      "nama": "Beranda",
+      "rute": "/beranda",
+      "widget": ["AmsTopBar", "AmsHomeSummary"],
+      "aksi": [{ "trigger": "On Page Load", "action": "amsMuatAbsensi" }],
+      "catatan": "AmsHomeSummary memakai AmsHistoryList(batas:3) di dalamnya."
+    },
+    {
+      "nama": "Absen",
+      "rute": "/absen",
+      "widget": ["AmsTopBar", "AmsAttendancePanel"],
+      "aksi": [
+        { "trigger": "On Page Load", "action": "amsMuatGeo" },
+        { "trigger": "On Page Load", "action": "amsMuatAbsensi" }
+      ],
+      "catatan": "AmsAttendancePanel membuka AmsSelfieCamera sendiri lewat Navigator.push; tidak perlu halaman kamera terpisah."
+    },
+    {
+      "nama": "Notifikasi",
+      "rute": "/notifikasi",
+      "widget": ["AmsTopBar", "AmsNotificationList"],
+      "aksi": [{ "trigger": "On Page Load", "action": "amsMuatAbsensi" }],
+      "catatan": "Kotak masuk diturunkan dari absensi + hak modul RBAC. Push realtime per-peran menyusul di fase 3 blueprint."
+    },
+    {
+      "nama": "Profil",
+      "rute": "/profil",
+      "widget": ["AmsTopBar", "AmsProfilePanel"],
+      "aksi": [],
+      "catatan": "AmsProfilePanel menangani ganti sandi dan logout, lalu navigasi ke /login."
+    }
+  ],
+  "api": {
+    "baseUrlDefault": "http://10.0.2.2:3000",
+    "catatan": "10.0.2.2 adalah alias loopback host dari emulator Android. Untuk perangkat fisik pakai IP LAN atau domain HTTPS backend AMS. Ubah lewat state amsState.apiBaseUrl (mis. dari halaman pengaturan atau nilai awal App State).",
+    "endpoints": [
+      { "method": "POST", "path": "/api/auth/login", "auth": false, "body": { "username": "String", "password": "String" }, "respons": "{user, role, permissions, token, expiresAt}" },
+      { "method": "GET", "path": "/api/auth/me", "auth": true, "respons": "{user, role, permissions, expiresAt}" },
+      { "method": "POST", "path": "/api/auth/logout", "auth": true, "respons": "{ok}" },
+      { "method": "POST", "path": "/api/auth/change-password", "auth": true, "body": { "currentPassword": "String", "newPassword": "String (min 6)" }, "respons": "{ok, pesan}" },
+      { "method": "GET", "path": "/api/geo/locations", "auth": true, "respons": "{lokasi:[{id,nama,lat,lon,radiusMeter}], akurasiMaksMeter}" },
+      { "method": "POST", "path": "/api/attendance/clock-in", "auth": true, "body": { "lat": "double", "lon": "double", "akurasiMeter": "int", "foto": "dataURL base64", "deviceId": "String", "idempotencyKey": "UUID", "mockLocation": "bool" }, "respons": "201 {record, geofence, revision} | 200 {sudahAda:true} | 400 {pesan, geofence?} | 409 sudah absen" },
+      { "method": "POST", "path": "/api/attendance/clock-out", "auth": true, "body": "sama dengan clock-in", "respons": "200 {record, geofence, revision}" },
+      { "method": "GET", "path": "/api/attendance/today", "auth": true, "respons": "{record|null}" },
+      { "method": "GET", "path": "/api/attendance/history", "auth": true, "respons": "{records:[...]} (60 terbaru, desc)" },
+      { "method": "GET", "path": "/api/attendance/photo/{hash}.{ext}", "auth": true, "respons": "bytes JPEG/PNG; wajib header Authorization" }
+    ]
+  },
+  "aturanBisnis": {
+    "jamMulaiKerja": ["07:00", "08:00", "15:00", "23:00"],
+    "toleransiKeterlambatanMenit": 10,
+    "potonganPerJamTerlambat": 25000,
+    "ambangAcuanTerdekatMenit": 120,
+    "akurasiGpsMaksMeter": 50,
+    "fotoMaksByte": 5242880,
+    "geofenceDefault": { "id": "LOC-PUSAT", "nama": "Kantor Pusat", "lat": -6.2964, "lon": 106.8164, "radiusMeter": 150 },
+    "catatan": "Jam dan status final selalu diputuskan server; perhitungan klien hanya pratinjau."
+  }
+}

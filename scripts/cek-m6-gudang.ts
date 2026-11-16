@@ -569,10 +569,13 @@ const isiWarehouse = fs.readFileSync(
   path.join(akar, 'src/components/modules/operations/WarehouseModule.tsx'),
   'utf8'
 );
+const jumlahTabGudang = (isiWarehouse.match(/^\s*\{ id: '/gm) || []).length;
+const angkaPengantarGudang = Number(/(\d+) kelompok kerja/.exec(isiWarehouse)?.[1] ?? -1);
 cek(
-  'UI2 WarehouseModule memuat 12 kelompok kerja dengan tab ke-12 bernama Kemenkes RI',
-  isiWarehouse.includes('12 kelompok kerja') &&
+  'UI2 WarehouseModule pengantar menyebut jumlah kelompok kerja yang benar serta memuat tab Kemenkes RI & Master Data ERP',
+  angkaPengantarGudang === jumlahTabGudang &&
     isiWarehouse.includes("label: 'Kemenkes RI'") &&
+    isiWarehouse.includes("label: 'Master Data ERP'") &&
     !isiWarehouse.includes('Gerbang Pemerintah')
 );
 

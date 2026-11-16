@@ -26,7 +26,8 @@ const LABEL_STATUS_STOK: Record<StatusStokFisik, string> = {
   RESERVED: 'RESERVED — Terkunci Pesanan Aktif',
   QUARANTINE: 'QUARANTINE — Isolasi Mutu / Recall',
   DAMAGED: 'DAMAGED — Rusak (Bad Stock)',
-  EXPIRED_LOCK: 'EXPIRED_LOCK — Terkunci Batas ED'
+  EXPIRED_LOCK: 'EXPIRED_LOCK — Terkunci Batas ED',
+  RECALL: 'RECALL — Dibekukan Penarikan Produk'
 };
 
 export default function DasborAuditTab({ dariAcuan, refreshTrigger = 0, onPilihTab, onPerubahanData }: Props) {

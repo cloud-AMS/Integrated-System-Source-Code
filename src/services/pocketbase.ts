@@ -78,6 +78,7 @@ import {
   SinkronisasiLkpp,
   KirimanSatuSehat,
   KonfigurasiGudang,
+  RiwayatEksporEReport,
   AuditInternalIso13485,
   AkunPengguna,
   RoleSistem
@@ -90,19 +91,25 @@ import {
   alokasiFEFOSadarKunci,
   bangunBundleFhir,
   bangunPayloadLkpp,
+  deviasiSuhu,
   entriAntreanLkpp,
   gerbangSuratJalan,
   hitungSelisihOpname,
   kodeBinDariLokasi,
+  lacakBatchSatuKlik,
+  minimalUmurEdBulanEfektif,
+  namaBerkasEReport,
   nilaiUmurStok,
   patchKunciStok,
+  statusUnitStok,
   susunRutePicking,
   tambahJejakPergerakan,
   tandaiGagalLkpp,
   usulkanPenyesuaianOpname,
   validasiKirimanSatuSehat,
   validasiPemindaian,
-  type EntriPergerakanBaru
+  type EntriPergerakanBaru,
+  type PeriodeEReport
 } from '../utils/gudang';
 import {
   type PenyimpanganJurnal,
@@ -208,7 +215,8 @@ import {
   INITIAL_KEJADIAN_SCANNER,
   INITIAL_SINKRONISASI_LKPP,
   INITIAL_KIRIMAN_SATU_SEHAT,
-  KONFIGURASI_GUDANG_AWAL
+  KONFIGURASI_GUDANG_AWAL,
+  INITIAL_RIWAYAT_EKSPOR_EREPOR
 } from '../data/initialData';
 import {
   INITIAL_COA,
@@ -2415,7 +2423,11 @@ class AMSDatabaseManager {
       daftarStok: this.getStokGudang(),
       jumlahDiminta: pesananLama.jumlah,
       namaAlkes: pesananLama.namaAlkes,
-      dari
+      dari,
+      daftarIzinEdar: this.getIzinEdar(),
+      minimalUmurEdBulan: minimalUmurEdBulanEfektif(konfigurasi),
+      daftarBin: this.getLokasiBin(),
+      daftarGudang: this.getGudangFisik()
     });
     if (alokasi.sisaKekurangan > 0) {
       const sebab = `Alokasi FEFO baru ${alokasi.totalDiambil} dari ${pesananLama.jumlah} unit; ${alokasi.dilewati
@@ -2702,16 +2714,17 @@ class AMSDatabaseManager {
     );
   }
 
-  /** Kunci karantina (aturan 2): batch keluar dari pilihan FEFO tanpa berpindah rak. */
-  public kunciStokKarantina(id: string, alasan: string) {
+  /** Kunci karantina (aturan 2): batch keluar dari pilihan FEFO tanpa berpindah rak.
+   * Status RECALL dipakai pembekuan satu klik pada alur penarikan produk (Tahap 4). */
+  public kunciStokKarantina(id: string, alasan: string, status: 'QUARANTINE' | 'RECALL' = 'QUARANTINE') {
     const current = this.getStokGudang();
     const lama = current.find((s) => s.id === id);
     if (!lama) return null;
-    const patch = patchKunciStok(lama, alasan);
+    const patch = patchKunciStok(lama, alasan, new Date(), status);
     this.saveStokGudang(current.map((s) => (s.id === id ? { ...s, ...patch } : s)));
     this.auditGudang(
       'Karantina & Recall',
-      'Penguncian batch pada kartu stok',
+      status === 'RECALL' ? 'Pembekuan batch ke zona RECALL' : 'Penguncian batch pada kartu stok',
       `${lama.kodeSKU}/${lama.nomorBatch}`,
       [
         { kolom: 'statusStok', nilaiLama: lama.statusStok ?? 'AVAILABLE', nilaiBaru: patch.statusStok },
@@ -2721,6 +2734,105 @@ class AMSDatabaseManager {
       'PJT / QA Staff'
     );
     return patch;
+  }
+
+  /** Tahap 1 — keputusan PJT atas stok karantina: release memindahkan ke zona RELEASED,
+   * reject memindahkan ke bad stock. Hanya peran ber-hak approve yang boleh memanggil ini. */
+  public putusanPjtKarantina(
+    stokId: string,
+    putusan: 'RELEASE' | 'REJECT',
+    petugas = { pengguna: 'PJT / QA Staff', peran: 'Regulatory Affairs' },
+    dari: Date = new Date()
+  ) {
+    const current = this.getStokGudang().map((s) => ({ ...s }));
+    const stok = current.find((s) => s.id === stokId);
+    if (!stok) return { boleh: false, keterangan: 'Kartu stok tidak ditemukan' };
+    if (statusUnitStok(stok) !== 'QUARANTINE')
+      return { boleh: false, keterangan: `Hanya stok QUARANTINE yang menunggu putusan PJT (kini ${statusUnitStok(stok)})` };
+    const rilis = putusan === 'RELEASE';
+    stok.statusStok = rilis ? 'AVAILABLE' : 'DAMAGED';
+    stok.tanggalDikunci = undefined;
+    stok.alasanKunci = undefined;
+    this.saveStokGudang(current);
+    this.catatPergerakan({
+      waktu: this.labelWaktu(dari),
+      kodeSKU: stok.kodeSKU,
+      namaAlkes: stok.namaAlkes,
+      nomorBatch: stok.nomorBatch,
+      dariBin: stok.binId ?? this.titikDock(stok.gudangId),
+      keBin: stok.binId ?? this.titikDock(stok.gudangId),
+      jumlah: stok.jumlahStok,
+      satuan: stok.satuan,
+      tipe: rilis ? 'QC Release' : 'Karantina',
+      tipeTrx: rilis ? 'QC_RELEASE' : 'QC_REJECT',
+      disetujuiPjt: petugas.pengguna,
+      pengguna: petugas.pengguna,
+      peran: petugas.peran,
+      dokumenRujukan: `QC/${dari.getFullYear()}/${stok.nomorBatch}`,
+      alasan: rilis
+        ? `PJT meluluskan batch ${stok.nomorBatch}: dokumen CoA/NIE lengkap, stok pindah ke zona RELEASED dan terlihat Sales.`
+        : `PJT menolak batch ${stok.nomorBatch}: barang dipindah ke bad stock menunggu retur/pemusnahan.`
+    });
+    this.auditGudang(
+      'Karantina & Recall',
+      rilis ? `Approve & Release PJT atas batch ${stok.nomorBatch}` : `Reject PJT atas batch ${stok.nomorBatch}`,
+      `${stok.kodeSKU}/${stok.nomorBatch}`,
+      [{ kolom: 'statusStok', nilaiLama: 'QUARANTINE', nilaiBaru: stok.statusStok }],
+      petugas.pengguna
+    );
+    return { boleh: true, keterangan: rilis ? `${stok.nomorBatch} dirilis PJT ke zona RELEASED` : `${stok.nomorBatch} ditolak PJT ke bad stock` };
+  }
+
+  /** Tahap 4 — one-click traceability + pembekuan sisa stok batch recall ke zona RECALL. */
+  public bekukanRecallBatch(
+    nomorBatch: string,
+    alasan: string,
+    petugas = { pengguna: 'PJT / QA Staff', peran: 'Regulatory Affairs' },
+    dari: Date = new Date()
+  ) {
+    const hasil = lacakBatchSatuKlik({
+      nomorBatch,
+      daftarStok: this.getStokGudang(),
+      daftarPergerakan: this.getJejakPergerakan(),
+      daftarSuratJalan: this.getSuratJalan(),
+      daftarUnit: this.getUnitSerial(),
+      alasan,
+      dari
+    });
+    if (!hasil.patchBeku.length) return { ...hasil, boleh: false, keterangan: `Batch ${nomorBatch} tidak memiliki sisa stok di gudang` };
+    const current = this.getStokGudang().map((s) => ({ ...s }));
+    hasil.patchBeku.forEach((p) => {
+      const stok = current.find((s) => s.id === p.stokId);
+      if (!stok) return;
+      stok.statusStok = p.statusStok;
+      stok.tanggalDikunci = p.tanggalDikunci;
+      stok.alasanKunci = p.alasanKunci;
+      this.catatPergerakan({
+        waktu: this.labelWaktu(dari),
+        kodeSKU: stok.kodeSKU,
+        namaAlkes: stok.namaAlkes,
+        nomorBatch: stok.nomorBatch,
+        dariBin: stok.binId ?? this.titikDock(stok.gudangId),
+        keBin: stok.binId ?? this.titikDock(stok.gudangId),
+        jumlah: stok.jumlahStok,
+        satuan: stok.satuan,
+        tipe: 'Penarikan Recall',
+        disetujuiPjt: petugas.pengguna,
+        pengguna: petugas.pengguna,
+        peran: petugas.peran,
+        dokumenRujukan: `RECALL/${dari.getFullYear()}/${nomorBatch}`,
+        alasan
+      });
+    });
+    this.saveStokGudang(current);
+    this.auditGudang(
+      'Karantina & Recall',
+      `Traceability satu klik + pembekuan RECALL batch ${nomorBatch}`,
+      nomorBatch,
+      [{ kolom: 'jumlahBarisDibekukan', nilaiLama: '0', nilaiBaru: String(hasil.patchBeku.length) }],
+      petugas.pengguna
+    );
+    return { ...hasil, boleh: true };
   }
 
   /** Lepas kunci hanya boleh dilakukan rilis mutu; kartu kembali layak kirim dan FEFO memilihnya lagi. */
@@ -2814,8 +2926,14 @@ class AMSDatabaseManager {
 
   // Tab 4 & 5 — log suhu dan pengendalian hama dengan audit area
   public catatLogSuhu(item: LogSuhu) {
-    this.saveLogSuhu([item, ...this.getLogSuhu()].slice(0, 50));
-    this.auditGudang('Rantai Dingin', `Pembacaan sensor ${item.sensor}: ${item.suhu}°C / ${item.kelembaban}% (${item.status})`, item.id, undefined, 'Operator Gudang');
+    const konfigurasi = this.getKonfigurasiGudang();
+    const tercatat: LogSuhu = {
+      ...item,
+      isDeviasi: item.isDeviasi ?? deviasiSuhu(item.suhu, item.zona, konfigurasi),
+      dicatatOleh: item.dicatatOleh ?? 'Operator Gudang'
+    };
+    this.saveLogSuhu([tercatat, ...this.getLogSuhu()].slice(0, 50));
+    this.auditGudang('Rantai Dingin', `Pembacaan sensor ${item.sensor}: ${item.suhu}°C / ${item.kelembaban}% (${item.status})${tercatat.isDeviasi ? ' — DEVIASI' : ''}`, item.id, undefined, 'Operator Gudang');
   }
   public catatInspeksiHama(item: LogPestControl) {
     this.savePestControl([item, ...this.getPestControl()]);
@@ -2920,8 +3038,30 @@ class AMSDatabaseManager {
           statusStok: perluKarantina ? 'QUARANTINE' : 'AVAILABLE',
           qtyDipesan: 0,
           jalur: 'A',
+          tanggalProduksi: r.tanggalProduksi,
+          coaUrl: r.coaUrl,
           ...(perluKarantina ? { tanggalDikunci: waktu.toISOString().split('T')[0], alasanKunci } : {})
         });
+      }
+      if (r.daftarSerial?.length) {
+        const units = this.getUnitSerial().map((u) => ({ ...u }));
+        r.daftarSerial.forEach((serial) => {
+          if (units.some((u) => u.nomorSerial === serial)) return;
+          units.unshift({
+            id: this.idBerikut(units, 'USR-'),
+            nomorSerial: serial,
+            nomorBatch: r.nomorBatch,
+            namaAlkes: r.namaAlkes,
+            pelangganId: '',
+            nomorSalesOrder: '',
+            nomorInvoice: '',
+            tanggalKirim: '',
+            statusUnit: 'Di Gudang',
+            tahapSiklusHidup: 'Di Gudang',
+            statusErp: 'IN_STOCK'
+          });
+        });
+        this.saveUnitSerial(units);
       }
       this.catatPergerakan({
         waktu: this.labelWaktu(waktu),
@@ -2933,6 +3073,7 @@ class AMSDatabaseManager {
         jumlah: r.qtyDiterima,
         satuan: r.satuan,
         tipe: perluKarantina ? 'Karantina' : 'Penerimaan',
+        tipeTrx: perluKarantina ? 'QC_REJECT' : 'INBOUND',
         pengguna: petugas.pengguna,
         peran: petugas.peran,
         dokumenRujukan: dokumen.nomorTerima,
@@ -3026,6 +3167,38 @@ class AMSDatabaseManager {
     return baru;
   }
 
+  /** Tahap 3 — unggah bukti serah terima (POD): status DELIVERED + antrean e-Report Kemenkes. */
+  public unggahPodSuratJalan(
+    id: string,
+    pod: { buktiTerimaUrl: string; namaPenerimaPod: string; tanggalPod?: string },
+    petugas = { pengguna: 'Admin Logistik', peran: 'Operations & Technical' },
+    dari: Date = new Date()
+  ) {
+    const sj = this.getSuratJalan().find((s) => s.id === id);
+    if (!sj) return { boleh: false, keterangan: 'Surat jalan tidak ditemukan', antreEReport: false };
+    if (!['Dimuat', 'Terkirim'].includes(sj.status))
+      return { boleh: false, keterangan: `POD hanya untuk pengiriman yang sudah berangkat (kini ${sj.status})`, antreEReport: false };
+    if (!pod.buktiTerimaUrl.trim() || !pod.namaPenerimaPod.trim())
+      return { boleh: false, keterangan: 'Bukti tanda terima dan nama penerima wajib diisi', antreEReport: false };
+    const tanggalPod = pod.tanggalPod ?? this.labelWaktu(dari).slice(0, 10);
+    this.ubahSuratJalan(
+      id,
+      {
+        status: 'Diterima Penerima',
+        buktiTerimaUrl: pod.buktiTerimaUrl,
+        namaPenerimaPod: pod.namaPenerimaPod,
+        tanggalPod,
+        sudahEksporEReport: false
+      },
+      `POD diunggah (${pod.namaPenerimaPod}) — DELIVERED, masuk antrean e-Report Kemenkes`
+    );
+    this.auditGudang('Pengiriman Outbound', `Konfirmasi serah terima ${sj.nomorSuratJalan}`, sj.nomorSuratJalan, [
+      { kolom: 'status', nilaiLama: sj.status, nilaiBaru: 'Diterima Penerima' },
+      { kolom: 'tanggalPod', nilaiLama: sj.tanggalPod ?? '-', nilaiBaru: tanggalPod }
+    ], petugas.pengguna);
+    return { boleh: true, keterangan: `${sj.nomorSuratJalan} DELIVERED; transaksi masuk antrean data e-Report Kemenkes`, antreEReport: true };
+  }
+
   /** Susun rute picking atas surat jalan yang masih antre, memakai alokasi FEFO sadar-kunci. */
   public susunRuteSuratJalan(id: string, dari: Date = new Date()) {
     const suratJalan = this.getSuratJalan().find((s) => s.id === id);
@@ -3033,7 +3206,16 @@ class AMSDatabaseManager {
     const pesanan = this.getPenjualan().find((s) => s.id === suratJalan.penjualanId || s.nomorPesanan === suratJalan.nomorPesanan);
     if (!pesanan) return { boleh: false, keterangan: `Pesanan ${suratJalan.nomorPesanan} tidak ditemukan pada modul Sales` };
     const konfigurasi = this.getKonfigurasiGudang();
-    const alokasi = alokasiFEFOSadarKunci({ daftarStok: this.getStokGudang(), jumlahDiminta: pesanan.jumlah, namaAlkes: pesanan.namaAlkes, dari });
+    const alokasi = alokasiFEFOSadarKunci({
+      daftarStok: this.getStokGudang(),
+      jumlahDiminta: pesanan.jumlah,
+      namaAlkes: pesanan.namaAlkes,
+      dari,
+      daftarIzinEdar: this.getIzinEdar(),
+      minimalUmurEdBulan: minimalUmurEdBulanEfektif(konfigurasi),
+      daftarBin: this.getLokasiBin(),
+      daftarGudang: this.getGudangFisik()
+    });
     const rute = susunRutePicking({
       item: alokasi.usulan.map((u) => ({ binId: u.binId, nomorBatch: u.nomorBatch, qty: u.diambil })),
       daftarBin: this.getLokasiBin()
@@ -3306,6 +3488,48 @@ class AMSDatabaseManager {
       'Konfigurasi Gudang',
       this.bentangPerubahan(lama as unknown as Record<string, unknown>, patch as Record<string, unknown>)
     );
+  }
+
+  // Tab 12 — e-Report distribusi semesteran Alat Kesehatan Kemenkes RI
+  public getRiwayatEksporEReport(): RiwayatEksporEReport[] {
+    return this.getCollection<RiwayatEksporEReport>('gudang_ereport', INITIAL_RIWAYAT_EKSPOR_EREPOR);
+  }
+  public saveRiwayatEksporEReport(items: RiwayatEksporEReport[]) {
+    this.setCollection('gudang_ereport', items);
+  }
+  public catatEksporEReport(
+    params: { periode: PeriodeEReport; jumlahBaris: number; format: 'CSV' | 'XLS'; pengguna?: string },
+    dari: Date = new Date()
+  ) {
+    const daftar = this.getRiwayatEksporEReport();
+    const entri: RiwayatEksporEReport = {
+      id: this.idBerikut(daftar, 'ERP-'),
+      periode: params.periode.kode,
+      waktu: this.labelWaktu(dari),
+      pengguna: params.pengguna ?? 'Kepala Gudang',
+      jumlahBaris: params.jumlahBaris,
+      namaBerkas: namaBerkasEReport(params.periode.kode, params.format),
+      format: params.format
+    };
+    this.saveRiwayatEksporEReport([entri, ...daftar]);
+    const suratJalan = this.getSuratJalan().map((s) => ({ ...s }));
+    let ditandai = 0;
+    suratJalan.forEach((s) => {
+      const tanggal = (s.tanggalPod ?? s.tanggalTerbit).slice(0, 10);
+      if (s.status === 'Diterima Penerima' && tanggal >= params.periode.mulai && tanggal <= params.periode.akhir && !s.sudahEksporEReport) {
+        s.sudahEksporEReport = true;
+        ditandai += 1;
+      }
+    });
+    this.saveSuratJalan(suratJalan);
+    this.auditGudang(
+      'Kemenkes RI',
+      `Ekspor e-Report ${params.periode.kode} (${params.format}, ${params.jumlahBaris} baris)`,
+      entri.namaBerkas,
+      [{ kolom: 'suratJalanDitandaiTerekspor', nilaiLama: '0', nilaiBaru: String(ditandai) }],
+      entri.pengguna
+    );
+    return entri;
   }
 
   // Finance

@@ -7,8 +7,9 @@ import {
   TerimaBarang,
   UserRole
 } from '../../../../types';
-import { kodeBinDariLokasi, tentukanTempatSimpan } from '../../../../utils/gudang';
+import { kodeBinDariLokasi, statusUnitStok, tentukanTempatSimpan } from '../../../../utils/gudang';
 import {
+  BadgeCheck,
   CheckCircle2,
   ClipboardCheck,
   PackageCheck,
@@ -74,6 +75,14 @@ export default function PenerimaanInboundTab({
     void dbTick;
     return db.getAturanSimpan();
   }, [dbTick]);
+  const stokList = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const stokKarantina = useMemo(
+    () => stokList.filter((s) => statusUnitStok(s) === 'QUARANTINE'),
+    [stokList]
+  );
 
   const [filterPosting, setFilterPosting] = useState<'Semua' | 'Antre' | 'Sudah Posting'>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -98,7 +107,10 @@ export default function PenerimaanInboundTab({
     hasilQCMasuk: 'Karantina (Hold)' as TerimaBarang['hasilQCMasuk'],
     nomorLaporanQC: 'QC/INB/2024/019',
     binManual: '',
-    alasanManual: ''
+    alasanManual: '',
+    tanggalProduksi: '',
+    coaUrl: '',
+    daftarSerial: ''
   });
 
   // Form Evaluasi QC & Uji Fungsi
@@ -180,6 +192,9 @@ export default function PenerimaanInboundTab({
           qtyDitolak: Number(formBaru.qtyDitolak),
           satuan: formBaru.satuan,
           binTujuanId: rekomendasiPutAway.bin.id,
+          tanggalProduksi: formBaru.tanggalProduksi || undefined,
+          coaUrl: formBaru.coaUrl.trim() || undefined,
+          daftarSerial: formBaru.daftarSerial.split(',').map((s) => s.trim()).filter(Boolean),
           alasanPenolakan: Number(formBaru.qtyDitolak) > 0 ? 'Kemasan penyok saat inspeksi dock' : ''
         }
       ],
@@ -256,6 +271,17 @@ export default function PenerimaanInboundTab({
     segarkan();
   };
 
+  const putusPjt = (stok: StokGudang, putusan: 'RELEASE' | 'REJECT') => {
+    const hasil = db.putusanPjtKarantina(
+      stok.id,
+      putusan,
+      { pengguna: identitas.pengguna, peran: identitas.peran },
+      dariAcuan
+    );
+    setPesan({ tipe: hasil.boleh ? 'sukses' : 'tolak', teks: hasil.keterangan });
+    segarkan();
+  };
+
   const cetakLabelDokumen = (dok: TerimaBarang) => {
     db.ubahTerimaBarang(
       dok.id,
@@ -294,7 +320,7 @@ export default function PenerimaanInboundTab({
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
           label="Dokumen Penerimaan (GRN)"
           value={terimaList.length}
@@ -318,6 +344,12 @@ export default function PenerimaanInboundTab({
           value={terimaList.filter((t) => !!t.sudahDipostingKeStok).length}
           hint="Posting idempoten sekali-jalan dengan rantai hash"
           tone="emerald"
+        />
+        <Stat
+          label="QUARANTINE Menunggu PJT"
+          value={stokKarantina.length}
+          hint="Kartu stok tertahan gerbang Approve & Release"
+          tone={stokKarantina.length > 0 ? 'amber' : 'emerald'}
         />
       </div>
 
@@ -375,6 +407,13 @@ export default function PenerimaanInboundTab({
                         <div className="text-2xs text-slate-700 tabular-nums">
                           PO: <strong>{b.qtyDipesan}</strong> · Diterima: <strong>{b.qtyDiterima}</strong> · Ditolak: <strong className={b.qtyDitolak > 0 ? 'text-rose-700' : ''}>{b.qtyDitolak}</strong> {b.satuan}
                         </div>
+                        {(b.tanggalProduksi || b.coaUrl || (b.daftarSerial?.length ?? 0) > 0) && (
+                          <div className="text-2xs text-slate-500 font-mono">
+                            {b.tanggalProduksi ? `Produksi ${b.tanggalProduksi}` : ''}
+                            {b.coaUrl ? ` · CoA ${b.coaUrl}` : ''}
+                            {b.daftarSerial?.length ? ` · ${b.daftarSerial.length} serial` : ''}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </td>
@@ -454,11 +493,72 @@ export default function PenerimaanInboundTab({
         </div>
       </Panel>
 
+      {/* Tahap 1 — Gerbang Karantina: hanya PJT yang boleh Approve & Release ke zona RELEASED */}
+      <Panel
+        judul="Gerbang Karantina CDAKB — Putusan PJT (Approve & Release)"
+        keterangan="Setiap barang masuk otomatis ditahan pada zona QUARANTINE dan tidak terlihat Sales. Hanya Penanggung Jawab Teknis (PJT) yang dapat meluluskan batch ke zona RELEASED atau menolaknya ke bad stock; keputusan tercatat pada rantai hash pergerakan (QC_RELEASE / QC_REJECT)."
+      >
+        {stokKarantina.length === 0 ? (
+          <p className="text-xs text-slate-600">Tidak ada stok berstatus QUARANTINE — seluruh batch telah diputus PJT.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th className="py-2.5 px-4">SKU / Batch</th>
+                  <th className="py-2.5 px-4">Qty & Bin</th>
+                  <th className="py-2.5 px-4">Alasan Penahanan</th>
+                  <th className="py-2.5 px-4 text-right">Putusan PJT</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stokKarantina.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50">
+                    <td className="py-2.5 px-4">
+                      <div className="font-semibold text-slate-900">{s.namaAlkes}</div>
+                      <div className="text-2xs font-mono text-slate-600">{s.kodeSKU} · {s.nomorBatch} · ED {s.tanggalKedaluwarsa}</div>
+                    </td>
+                    <td className="py-2.5 px-4 tabular-nums text-slate-800">
+                      {s.jumlahStok} {s.satuan}
+                      <div className="text-2xs font-mono text-slate-500">{s.binId ?? '-'}</div>
+                    </td>
+                    <td className="py-2.5 px-4 text-2xs text-slate-600">
+                      {s.alasanKunci ?? 'Menunggu verifikasi dokumen CoA/NIE oleh PJT'}
+                      {s.tanggalDikunci && <div className="font-mono text-slate-500">Dikunci {s.tanggalDikunci}</div>}
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      {identitas.bolehVerifikasiPjt ? (
+                        <div className="inline-flex items-center gap-1.5">
+                          <button type="button" onClick={() => putusPjt(s, 'RELEASE')} className={tombolPrimerGudang}>
+                            <BadgeCheck className="w-3.5 h-3.5" />
+                            Approve & Release
+                          </button>
+                          <button type="button" onClick={() => putusPjt(s, 'REJECT')} className={tombolSekunder}>
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <Badge tone="amber">Menunggu PJT</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {!identitas.bolehVerifikasiPjt && stokKarantina.length > 0 && (
+          <p className="text-2xs text-slate-500 mt-2">
+            Peran {identitas.peran} tidak memiliki hak approve. Notifikasi putusan otomatis dikirim ke PJT; tombol Approve &amp; Release hanya aktif untuk peran PJT / QA Manager.
+          </p>
+        )}
+      </Panel>
+
       {/* Modal Catat Penerimaan Baru */}
       {modalBaru && (
         <Modal
           judul="Catat Penerimaan Barang Masuk (Inbound GRN)"
-          keterangan="Sistem mencocokkan kuantitas terhadap PO dan mengarahkan bin tujuan melalui aturan Directed Put-Away."
+          keterangan="Sistem mencocokkan kuantitas terhadap PO dan mengarahkan bin tujuan melalui aturan Directed Put-Away. Barang masuk otomatis berstatus QUARANTINE sampai PJT memberikan Approve & Release."
           onClose={() => setModalBaru(false)}
         >
           <form onSubmit={simpanDokumenInbound} className="space-y-3 text-xs">
@@ -546,6 +646,38 @@ export default function PenerimaanInboundTab({
                   <option value="Cold Chain (2°C - 8°C)">Cold Chain (2°C - 8°C)</option>
                   <option value="Suhu Kamar (< 30°C)">Suhu Kamar (&lt; 30°C)</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className={labelClass}>Tanggal Produksi (Batch)</label>
+                <input
+                  type="date"
+                  value={formBaru.tanggalProduksi}
+                  onChange={(e) => setFormBaru({ ...formBaru, tanggalProduksi: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Tautan Dokumen CoA</label>
+                <input
+                  type="text"
+                  value={formBaru.coaUrl}
+                  onChange={(e) => setFormBaru({ ...formBaru, coaUrl: e.target.value })}
+                  placeholder="/docs/coa/LOT-....pdf"
+                  className={`${inputClass} font-mono`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Nomor Serial (Produk SERIAL_NUMBER)</label>
+                <input
+                  type="text"
+                  value={formBaru.daftarSerial}
+                  onChange={(e) => setFormBaru({ ...formBaru, daftarSerial: e.target.value })}
+                  placeholder="SN-001, SN-002, ..."
+                  className={`${inputClass} font-mono`}
+                />
               </div>
             </div>
 

@@ -138,7 +138,9 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
     satuan: 'Unit',
     jalur: 'A' as 'A' | 'B',
     nomorSerial: '',
-    tanggalKedaluwarsa: '2027-12-31'
+    tanggalKedaluwarsa: '2027-12-31',
+    tanggalProduksi: '2024-05-01',
+    coaUrl: ''
   });
 
   // Modal Pindah Rak
@@ -230,6 +232,9 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
       qtyDipesan: 0,
       jalur: formTambah.jalur,
       ...(formTambah.jalur === 'B' && formTambah.nomorSerial.trim() ? { nomorSerial: formTambah.nomorSerial.trim().toUpperCase() } : {}),
+      tipeLacak: formTambah.jalur === 'B' ? 'SERIAL_NUMBER' : 'BATCH_ONLY',
+      ...(formTambah.tanggalProduksi ? { tanggalProduksi: formTambah.tanggalProduksi } : {}),
+      ...(formTambah.coaUrl.trim() ? { coaUrl: formTambah.coaUrl.trim() } : {}),
       rfidTagId: bin.rfidTagId
     };
 
@@ -478,7 +483,7 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
                     {j === 'Semua' ? 'Semua Jalur' : `Jalur ${j}`}
                   </button>
                 ))}
-                {(['Semua', 'AVAILABLE', 'QUARANTINE', 'DAMAGED', 'EXPIRED_LOCK'] as const).map((st) => (
+                {(['Semua', 'AVAILABLE', 'QUARANTINE', 'DAMAGED', 'EXPIRED_LOCK', 'RECALL'] as const).map((st) => (
                   <button
                     key={st}
                     type="button"
@@ -524,6 +529,24 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
                             <div className="text-2xs font-mono font-semibold text-blue-800">SN: {item.nomorSerial}</div>
                           )}
                           <div className="text-2xs text-slate-500 font-mono">{item.nomorIzinEdar}</div>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                            <Badge tone={(item.tipeLacak ?? (item.jalur === 'B' ? 'SERIAL_NUMBER' : 'BATCH_ONLY')) === 'SERIAL_NUMBER' ? 'blue' : 'slate'}>
+                              {item.tipeLacak ?? (item.jalur === 'B' ? 'SERIAL_NUMBER' : 'BATCH_ONLY')}
+                            </Badge>
+                            {item.tanggalProduksi && (
+                              <span className="text-2xs text-slate-500 font-mono">Prod {item.tanggalProduksi}</span>
+                            )}
+                            {item.coaUrl && (
+                              <a
+                                href={item.coaUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-2xs font-semibold text-blue-700 underline"
+                              >
+                                CoA Batch
+                              </a>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-medium text-slate-800">{item.lokasiPenyimpanan}</div>
@@ -1034,6 +1057,28 @@ export default function StokFefoTab({ currentRole, dariAcuan, onPerubahanData }:
                   value={formTambah.tanggalKedaluwarsa}
                   onChange={(e) => setFormTambah({ ...formTambah, tanggalKedaluwarsa: e.target.value })}
                   className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Tanggal Produksi (inv_batches)</label>
+                <input
+                  type="date"
+                  value={formTambah.tanggalProduksi}
+                  onChange={(e) => setFormTambah({ ...formTambah, tanggalProduksi: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Tautan Dokumen CoA (Opsional)</label>
+                <input
+                  type="text"
+                  value={formTambah.coaUrl}
+                  onChange={(e) => setFormTambah({ ...formTambah, coaUrl: e.target.value })}
+                  placeholder="/docs/coa/LOT-2024-....pdf"
+                  className={`${inputClass} font-mono`}
                 />
               </div>
             </div>

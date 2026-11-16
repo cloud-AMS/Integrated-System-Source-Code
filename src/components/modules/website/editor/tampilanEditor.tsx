@@ -46,6 +46,37 @@ function KartuTemplate({ id }: { id: TampilanSitus['templateId'] }) {
       </div>
     );
   }
+  if (id === 'remedi-vscode') {
+    return (
+      <div className="h-28 w-full bg-[#0b1220] flex flex-col">
+        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-slate-800">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-400/80" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-300/80" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+          <span className="h-1.5 w-12 rounded bg-slate-700 ml-2" />
+          <span className="ml-auto h-1.5 w-6 rounded bg-[var(--brand)]" />
+        </div>
+        <div className="flex flex-1 min-h-0">
+          <div className="w-4 border-r border-slate-800 flex flex-col items-center gap-1.5 py-2">
+            <span className="w-1.5 h-1.5 rounded-sm bg-[var(--brand)]" />
+            <span className="w-1.5 h-1.5 rounded-sm bg-slate-700" />
+            <span className="w-1.5 h-1.5 rounded-sm bg-slate-700" />
+          </div>
+          <div className="flex-1 px-2.5 py-2">
+            <div className="h-1.5 w-14 rounded bg-[color-mix(in_srgb,var(--brand)_70%,white)]" />
+            <div className="h-2 w-20 rounded bg-slate-100 mt-1.5" />
+            <div className="h-1.5 w-16 rounded bg-slate-600 mt-1" />
+            <div className="h-1.5 w-12 rounded bg-slate-600 mt-1" />
+            <div className="flex gap-1 mt-2">
+              <span className="h-2 w-8 rounded-full bg-[var(--brand)]" />
+              <span className="h-2 w-8 rounded-full border border-slate-700" />
+            </div>
+          </div>
+          <div className="w-1/3 m-2 mt-2 rounded bg-slate-800/80 border border-slate-700" />
+        </div>
+      </div>
+    );
+  }
   if (id === 'remedi-minimal') {
     return (
       <div className="h-28 w-full bg-white flex flex-col">
@@ -106,7 +137,7 @@ export function EditorTampilan({ cfg, onGanti }: PropsEditorTampilan) {
         <p className="text-xs text-slate-500 mb-3">
           Menentukan gaya header, hero, dan footer. Konten & halaman tidak berubah — hanya kulitnya.
         </p>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {TEMPLATES_SITUS.map((t) => (
             <button
               key={t.id}

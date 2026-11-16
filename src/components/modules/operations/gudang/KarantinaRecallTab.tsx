@@ -8,8 +8,8 @@ import {
   UserRole
 } from '../../../../types';
 import {
-  dampakRecallBets,
   gerbangPenutupanRecall,
+  lacakBatchSatuKlik,
   statusTerkunci,
   statusUnitStok
 } from '../../../../utils/gudang';
@@ -86,7 +86,7 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
 
   const [betsCari, setBetsCari] = useState(() => db.getStokGudang()[0]?.nomorBatch ?? '');
   const [modalRecallBaru, setModalRecallBaru] = useState(false);
-  const [filterKarantina, setFilterKarantina] = useState<'Semua' | 'QUARANTINE' | 'DAMAGED' | 'EXPIRED_LOCK'>('Semua');
+  const [filterKarantina, setFilterKarantina] = useState<'Semua' | 'QUARANTINE' | 'RECALL' | 'DAMAGED' | 'EXPIRED_LOCK'>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
 
   const [formRecall, setFormRecall] = useState({
@@ -106,19 +106,21 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
     onPerubahanData();
   };
 
-  // Analisis dampak recall real-time atas nomor batch yang dipilih
+  // Analisis dampak recall real-time atas nomor batch yang dipilih (Tahap 4: traceability satu klik)
   const evaluasiDampak = useMemo(() => {
     void dbTick;
     const bersih = betsCari.trim().toUpperCase();
-    const dampak = dampakRecallBets({
+    const dampak = lacakBatchSatuKlik({
       nomorBatch: bersih,
       daftarStok: stokList,
+      daftarPergerakan: db.getJejakPergerakan(),
       daftarSuratJalan: sjList,
-      daftarUnit: unitSerialList
+      daftarUnit: unitSerialList,
+      dari: dariAcuan
     });
     const ketelusuran = bersih ? db.cariKetelusuran(bersih) : null;
     return { bersih, dampak, ketelusuran };
-  }, [betsCari, stokList, sjList, unitSerialList, dbTick]);
+  }, [betsCari, stokList, sjList, unitSerialList, dariAcuan, dbTick]);
 
   const eksekusiKunciBetsRecall = () => {
     const { bersih, dampak, ketelusuran } = evaluasiDampak;
@@ -131,10 +133,13 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
       return;
     }
 
-    const alasan = `Recall Hold CDAKB atas batch ${bersih} — diblokir otomatis dari alokasi FEFO`;
-    dampak.barisTerkunci.forEach((b) => {
-      db.kunciStokKarantina(b.stokId, alasan);
-    });
+    const alasan = `Recall Hold CDAKB atas batch ${bersih} — dibekukan otomatis ke zona RECALL, diblokir dari alokasi FEFO`;
+    const beku = db.bekukanRecallBatch(
+      bersih,
+      alasan,
+      { pengguna: identitas.pengguna, peran: identitas.peran },
+      dariAcuan
+    );
 
     if (dampak.unitSerialTerdampak.length > 0) {
       const serialBaru = unitSerialList.map((u) =>
@@ -178,19 +183,19 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
 
     db.logAudit(
       'Gudang & Logistik — Karantina & Recall',
-      `Eksekusi kunci massal batch recall ${bersih}: ${dampak.totalUnitGudang} unit gudang dikarantina + antrean LKPP & SATUSEHAT`,
+      `Eksekusi kunci massal batch recall ${bersih}: ${dampak.totalUnitGudang} unit gudang dibekukan ke RECALL + antrean LKPP & SATUSEHAT`,
       bersih,
       identitas.pengguna,
       identitas.peran,
       [
-        { kolom: 'statusStok', nilaiLama: 'AVAILABLE', nilaiBaru: 'QUARANTINE' },
+        { kolom: 'statusStok', nilaiLama: 'AVAILABLE', nilaiBaru: 'RECALL' },
         { kolom: 'unitSerialTerdampak', nilaiLama: '-', nilaiBaru: `${dampak.unitSerialTerdampak.length} serial` }
       ]
     );
 
     setPesan({
       tipe: 'sukses',
-      teks: `Batch ${bersih} berhasil dikunci (${dampak.totalUnitGudang} unit di gudang), ${dampak.unitSerialTerdampak.length} nomor serial ditandai Ditarik (Recall), serta notifikasi LKPP & SATUSEHAT masuk antrean.`
+      teks: `${beku.keterangan}${beku.boleh ? '' : ' (tidak ada sisa stok gudang untuk dibekukan)'}. ${dampak.unitSerialTerdampak.length} nomor serial ditandai Ditarik (Recall); notifikasi LKPP & SATUSEHAT masuk antrean.`
     });
     segarkan();
   };
@@ -404,7 +409,7 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
         <Stat
           label="Baris Stok Terkunci"
           value={stokList.filter((s) => statusTerkunci(statusUnitStok(s))).length}
-          hint="QUARANTINE, DAMAGED & EXPIRED_LOCK diblokir dari FEFO"
+          hint="QUARANTINE, RECALL, DAMAGED & EXPIRED_LOCK diblokir dari FEFO"
           tone="amber"
         />
         <Stat
@@ -423,8 +428,8 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
 
       {/* Panel 1: Pelacak Dampak Batch & Kunci Recall Satu Klik */}
       <Panel
-        judul="Pelacak Dampak Batch & Kunci Karantina Recall Terpadu (Aturan §3.11)"
-        keterangan="Masukkan nomor batch untuk memetakan sisa fisik di bin gudang, unit serial alat berat, dan daftar fasyankes penerima pada surat jalan, lalu kunci serentak beserta antrean LKPP & FHIR SATUSEHAT."
+        judul="One-Click Traceability & Pembekuan RECALL Batch (Tahap 4 — Respons < 24 Jam)"
+        keterangan="Masukkan nomor batch untuk memetakan total pemasukan dari prinsipal, sisa fisik di bin gudang (dibekukan ke zona RECALL), unit serial alat berat, dan daftar lengkap fasyankes penerima beserta nomor surat jalan & tanggal kirim — lalu kunci serentak beserta antrean LKPP & FHIR SATUSEHAT."
       >
         <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 mb-4">
           <div className="flex-1">
@@ -457,8 +462,23 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
               className={tombolBahaya}
             >
               <Lock className="w-3.5 h-3.5" />
-              Kunci Batch Recall + Antrekan LKPP &amp; FHIR
+              Bekukan RECALL + Antrekan LKPP &amp; FHIR
             </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-4 text-xs">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <div className="text-2xs text-slate-500">Total Pemasukan Prinsipal (INBOUND)</div>
+            <div className="text-lg font-bold tabular-nums text-slate-900">{evaluasiDampak.dampak.totalMasuk} unit</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <div className="text-2xs text-slate-500">Sisa di Gudang (Dibekukan RECALL)</div>
+            <div className="text-lg font-bold tabular-nums text-rose-700">{evaluasiDampak.dampak.totalUnitGudang} unit</div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <div className="text-2xs text-slate-500">Beredar di Fasyankes (via SJ)</div>
+            <div className="text-lg font-bold tabular-nums text-blue-700">{evaluasiDampak.dampak.unitBeredar} unit</div>
           </div>
         </div>
 
@@ -687,7 +707,7 @@ export default function KarantinaRecallTab({ currentRole, dariAcuan, onPerubahan
           keterangan="Stok di bawah ini tidak pernah disentuh mesin FEFO sampai dilepas secara resmi oleh PJT/QA."
         >
           <div className="flex items-center gap-1.5 flex-wrap mb-3">
-            {(['Semua', 'QUARANTINE', 'DAMAGED', 'EXPIRED_LOCK'] as const).map((st) => (
+            {(['Semua', 'QUARANTINE', 'RECALL', 'DAMAGED', 'EXPIRED_LOCK'] as const).map((st) => (
               <button
                 key={st}
                 type="button"

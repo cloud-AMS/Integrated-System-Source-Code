@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useDbTick } from '../../../../hooks/useDbSync';
 import { db } from '../../../../services/pocketbase';
-import { PenjualanAlkes, StatusSuratJalan, SuratJalan } from '../../../../types';
-import { gerbangSuratJalan, susunRutePicking } from '../../../../utils/gudang';
+import { PenjualanAlkes, StatusSuratJalan, SuratJalan, UserRole } from '../../../../types';
+import { alokasiFEFOSadarKunci, gerbangSuratJalan, minimalUmurEdBulanEfektif, susunRutePicking } from '../../../../utils/gudang';
 import {
   CheckCircle2,
+  FileCheck2,
   MapPin,
   Printer,
   Route,
@@ -12,9 +13,10 @@ import {
   Truck
 } from 'lucide-react';
 import { Badge, Modal, Panel, Stat, chipFilter, inputClass, labelClass, tombolPrimerGudang, tombolSekunder, type Tone } from '../../../ui';
-import { waktuMutasiMonoton } from './ui';
+import { identitasPeranGudang, waktuMutasiMonoton } from './ui';
 
 interface Props {
+  currentRole?: UserRole;
   dariAcuan: Date;
   onOpenPrintModal?: () => void;
   onPerubahanData: () => void;
@@ -38,6 +40,7 @@ const toneStatusSj = (st: StatusSuratJalan): Tone => {
 };
 
 export default function PengirimanOutboundTab({
+  currentRole = 'kepala_gudang',
   dariAcuan,
   onOpenPrintModal,
   onPerubahanData
@@ -45,9 +48,11 @@ export default function PengirimanOutboundTab({
   const dbTick = useDbTick([
     'gudang_surat_jalan',
     'penjualan',
-    'lokasi_bin',
+    'gudang_bin',
+    'gudang_unit',
     'stok_gudang',
-    'konfigurasi_gudang'
+    'izin_edar',
+    'gudang_pengaturan'
   ]);
   const sjList = useMemo<SuratJalan[]>(() => {
     void dbTick;
@@ -65,6 +70,18 @@ export default function PengirimanOutboundTab({
     void dbTick;
     return db.getKonfigurasiGudang();
   }, [dbTick]);
+  const stokList = useMemo(() => {
+    void dbTick;
+    return db.getStokGudang();
+  }, [dbTick]);
+  const izinList = useMemo(() => {
+    void dbTick;
+    return db.getIzinEdar();
+  }, [dbTick]);
+  const gudangList = useMemo(() => {
+    void dbTick;
+    return db.getGudangFisik();
+  }, [dbTick]);
 
   const [filterStatus, setFilterStatus] = useState<'Semua' | StatusSuratJalan>('Semua');
   const [pesan, setPesan] = useState<{ tipe: 'sukses' | 'tolak'; teks: string } | null>(null);
@@ -79,6 +96,8 @@ export default function PengirimanOutboundTab({
     nomorPaketLkpp: '',
     catatan: ''
   });
+  const [targetPod, setTargetPod] = useState<SuratJalan | null>(null);
+  const [formPod, setFormPod] = useState({ buktiTerimaUrl: '', namaPenerimaPod: '', tanggalPod: '' });
 
   const segarkan = () => {
     onPerubahanData();
@@ -148,6 +167,14 @@ export default function PengirimanOutboundTab({
       }
     }
 
+    if (formManifes.status === 'Diterima Penerima' && !(targetManifes.buktiTerimaUrl && targetManifes.namaPenerimaPod)) {
+      setPesan({
+        tipe: 'tolak',
+        teks: 'Status DELIVERED (Diterima Penerima) hanya boleh melalui unggah bukti serah terima (POD). Gunakan tombol "Unggah POD" pada kartu surat jalan.'
+      });
+      return;
+    }
+
     db.ubahSuratJalan(
       targetManifes.id,
       {
@@ -164,6 +191,25 @@ export default function PengirimanOutboundTab({
     );
     setTargetManifes(null);
     setPesan({ tipe: 'sukses', teks: `Manifes & tahap pengiriman ${targetManifes.nomorSuratJalan || targetManifes.nomorPesanan} diperbarui.` });
+    segarkan();
+  };
+
+  const simpanPod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetPod) return;
+    const identitas = identitasPeranGudang(currentRole);
+    const hasil = db.unggahPodSuratJalan(
+      targetPod.id,
+      {
+        buktiTerimaUrl: formPod.buktiTerimaUrl.trim(),
+        namaPenerimaPod: formPod.namaPenerimaPod.trim(),
+        tanggalPod: formPod.tanggalPod || undefined
+      },
+      { pengguna: identitas.pengguna, peran: identitas.peran },
+      dariAcuan
+    );
+    setPesan({ tipe: hasil.boleh ? 'sukses' : 'tolak', teks: hasil.keterangan });
+    if (hasil.boleh) setTargetPod(null);
     segarkan();
   };
 
@@ -191,7 +237,7 @@ export default function PengirimanOutboundTab({
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
           label="Total Surat Jalan (DO)"
           value={sjList.length}
@@ -215,6 +261,12 @@ export default function PengirimanOutboundTab({
           value={sjList.filter((s) => s.statusEFaktur === 'Terbit').length}
           hint={`Dari ${sjList.length} dokumen pengiriman`}
           tone="emerald"
+        />
+        <Stat
+          label="DELIVERED Antre e-Report"
+          value={sjList.filter((s) => s.status === 'Diterima Penerima' && !s.sudahEksporEReport).length}
+          hint="POD lengkap, menunggu ekspor semesteran Kemenkes"
+          tone="blue"
         />
       </div>
 
@@ -298,6 +350,22 @@ export default function PengirimanOutboundTab({
                     daftarBin: binList
                   })
                 : null;
+            const pesananTerkait = pesananList.find(
+              (p) => p.id === sj.penjualanId || p.nomorPesanan === sj.nomorPesanan
+            );
+            const alasanBlokir =
+              sj.rute.length === 0 && pesananTerkait
+                ? alokasiFEFOSadarKunci({
+                    daftarStok: stokList,
+                    jumlahDiminta: pesananTerkait.jumlah,
+                    namaAlkes: pesananTerkait.namaAlkes,
+                    dari: dariAcuan,
+                    daftarIzinEdar: izinList,
+                    minimalUmurEdBulan: minimalUmurEdBulanEfektif(konfigurasi),
+                    daftarBin: binList,
+                    daftarGudang: gudangList
+                  }).dilewati
+                : [];
             return (
               <div key={sj.id} className="rounded-xl border border-slate-200 p-4 space-y-3 hover:border-slate-300 transition-colors">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -313,6 +381,11 @@ export default function PengirimanOutboundTab({
                       {sj.nomorPaketLkpp && (
                         <Badge tone={sj.statusSyncLkpp === 'Tersinkron' ? 'blue' : 'amber'}>
                           LKPP {sj.nomorPaketLkpp}: {sj.statusSyncLkpp}
+                        </Badge>
+                      )}
+                      {sj.status === 'Diterima Penerima' && (
+                        <Badge tone={sj.sudahEksporEReport ? 'emerald' : 'amber'}>
+                          e-Report: {sj.sudahEksporEReport ? 'Terekspor' : 'Antre'}
                         </Badge>
                       )}
                     </div>
@@ -351,6 +424,23 @@ export default function PengirimanOutboundTab({
                     >
                       Manifes & Tahap
                     </button>
+                    {['Dimuat', 'Terkirim'].includes(sj.status) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetPod(sj);
+                          setFormPod({
+                            buktiTerimaUrl: sj.buktiTerimaUrl ?? '',
+                            namaPenerimaPod: sj.namaPenerimaPod ?? '',
+                            tanggalPod: sj.tanggalPod ?? ''
+                          });
+                        }}
+                        className={tombolPrimerGudang}
+                      >
+                        <FileCheck2 className="w-3.5 h-3.5" />
+                        Unggah POD
+                      </button>
+                    )}
                     {onOpenPrintModal && sj.nomorSuratJalan && (
                       <button type="button" onClick={onOpenPrintModal} className={tombolSekunder}>
                         <span className="inline-flex items-center gap-1">
@@ -374,8 +464,17 @@ export default function PengirimanOutboundTab({
                       )}
                     </div>
                     {sj.rute.length === 0 ? (
-                      <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-900 text-2xs">
-                        Rute belum tersusun. Gerbang pengiriman menahan penerbitan Surat Jalan sampai alokasi FEFO mencukupi.
+                      <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-900 text-2xs space-y-1">
+                        <div>Rute belum tersusun. Gerbang pengiriman menahan penerbitan Surat Jalan sampai alokasi FEFO mencukupi.</div>
+                        {alasanBlokir.length > 0 && (
+                          <ul className="list-disc pl-4 space-y-0.5">
+                            {alasanBlokir.map((d) => (
+                              <li key={`${sj.id}-${d.nomorBatch}-${d.sebab}`}>
+                                <span className="font-mono font-semibold">{d.nomorBatch}</span> ({d.jumlah} unit): {d.sebab}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
@@ -401,6 +500,40 @@ export default function PengirimanOutboundTab({
                     {sj.catatan && <div className="text-slate-500">{sj.catatan}</div>}
                   </div>
                 </div>
+
+                {/* NIE, batch & ED wajib tercetak pada surat jalan (Tahap 3); POD menutup alur DELIVERED */}
+                {sj.rute.length > 0 && (
+                  <div className="flex flex-wrap gap-2 text-2xs">
+                    {sj.rute.map((langkah) => {
+                      const kartu = stokList.find((s) => s.binId === langkah.binId && s.nomorBatch === langkah.nomorBatch);
+                      return (
+                        <div
+                          key={`${sj.id}-nie-${langkah.urutan}`}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-mono tabular-nums text-slate-600"
+                        >
+                          <span className="font-bold text-slate-900">{langkah.nomorBatch}</span>
+                          {' · NIE '}{kartu?.nomorIzinEdar ?? '-'}
+                          {' · ED '}{kartu?.tanggalKedaluwarsa ?? '-'}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {sj.status === 'Diterima Penerima' && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-2xs text-emerald-900 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-semibold">POD (Bukti Serah Terima):</span>
+                    <span>{sj.namaPenerimaPod || '-'}</span>
+                    <span className="font-mono">{sj.tanggalPod || '-'}</span>
+                    {sj.buktiTerimaUrl && (
+                      <a href={sj.buktiTerimaUrl} target="_blank" rel="noreferrer" className="font-mono underline hover:text-emerald-700">
+                        {sj.buktiTerimaUrl}
+                      </a>
+                    )}
+                    <span className="text-emerald-700">
+                      {sj.sudahEksporEReport ? 'Sudah masuk ekspor e-Report Kemenkes' : 'Antre ekspor e-Report semesteran Kemenkes'}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -510,6 +643,61 @@ export default function PengirimanOutboundTab({
             <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
               <button type="button" onClick={() => setTargetManifes(null)} className={tombolSekunder}>Batal</button>
               <button type="submit" className={tombolPrimerGudang}>Simpan Perubahan</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal POD — Tahap 3: DELIVERED + antrean e-Report Kemenkes */}
+      {targetPod && (
+        <Modal
+          judul={`Unggah POD (Proof of Delivery) — ${targetPod.nomorSuratJalan || targetPod.nomorPesanan}`}
+          keterangan="Konfirmasi serah terima mengubah status menjadi DELIVERED (Diterima Penerima) dan mengantrekan transaksi ke e-Report distribusi semesteran Kemenkes RI."
+          onClose={() => setTargetPod(null)}
+        >
+          <form onSubmit={simpanPod} className="space-y-3 text-xs">
+            <div>
+              <label className={labelClass}>Tautan / Path Dokumen Bukti Tanda Terima</label>
+              <input
+                type="text"
+                value={formPod.buktiTerimaUrl}
+                onChange={(e) => setFormPod({ ...formPod, buktiTerimaUrl: e.target.value })}
+                placeholder="/docs/pod/SJ-CDAKB-2024-....pdf"
+                className={`${inputClass} font-mono`}
+                required
+              />
+              <p className="text-2xs text-slate-500 mt-1">
+                Berkas fisik disimpan di repositori dokumen perusahaan; isi path/URL yang dapat diaudit.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Nama Penerima (Stempel &amp; Tanda Tangan)</label>
+                <input
+                  type="text"
+                  value={formPod.namaPenerimaPod}
+                  onChange={(e) => setFormPod({ ...formPod, namaPenerimaPod: e.target.value })}
+                  placeholder="Contoh: dr. Hendra Wijaya (Kepala Instalasi Farmasi)"
+                  className={inputClass}
+                  required
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Tanggal Serah Terima</label>
+                <input
+                  type="date"
+                  value={formPod.tanggalPod}
+                  onChange={(e) => setFormPod({ ...formPod, tanggalPod: e.target.value })}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+              <button type="button" onClick={() => setTargetPod(null)} className={tombolSekunder}>Batal</button>
+              <button type="submit" className={tombolPrimerGudang}>
+                <FileCheck2 className="w-3.5 h-3.5" />
+                Konfirmasi DELIVERED
+              </button>
             </div>
           </form>
         </Modal>

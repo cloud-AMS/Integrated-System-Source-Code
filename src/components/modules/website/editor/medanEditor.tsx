@@ -231,13 +231,19 @@ function MedanGambar({
   const kunciLower = (keyMedan ?? '').toLowerCase();
   const labelLower = (label ?? '').toLowerCase();
 
-  let kelasKotak = 'w-full h-32 sm:h-38'; // Default landscape sedang (proporsional & tidak terlalu besar)
+  let kelasKotak = 'w-full aspect-[3/2]'; // Default sesuai rekomendasi 1200×800 (hero, galeri, profil)
   if (kunciLower.includes('favicon') || labelLower.includes('favicon')) {
-    kelasKotak = 'w-20 h-20'; // Favicon kotak kecil normal
+    kelasKotak = 'w-20 aspect-square'; // Favicon 64×64
   } else if (kunciLower.includes('logo') || labelLower.includes('logo')) {
-    kelasKotak = 'w-44 h-20'; // Logo memanjang horizontal proporsional
+    kelasKotak = kunciLower.includes('logo') ? 'w-44 aspect-[8/3]' : 'w-44 aspect-[2/1]'; // Logo identitas 400×150 / logo merek 400×200
   } else if (kunciLower.includes('produk') || labelLower.includes('persegi') || labelLower.includes('square')) {
-    kelasKotak = 'w-32 h-32 sm:w-36 sm:h-36 aspect-square'; // Produk / Persegi 1:1
+    kelasKotak = 'w-32 sm:w-36 aspect-square'; // Produk 1000×1000
+  } else if (labelLower.includes('banner')) {
+    kelasKotak = 'w-full aspect-[16/9]'; // Banner slide 1600×900
+  } else if (labelLower.includes('solusi')) {
+    kelasKotak = 'w-full aspect-[4/3]'; // Solusi 800×600
+  } else if (labelLower.includes('artikel') || labelLower.includes('sampul')) {
+    kelasKotak = 'w-full aspect-[1200/630]'; // Sampul artikel 1200×630
   }
 
   const pilihBerkas = async (berkas?: File) => {

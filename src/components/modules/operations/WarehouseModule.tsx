@@ -6,6 +6,7 @@ import {
   Calendar,
   ClipboardCheck,
   ClipboardList,
+  Database,
   Globe,
   MapPin,
   PackageCheck,
@@ -28,6 +29,7 @@ import OptimasiStokTab from './gudang/OptimasiStokTab';
 import ScannerRfidTab from './gudang/ScannerRfidTab';
 import KarantinaRecallTab from './gudang/KarantinaRecallTab';
 import GerbangPemerintahTab from './gudang/GerbangPemerintahTab';
+import MasterDataErpTab from './gudang/MasterDataErpTab';
 import { chipFilter } from '../../ui';
 import {
   GudangTabId,
@@ -60,7 +62,8 @@ const DAFTAR_TAB: {
   { id: 'optimasi', nomor: 9, label: 'Optimasi Stok (Min-Max & ROP)', ikon: TrendingUp },
   { id: 'scanner', nomor: 10, label: 'Scanner & RFID', ikon: Radio },
   { id: 'recall', nomor: 11, label: 'Karantina & Penarikan (Recall)', ikon: ShieldAlert },
-  { id: 'pemerintah', nomor: 12, label: 'Kemenkes RI', ikon: Globe }
+  { id: 'pemerintah', nomor: 12, label: 'Kemenkes RI', ikon: Globe },
+  { id: 'master-data', nomor: 13, label: 'Master Data ERP', ikon: Database }
 ];
 
 export default function WarehouseModule({
@@ -116,7 +119,7 @@ export default function WarehouseModule({
             Menjamin tata kelola penyimpanan alkes berizin, penegakan alokasi FEFO sadar-kunci (First Expired First Out), integritas rantai dingin (cold chain 2–8°C), ketertelusuran batch &amp; nomor serial alat berat, hingga sinkronisasi e-Katalog LKPP dan HL7 FHIR SATUSEHAT.
           </p>
           <p className="text-xs text-slate-500 mt-2 max-w-3xl leading-relaxed">
-            Cetak biru divisi operasional: 12 kelompok kerja (Dasbor Audit CDB, Struktur Multi-Gudang &amp; Bin, Stok &amp; FEFO Dual-Track + Ketertelusuran, Rantai Dingin, Pengendalian Hama, Penerimaan Inbound, Pengiriman Outbound, Opname Blind Count &amp; Hash Log, Optimasi Min-Max/ROP, Scanner &amp; RFID, Karantina &amp; Recall, serta Kemenkes RI).
+            Cetak biru divisi operasional: 13 kelompok kerja (Dasbor Audit CDB, Struktur Multi-Gudang &amp; Bin, Stok &amp; FEFO Dual-Track + Ketertelusuran, Rantai Dingin, Pengendalian Hama, Penerimaan Inbound, Pengiriman Outbound, Opname Blind Count &amp; Hash Log, Optimasi Min-Max/ROP, Scanner &amp; RFID, Karantina &amp; Recall, Kemenkes RI, serta Master Data ERP).
           </p>
         </div>
 
@@ -148,7 +151,7 @@ export default function WarehouseModule({
         </div>
       </div>
 
-      {/* Strip 12 Tab (Pola SalesModule, aksen Amber khas Operations) */}
+      {/* Strip 13 Tab (Pola SalesModule, aksen Amber khas Operations) */}
       <div className="flex items-center gap-1.5 border-b border-slate-200 text-xs overflow-x-auto">
         {DAFTAR_TAB.map((tab) => {
           const Ikon = tab.ikon;
@@ -220,6 +223,7 @@ export default function WarehouseModule({
 
       {activeTab === 'outbound' && (
         <PengirimanOutboundTab
+          currentRole={currentRole}
           dariAcuan={dariAcuan}
           onOpenPrintModal={onOpenPrintModal}
           onPerubahanData={picuSegarkan}
@@ -260,10 +264,13 @@ export default function WarehouseModule({
 
       {activeTab === 'pemerintah' && (
         <GerbangPemerintahTab
+          currentRole={currentRole}
           dariAcuan={dariAcuan}
           onPerubahanData={picuSegarkan}
         />
       )}
+
+      {activeTab === 'master-data' && <MasterDataErpTab dariAcuan={dariAcuan} />}
     </div>
   );
 }

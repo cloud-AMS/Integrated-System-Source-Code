@@ -47,6 +47,13 @@ export interface IzinEdarAlkes {
   status: 'Aktif' | 'Perpanjangan' | 'Menunggu Evaluasi' | 'Kedaluwarsa';
   statusPerpanjangan: 'Aman' | 'Harus Diperpanjang Segera' | 'Dalam Proses OSS';
   keterangan: string;
+  // --- Atribut mst_products (ERD CDAKB/e-Report): regulasi & syarat simpan per SKU ---
+  skuCode?: string;
+  aklAkd?: 'AKL' | 'AKD';
+  kondisiSimpan?: KondisiSimpanProduk;
+  suhuMinC?: number;
+  suhuMaxC?: number;
+  tipeLacak?: TipeLacakProduk;
 }
 
 export interface SertifikatPerusahaan {
@@ -187,7 +194,7 @@ export interface AuditInternalIso13485 {
 }
 
 // 4. Gudang & Logistik
-export type StatusStokFisik = 'AVAILABLE' | 'RESERVED' | 'QUARANTINE' | 'DAMAGED' | 'EXPIRED_LOCK';
+export type StatusStokFisik = 'AVAILABLE' | 'RESERVED' | 'QUARANTINE' | 'DAMAGED' | 'EXPIRED_LOCK' | 'RECALL';
 
 /** Trek jamak inventaris: A = alat habis pakai (batch & FEFO), B = alat berat (serial & perawatan). */
 export type JalurInventaris = 'A' | 'B';
@@ -215,6 +222,10 @@ export interface StokGudang {
   rfidTagId?: string;
   tanggalDikunci?: string;
   alasanKunci?: string;
+  // --- inv_batches / inv_stock_balances (ERD CDAKB) ---
+  tanggalProduksi?: string;
+  coaUrl?: string;
+  tipeLacak?: TipeLacakProduk;
 }
 
 export interface LogSuhu {
@@ -225,6 +236,9 @@ export interface LogSuhu {
   kelembaban: number;
   waktu: string;
   status: 'Normal' | 'Peringatan Suhu Tinggi' | 'Peringatan Suhu Rendah';
+  // --- qc_env_logs (ERD CDAKB): deviasi dihitung otomatis terhadap batas produk/zona ---
+  isDeviasi?: boolean;
+  dicatatOleh?: string;
 }
 
 export interface LogPestControl {
@@ -241,6 +255,19 @@ export interface LogPestControl {
 // Bentuk data mengikuti skema inventory_batches / inventory_serials / inventory_locations pada
 // cetak biru arsitek, tetapi dijalankan di atas koleksi lokal aplikasi sehingga setiap
 // pergerakan tetap tertangkap pada jejak audit Old Value / New Value.
+
+/** mst_locations.zone_status — zona QUARANTINE/REJECT/RECALL tertutup bagi Sales & picking. */
+export type StatusZonaCdakb = 'QUARANTINE' | 'RELEASED' | 'REJECT' | 'RETURN' | 'RECALL';
+/** mst_products.tracking_type — lacak per lot atau per unit serial. */
+export type TipeLacakProduk = 'BATCH_ONLY' | 'SERIAL_NUMBER';
+/** mst_products.storage_condition. */
+export type KondisiSimpanProduk = 'AMBIENT' | 'COOL' | 'COLD_CHAIN';
+/** mst_partners.partner_type. */
+export type TipeMitra = 'PRINCIPAL' | 'DISTRIBUTOR' | 'FASYANKES' | 'RETAIL';
+/** inv_serial_numbers.current_status. */
+export type StatusSerialErp = 'IN_STOCK' | 'SOLD' | 'RETURNED' | 'SCRAPPED';
+/** trx_stock_movements.trx_type — pemetaan kanonik untuk buku besar mutasi & e-Report. */
+export type TipeTrxErp = 'INBOUND' | 'QC_RELEASE' | 'QC_REJECT' | 'OUTBOUND_SALES' | 'RETURN_IN' | 'DESTRUCTION';
 
 export type TipeGudang =
   | 'Gudang Utama'
@@ -260,6 +287,7 @@ export interface GudangFisik {
   jumlahBin: number;
   isActive: boolean;
   catatan: string;
+  statusZona?: StatusZonaCdakb;
 }
 
 /** 1. Bin location tracking — kode Aisle-Row-Shelf-Bin mempercepat picking & putting-away. */
@@ -277,6 +305,7 @@ export interface LokasiBin {
   satuan: string;
   rfidTagId: string;
   jarakDariDockMeter: number;
+  statusZona?: StatusZonaCdakb;
 }
 
 /** 1 & 3. Directed put-away — aturan membaca atribut katalog lalu menentukan tujuan simpan. */
@@ -307,6 +336,10 @@ export interface BarisTerima {
   satuan: string;
   binTujuanId: string;
   alasanPenolakan: string;
+  // --- inv_batches: tanggal produksi & tautan CoA/CoC untuk audit ISO 13485 ---
+  tanggalProduksi?: string;
+  coaUrl?: string;
+  daftarSerial?: string[];
 }
 
 export type StatusPencocokanTerima =
@@ -379,6 +412,11 @@ export interface SuratJalan {
   statusSyncLkpp: 'Tidak Berlaku' | 'Belum Sinkron' | 'Antre' | 'Tersinkron' | 'Gagal';
   penanggungJawab: string;
   catatan: string;
+  // --- Proof of Delivery: unggah bukti terima -> DELIVERED -> antrean e-Report Kemenkes ---
+  buktiTerimaUrl?: string;
+  namaPenerimaPod?: string;
+  tanggalPod?: string;
+  sudahEksporEReport?: boolean;
 }
 
 /** 5. Stock opname — satu baris hitung fisik. */
@@ -418,7 +456,9 @@ export type TipePergerakan =
   | 'Karantina'
   | 'Pemusnahan'
   | 'Penyesuaian'
-  | 'Penarikan Recall';
+  | 'Penarikan Recall'
+  | 'QC Release'
+  | 'Retur Masuk';
 
 /** 5. Log pergerakan immutable: hash rantai membuat baris lama tidak bisa diubah diam-diam. */
 export interface JejakPergerakan {
@@ -438,6 +478,11 @@ export interface JejakPergerakan {
   alasan: string;
   hashSebelum: string;
   hash: string;
+  // --- trx_stock_movements: pemetaan tipe ERP & persetujuan PJT. Sengaja di luar bentuk
+  // kanonik hash agar rantai seed lama tetap terverifikasi (field tambahan, bukan pengubah). ---
+  tipeTrx?: TipeTrxErp;
+  disetujuiPjt?: string;
+  nomorSerial?: string;
 }
 
 /** 5. Min-max & reorder point per SKU sebagai pemicu notifikasi ke Purchasing. */
@@ -519,6 +564,35 @@ export interface KonfigurasiGudang {
   endpointLkpp: string;
   endpointSatuSehat: string;
   klienSatuSehatTerdaftar: boolean;
+  /** Batas minimal sisa umur ED yang diterima pelanggan (bulan); picking menolak di bawah ini. */
+  minimalUmurEdBulanPelanggan?: number;
+}
+
+/** Satu baris laporan distribusi semesteran e-Report Alat Kesehatan Kemenkes RI. */
+export interface BarisEReport {
+  periode: string; // mis. '2026-S1' (1 Jan – 30 Jun) / '2026-S2' (1 Jul – 31 Des)
+  nomorIzinEdar: string;
+  namaProduk: string;
+  tipeUkuran: string;
+  nomorBatch: string;
+  stokAwalPeriode: number;
+  jumlahPemasukan: number;
+  jumlahPenyaluran: number;
+  stokAkhirPeriode: number;
+  namaSaranaTujuan: string;
+  kodeSaranaWilayah: string;
+  catatanValidasi: string[];
+}
+
+/** Riwayat ekspor e-Report (jejak audit pelaporan semesteran). */
+export interface RiwayatEksporEReport {
+  id: string;
+  periode: string;
+  waktu: string;
+  pengguna: string;
+  jumlahBaris: number;
+  namaBerkas: string;
+  format: 'CSV' | 'XLS';
 }
 
 // 5. Teknisi & Layanan Purna Jual
@@ -567,6 +641,12 @@ export interface PemasokAlkes {
   skorEvaluasi: number; // 0 - 100
   tanggalEvaluasiTerakhir: string;
   kontak: string;
+  // --- mst_partners: identitas resmi sarana penyalur untuk pemetaan e-Report ---
+  tipeMitra?: TipeMitra;
+  kodeSaranaKemenkes?: string;
+  npwp?: string;
+  kodeProvinsi?: string;
+  kodeKota?: string;
 }
 
 export interface PurchaseOrderAlkes {
@@ -1079,6 +1159,12 @@ export interface PelangganB2B {
   tanggalJatuhTempoPiutang: string;
   termsOfPaymentHari: number;
   statusPelanggan: 'Aktif' | 'Non-aktif';
+  // --- mst_partners: kode sarana/RS Kemenkes (IDAK) + wilayah administratif e-Report ---
+  tipeMitra?: TipeMitra;
+  kodeSaranaKemenkes?: string;
+  npwp?: string;
+  kodeProvinsi?: string;
+  kodeKota?: string;
 }
 
 export type TahapProspek =
@@ -1223,6 +1309,7 @@ export interface UnitSerialAlkes {
   kalibrasiBerikutnya?: string;
   tanggalInstalasi?: string;
   kodeFasyankesSatuSehat?: string;
+  statusErp?: StatusSerialErp;
 }
 
 /** 5.2 Warranty & Instalasi Base */
@@ -1448,7 +1535,7 @@ export interface KonfigurasiSurat {
 // Beranda dari menu Website. Semua opsional pada tipe data — konfigurasi lama tanpa
 // field ini tetap sah (dinormalkan oleh tampilanEfektif di src/utils/tampilan.ts).
 
-export type TemplateSitus = 'remedi-klasik' | 'remedi-gelap' | 'remedi-minimal';
+export type TemplateSitus = 'remedi-klasik' | 'remedi-gelap' | 'remedi-minimal' | 'remedi-vscode';
 export type FontSitus = 'quicksand' | 'open-sans' | 'jetbrains-mono' | 'system';
 
 /** Seksi beranda yang bisa disusun ulang dari CMS (bagian dari PETA_HALAMAN.beranda). */
