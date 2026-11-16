@@ -8,5 +8,6 @@ coverage/
 .env*
 !.env.example
 /data/
+C:*AMS Integrated System*/
 *.qoder.site
 dev-dist/

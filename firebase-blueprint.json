@@ -1,0 +1,333 @@
+{
+  "entities": {
+    "PublicSiteDoc": {
+      "title": "PublicSiteDoc",
+      "description": "Public non-PII website configuration snapshot rendered on /web and login branding.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "config": {
+          "type": "object",
+          "description": "Published KonfigurasiSitus map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["id", "config", "updatedBy", "updatedAt", "ownerUid"]
+    },
+    "SyncEntryDoc": {
+      "title": "SyncEntryDoc",
+      "description": "Operational ERP collection entry synced natively to Firestore.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "value": {
+          "type": "object",
+          "description": "Wrapped payload object holding native Firestore maps or lists"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["key", "value", "version", "updatedBy", "updatedAt", "ownerUid"]
+    },
+    "RbacRoleDoc": {
+      "title": "RbacRoleDoc",
+      "description": "RBAC role definition and permission matrix.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "isSystem": {
+          "type": "boolean"
+        },
+        "permissions": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["id", "name", "description", "isSystem", "permissions", "updatedAt", "ownerUid"]
+    },
+    "RbacUserDoc": {
+      "title": "RbacUserDoc",
+      "description": "Admin-restricted RBAC user account persisted across re-publish.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9._-]+$"
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "roleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isHiddenDeveloper": {
+          "type": "boolean"
+        },
+        "passwordHash": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "fullName",
+        "email",
+        "roleId",
+        "department",
+        "isActive",
+        "isHiddenDeveloper",
+        "passwordHash",
+        "createdAt",
+        "updatedAt",
+        "ownerUid"
+      ]
+    },
+    "ArchiveConfigDoc": {
+      "title": "ArchiveConfigDoc",
+      "description": "Archived database configuration settings preserved across re-publish and driver switches.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "driver": {
+          "type": "string",
+          "enum": ["pocketbase", "firebase"]
+        },
+        "config": {
+          "type": "object"
+        },
+        "archivedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "archivedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": ["id", "driver", "config", "archivedBy", "archivedAt", "updatedAt", "ownerUid"]
+    },
+    "AdminMemberDoc": {
+      "title": "AdminMemberDoc",
+      "description": "Authorized Firebase administrator grant record.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "addedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "addedBy", "createdAt"]
+    },
+    "UserPublicProfileDoc": {
+      "title": "UserPublicProfileDoc",
+      "description": "Non-PII public profile metadata for authenticated Firebase user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "roleName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "roleName", "updatedAt"]
+    },
+    "UserPrivateInfoDoc": {
+      "title": "UserPrivateInfoDoc",
+      "description": "Isolated private PII profile document for authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/public_site/{docId}": {
+      "schema": { "$ref": "#/entities/PublicSiteDoc" },
+      "description": "Published non-PII website configuration snapshot for /web and landing page branding"
+    },
+    "/ams_sync_entries/{entryKey}": {
+      "schema": { "$ref": "#/entities/SyncEntryDoc" },
+      "description": "Persistent ERP collection entries mirrored across AI Studio re-publishes"
+    },
+    "/ams_rbac_roles/{roleId}": {
+      "schema": { "$ref": "#/entities/RbacRoleDoc" },
+      "description": "Persistent RBAC roles and permission matrices"
+    },
+    "/ams_rbac_users/{userId}": {
+      "schema": { "$ref": "#/entities/RbacUserDoc" },
+      "description": "Admin-only RBAC user accounts synced across re-publishes"
+    },
+    "/ams_archives/{archiveId}": {
+      "schema": { "$ref": "#/entities/ArchiveConfigDoc" },
+      "description": "Archived database configuration settings (PocketBase legacy & driver state)"
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMemberDoc" },
+      "description": "Authorized Firebase administrator UIDs"
+    },
+    "/users/{userId}/public/{docId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfileDoc" },
+      "description": "Split public user profile (no PII)"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfoDoc" },
+      "description": "Split private PII document accessible only to owner or admin"
+    }
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "driver": "pocketbase",
+  "archivedAt": "2026-11-16T10:12:00.000Z",
+  "archivedReason": "Fase pengembangan menggunakan Firebase Firestore agar seluruh perubahan (akun pengguna, RBAC, CMS website, dan data operasional) tetap tersimpan permanen lintas re-publish AI Studio.",
+  "pocketbase": {
+    "host": "127.0.0.1",
+    "port": 8091,
+    "url": "http://127.0.0.1:8091",
+    "proxyPath": "/api/ams-pb",
+    "allowedProxyRoutes": [
+      "GET /api/health",
+      "GET /api/realtime",
+      "GET /api/collections/<nama>/records"
+    ],
+    "binaryPathWindows": "C:\\pocketbase-ams\\pocketbase.exe",
+    "binaryPathLinux": "/opt/pocketbase-ams/pocketbase",
+    "dataDirWindows": "C:\\pocketbase-ams\\pb_data",
+    "dataDirLinux": "/opt/pocketbase-ams/pb_data",
+    "migrationFile": "pb_migrations/1735000000_ams_collections.js",
+    "version": "0.28.1",
+    "collectionsOperational": [
+      "stok_gudang",
+      "gudang_pengaturan",
+      "sales_unit_serial",
+      "sales_skema_harga",
+      "sales_kontrak",
+      "sales_rebate",
+      "izin_edar",
+      "penarikan_produk",
+      "sales_pengetahuan_produk",
+      "website_published"
+    ],
+    "collectionsMobileSync": [
+      "hris_karyawan",
+      "hris_shift",
+      "hris_absensi",
+      "hris_cuti",
+      "hris_slip_gaji",
+      "sales_pelanggan",
+      "sales_prospek",
+      "sales_kunjungan",
+      "sales_pra_order",
+      "penjualan",
+      "sales_tender",
+      "sales_pengetahuan_produk"
+    ]
+  },
+  "expressPersistentStore": {
+    "defaultDataDir": "./data",
+    "productionDataDirLinux": "/var/lib/ams-data",
+    "files": [
+      "app-state.json",
+      "rbac-db.json",
+      "website-published.json",
+      ".session-secret",
+      "db-driver.json"
+    ]
+  },
+  "bootstrapDefaults": {
+    "username": "dev.admin",
+    "fullName": "Langgo Bramandityo",
+    "email": "antraderyll@gmail.com",
+    "roleId": "Developer & IT Support"
+  },
+  "systemdUnit": "[Unit]\nDescription=PocketBase AMS Integrated System\nAfter=network.target\n\n[Service]\nType=simple\nUser=amsadmin\nWorkingDirectory=/opt/pocketbase-ams\nExecStart=/opt/pocketbase-ams/pocketbase serve --http=127.0.0.1:8091\nRestart=always\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target",
+  "nginxProxyBlock": "location /api/ams-pb/ {\n    proxy_pass http://127.0.0.1:8091/;\n    proxy_http_version 1.1;\n    proxy_set_header Host $host;\n    proxy_set_header Connection '';\n    proxy_buffering off;\n    proxy_read_timeout 3600s;\n}",
+  "caddyfile": "alkes.perusahaan-anda.co.id {\n    reverse_proxy localhost:3000\n    handle /api/ams-pb/* {\n        uri strip_prefix /api/ams-pb\n        reverse_proxy 127.0.0.1:8091\n    }\n}"
+}

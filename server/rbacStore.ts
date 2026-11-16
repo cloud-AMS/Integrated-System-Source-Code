@@ -700,6 +700,95 @@ export class ServerRbacStore {
     return this.issueSession(user, role, ip, userAgent, 'LOGIN_SUCCESS', `Login berhasil sebagai ${role.name}.`);
   }
 
+  public authenticateByVerifiedEmail(
+    email: string,
+    firebaseUid: string,
+    displayName: string,
+    ip: string,
+    userAgent: string
+  ):
+    | { ok: true; token: string; session: ServerSessionRecord; user: ServerUserPublic; role: RoleDefinition }
+    | { ok: false; status: number; message: string } {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      return { ok: false, status: 400, message: 'Email Google terverifikasi tidak ditemukan.' };
+    }
+
+    const bootstrappedAdminEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+    let user = this.state.users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
+
+    if (!user && cleanEmail === bootstrappedAdminEmail) {
+      const now = new Date().toISOString();
+      const configuredRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
+      const matchedRole =
+        resolveRoleByIdOrName(this.state.roles, configuredRole) ??
+        resolveRoleByIdOrName(this.state.roles, 'developer_it_support') ??
+        resolveRoleByIdOrName(this.state.roles, 'it_admin') ??
+        this.state.roles[0];
+      if (!matchedRole) {
+        return { ok: false, status: 500, message: 'Peran RBAC sistem tidak ditemukan.' };
+      }
+      const existingDev = this.state.users.find((u) => u.isHiddenDeveloper);
+      if (existingDev) {
+        existingDev.email = cleanEmail;
+        existingDev.updatedAt = now;
+        user = existingDev;
+      } else {
+        const username = (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+        user = {
+          id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
+          username,
+          fullName: displayName.trim() || (process.env.BOOTSTRAP_DEV_FULLNAME || 'Langgo Bramandityo').trim(),
+          email: cleanEmail,
+          roleId: matchedRole.id,
+          department: 'Developer & IT Support',
+          isActive: true,
+          isHiddenDeveloper: true,
+          passwordHash: `firebase_sso$${crypto.randomBytes(16).toString('hex')}`,
+          createdAt: now,
+          updatedAt: now
+        };
+        this.state.users.push(user);
+      }
+      this.persistState();
+    }
+
+    if (!user) {
+      this.recordAudit({
+        actorUsername: cleanEmail,
+        actorRole: '-',
+        action: 'FIREBASE_LOGIN_UNREGISTERED',
+        resource: 'auth',
+        status: 'DENIED',
+        ip,
+        detail: `Login Google ditolak: email "${cleanEmail}" belum terdaftar pada RBAC server.`
+      });
+      return {
+        ok: false,
+        status: 403,
+        message: `Akun Google "${cleanEmail}" belum terdaftar di RBAC AMS. Hubungi Administrator IT atau gunakan login username/sandi.`
+      };
+    }
+
+    if (!user.isActive) {
+      return { ok: false, status: 403, message: 'Akun Anda sedang dinonaktifkan oleh Administrator IT.' };
+    }
+
+    const role = this.state.roles.find((r) => r.id === user.roleId);
+    if (!role) {
+      return { ok: false, status: 403, message: 'Peran pengguna tidak ditemukan di konfigurasi RBAC server.' };
+    }
+
+    return this.issueSession(
+      user,
+      role,
+      ip,
+      userAgent,
+      'FIREBASE_SSO_LOGIN',
+      `Login terverifikasi via Google Firebase (${cleanEmail}, uid ${firebaseUid.slice(0, 8)}).`
+    );
+  }
+
   private resolveEffectiveRole(user: ServerUserRecord, role: RoleDefinition): RoleDefinition {
     if (!user.isHiddenDeveloper) return role;
     return {
@@ -1522,6 +1611,96 @@ export class ServerRbacStore {
       detail: `Akun "${user.username}" dihapus dari server.`
     });
     return { ok: true };
+  }
+
+  public listAllUsersForCloudSync(): ServerUserRecord[] {
+    return this.state.users.map((u) => ({ ...u }));
+  }
+
+  public hydrateFromCloud(input: {
+    roles?: RoleDefinition[];
+    users?: ServerUserRecord[];
+  }): { rolesApplied: number; usersApplied: number } {
+    let rolesApplied = 0;
+    let usersApplied = 0;
+
+    if (Array.isArray(input.roles)) {
+      for (const incomingRole of input.roles) {
+        if (!incomingRole?.id || !incomingRole?.name) continue;
+        const idx = this.state.roles.findIndex((r) => r.id === incomingRole.id);
+        if (idx === -1) {
+          this.state.roles.push({
+            id: incomingRole.id,
+            name: incomingRole.name,
+            description: incomingRole.description || '',
+            isSystem: Boolean(incomingRole.isSystem),
+            permissions: sanitizePermissions(incomingRole.permissions),
+            updatedAt: incomingRole.updatedAt || new Date().toISOString()
+          });
+          rolesApplied += 1;
+        } else {
+          const curTime = new Date(this.state.roles[idx].updatedAt || 0).getTime();
+          const incTime = new Date(incomingRole.updatedAt || 0).getTime();
+          if (incTime > curTime) {
+            this.state.roles[idx] = {
+              ...this.state.roles[idx],
+              name: incomingRole.name,
+              description: incomingRole.description || '',
+              permissions: sanitizePermissions(incomingRole.permissions),
+              updatedAt: incomingRole.updatedAt || new Date().toISOString()
+            };
+            rolesApplied += 1;
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(input.users)) {
+      for (const incomingUser of input.users) {
+        if (!incomingUser?.id || !incomingUser?.username || !incomingUser?.roleId) continue;
+        const idx = this.state.users.findIndex(
+          (u) => u.id === incomingUser.id || u.username.toLowerCase() === incomingUser.username.toLowerCase()
+        );
+        if (idx === -1) {
+          this.state.users.push({
+            id: incomingUser.id,
+            username: incomingUser.username.toLowerCase(),
+            fullName: incomingUser.fullName,
+            email: incomingUser.email || '',
+            roleId: incomingUser.roleId,
+            department: incomingUser.department || 'Umum',
+            isActive: incomingUser.isActive !== false,
+            isHiddenDeveloper: Boolean(incomingUser.isHiddenDeveloper),
+            passwordHash: incomingUser.passwordHash,
+            createdAt: incomingUser.createdAt || new Date().toISOString(),
+            updatedAt: incomingUser.updatedAt || new Date().toISOString()
+          });
+          usersApplied += 1;
+        } else {
+          const curTime = new Date(this.state.users[idx].updatedAt || 0).getTime();
+          const incTime = new Date(incomingUser.updatedAt || 0).getTime();
+          if (incTime > curTime) {
+            this.state.users[idx] = {
+              ...this.state.users[idx],
+              username: incomingUser.username.toLowerCase(),
+              fullName: incomingUser.fullName,
+              email: incomingUser.email || this.state.users[idx].email,
+              roleId: incomingUser.roleId,
+              department: incomingUser.department || this.state.users[idx].department,
+              isActive: incomingUser.isActive !== false,
+              passwordHash: incomingUser.passwordHash || this.state.users[idx].passwordHash,
+              updatedAt: incomingUser.updatedAt || new Date().toISOString()
+            };
+            usersApplied += 1;
+          }
+        }
+      }
+    }
+
+    if (rolesApplied > 0 || usersApplied > 0) {
+      this.persistState();
+    }
+    return { rolesApplied, usersApplied };
   }
 
   public listActiveSessions(currentSessionId?: string): ServerSessionSummary[] {

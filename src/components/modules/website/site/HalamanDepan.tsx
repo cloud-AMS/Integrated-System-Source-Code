@@ -9,6 +9,7 @@ import { db } from '../../../../services/pocketbase';
 import {
   ambilStatusSetupServer,
   buatAkunDeveloperAwalServer,
+  masukDenganGoogleFirebaseServer,
   masukDenganServer,
   resetKataSandiDeveloperServer,
   type SesiLogin
@@ -205,6 +206,20 @@ export function KartuMasuk({
     setGalat('');
     setMemproses(true);
     const hasil = await masukDenganServer(namaPengguna, kataSandi);
+    if (!hasil.ok) {
+      setGalat(hasil.pesan);
+      setMemproses(false);
+      return;
+    }
+    setMemproses(false);
+    onTerima(hasil.sesi);
+  };
+
+  const kirimLoginGoogle = async () => {
+    if (memproses) return;
+    setGalat('');
+    setMemproses(true);
+    const hasil = await masukDenganGoogleFirebaseServer();
     if (!hasil.ok) {
       setGalat(hasil.pesan);
       setMemproses(false);
@@ -581,6 +596,25 @@ export function KartuMasuk({
             <LogIn className="w-4 h-4" />
             {memproses ? 'Memverifikasi…' : 'Masuk'}
           </button>
+
+          <div className="relative py-1 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">atau</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void kirimLoginGoogle()}
+            disabled={memproses}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60"
+          >
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            Masuk dengan Google (Firebase Cloud)
+          </button>
+          <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+            Login Google menyinkronkan akun, peran RBAC, data CMS situs, dan transaksi ERP secara persisten ke Firebase Firestore lintas re-publish.
+          </p>
 
           {resetDevTersedia && (
             <button

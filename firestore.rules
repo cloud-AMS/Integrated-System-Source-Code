@@ -1,0 +1,287 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default-Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==================== GLOBAL HARDENED HELPERS ====================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'antraderyll@gmail.com';
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        isBootstrappedAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(uid) {
+      return isVerified() && request.auth.uid == uid;
+    }
+
+    // ==================== VALIDATION BLUEPRINTS ====================
+    function isValidPublicSite(data) {
+      return data.keys().hasAll(['id', 'config', 'updatedBy', 'updatedAt', 'ownerUid'])
+        && data.keys().hasOnly(['id', 'config', 'updatedBy', 'updatedAt', 'ownerUid'])
+        && isValidId(data.id)
+        && data.config is map
+        && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 120
+        && data.updatedAt is timestamp
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128;
+    }
+
+    function isValidSyncEntry(data) {
+      return data.keys().hasAll(['key', 'value', 'version', 'updatedBy', 'updatedAt', 'ownerUid'])
+        && data.keys().hasOnly(['key', 'value', 'version', 'updatedBy', 'updatedAt', 'ownerUid'])
+        && data.key is string && data.key.size() >= 1 && data.key.size() <= 80 && data.key.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.value is map
+        && data.version is int && data.version >= 1
+        && data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 120
+        && data.updatedAt is timestamp
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128;
+    }
+
+    function isValidRbacRole(data) {
+      return data.keys().hasAll(['id', 'name', 'description', 'isSystem', 'permissions', 'updatedAt', 'ownerUid'])
+        && data.keys().hasOnly(['id', 'name', 'description', 'isSystem', 'permissions', 'updatedAt', 'ownerUid'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.description is string && data.description.size() <= 500
+        && data.isSystem is bool
+        && data.permissions is map
+        && data.updatedAt is timestamp
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128;
+    }
+
+    function isValidRbacUser(data) {
+      return data.keys().hasAll(['id', 'username', 'fullName', 'email', 'roleId', 'department', 'isActive', 'isHiddenDeveloper', 'passwordHash', 'createdAt', 'updatedAt', 'ownerUid'])
+        && data.keys().hasOnly(['id', 'username', 'fullName', 'email', 'roleId', 'department', 'isActive', 'isHiddenDeveloper', 'passwordHash', 'createdAt', 'updatedAt', 'ownerUid'])
+        && isValidId(data.id)
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 32 && data.username.matches('^[a-z0-9._-]+$')
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.email is string && data.email.size() <= 160
+        && data.roleId is string && data.roleId.size() >= 1 && data.roleId.size() <= 64
+        && data.department is string && data.department.size() <= 120
+        && data.isActive is bool
+        && data.isHiddenDeveloper is bool
+        && data.passwordHash is string && data.passwordHash.size() >= 8 && data.passwordHash.size() <= 256
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128;
+    }
+
+    function isValidArchiveConfig(data) {
+      return data.keys().hasAll(['id', 'driver', 'config', 'archivedBy', 'archivedAt', 'updatedAt', 'ownerUid'])
+        && data.keys().hasOnly(['id', 'driver', 'config', 'archivedBy', 'archivedAt', 'updatedAt', 'ownerUid'])
+        && isValidId(data.id)
+        && data.driver is string && data.driver.size() >= 1 && data.driver.size() <= 32 && data.driver in ['pocketbase', 'firebase']
+        && data.config is map
+        && data.archivedBy is string && data.archivedBy.size() >= 1 && data.archivedBy.size() <= 120
+        && data.archivedAt is timestamp
+        && data.updatedAt is timestamp
+        && data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128;
+    }
+
+    function isValidAdminMember(data) {
+      return data.keys().hasAll(['uid', 'email', 'addedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'addedBy', 'createdAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.addedBy is string && data.addedBy.size() >= 1 && data.addedBy.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserPublic(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'roleName', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'roleName', 'updatedAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid == userId
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.roleName is string && data.roleName.size() >= 1 && data.roleName.size() <= 120
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'updatedAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid == userId
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && data.updatedAt is timestamp;
+    }
+
+    // ==================== COLLECTION RULES ====================
+    match /test/{docId} {
+      allow get: if isSignedIn() && isValidId(docId);
+    }
+
+    match /public_site/{docId} {
+      allow get: if isValidId(docId) && docId == 'published';
+      allow create: if isAdmin()
+        && isValidId(docId)
+        && docId == 'published'
+        && isValidPublicSite(incoming())
+        && incoming().id == docId
+        && incoming().ownerUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(docId)
+        && docId == 'published'
+        && isValidPublicSite(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['config', 'updatedBy', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(docId);
+    }
+
+    match /ams_sync_entries/{entryKey} {
+      allow get: if isVerified() && isValidId(entryKey) && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAdmin()
+        && isValidId(entryKey)
+        && isValidSyncEntry(incoming())
+        && incoming().key == entryKey
+        && incoming().ownerUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(entryKey)
+        && isValidSyncEntry(incoming())
+        && incoming().key == existing().key
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['value', 'version', 'updatedBy', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(entryKey);
+    }
+
+    match /ams_rbac_roles/{roleId} {
+      allow get: if isVerified() && isValidId(roleId) && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAdmin()
+        && isValidId(roleId)
+        && isValidRbacRole(incoming())
+        && incoming().id == roleId
+        && incoming().ownerUid == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(roleId)
+        && isValidRbacRole(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isSystem', 'permissions', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(roleId) && existing().isSystem == false;
+    }
+
+    match /ams_rbac_users/{userId} {
+      allow get: if isAdmin() && isValidId(userId);
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAdmin()
+        && isValidId(userId)
+        && isValidRbacUser(incoming())
+        && incoming().id == userId
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(userId)
+        && isValidRbacUser(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().isHiddenDeveloper == existing().isHiddenDeveloper
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'fullName', 'email', 'roleId', 'department', 'isActive', 'passwordHash', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(userId) && existing().isHiddenDeveloper == false;
+    }
+
+    match /ams_archives/{archiveId} {
+      allow get: if isVerified() && isValidId(archiveId) && (isAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.ownerUid == request.auth.uid);
+      allow create: if isAdmin()
+        && isValidId(archiveId)
+        && isValidArchiveConfig(incoming())
+        && incoming().id == archiveId
+        && incoming().ownerUid == request.auth.uid
+        && incoming().archivedAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(archiveId)
+        && isValidArchiveConfig(incoming())
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().archivedAt == existing().archivedAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['driver', 'config', 'archivedBy', 'updatedAt']);
+    }
+
+    match /admins/{uid} {
+      allow get: if isVerified() && isValidId(uid) && (request.auth.uid == uid || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isAdmin()
+        && isValidId(uid)
+        && isValidAdminMember(incoming())
+        && incoming().uid == uid
+        && incoming().createdAt == request.time;
+      allow delete: if isBootstrappedAdmin() && isValidId(uid) && uid != request.auth.uid;
+    }
+
+    match /users/{userId}/public/{docId} {
+      allow get: if isVerified() && isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.uid == request.auth.uid);
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidId(docId)
+        && isValidUserPublic(incoming(), userId)
+        && (isAdmin() || incoming().roleName == 'Karyawan (HRIS Self-Service)')
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isValidId(docId)
+        && isValidUserPublic(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'roleName', 'updatedAt'])) ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']))
+        );
+    }
+
+    match /users/{userId}/private/{docId} {
+      allow get: if isVerified() && isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin() || (isVerified() && resource.data.uid == request.auth.uid);
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidId(docId)
+        && isValidUserPrivate(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if (isOwner(userId) || isAdmin())
+        && isValidId(userId)
+        && isValidId(docId)
+        && isValidUserPrivate(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt']);
+    }
+  }
+}

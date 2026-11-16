@@ -6,6 +6,12 @@ import type {
   ServerUserPublic,
   UserRole
 } from '../types';
+import {
+  pullAllCloudStateFromFirestore,
+  signInWithGoogleFirebase,
+  signOutFirebase
+} from '../services/firebase';
+import { db } from '../services/pocketbase';
 
 const KUNCI_SESI = 'ams_alkes_sesi_login_v2';
 const KUNCI_SESI_LAMA = 'ams_alkes_sesi_login';
@@ -270,6 +276,82 @@ export async function ambilSesiServer(): Promise<SesiLogin | null> {
   }
 }
 
+export async function masukDenganGoogleFirebaseServer(): Promise<
+  { ok: true; sesi: SesiLogin } | { ok: false; pesan: string }
+> {
+  try {
+    const { idToken } = await signInWithGoogleFirebase();
+
+    // Pulihkan state dari Firestore lebih dulu agar container re-publish langsung memiliki user/roles/app-state terbaru
+    try {
+      const cloud = await pullAllCloudStateFromFirestore();
+      if (
+        Object.keys(cloud.entries).length > 0 ||
+        cloud.roles.length > 0 ||
+        cloud.users.length > 0 ||
+        cloud.pocketbaseArchive
+      ) {
+        await fetch('/api/firebase/hydrate', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken,
+            roles: cloud.roles,
+            users: cloud.users,
+            entries: cloud.entries,
+            activeDriver: cloud.pocketbaseArchive?.driver,
+            pocketbaseArchive: cloud.pocketbaseArchive?.config
+          })
+        });
+      }
+    } catch {
+      /* bila Firestore masih kosong pada pemakaian pertama, lanjutkan login & push awal setelah sesi terbit */
+    }
+
+    const res = await fetch('/api/auth/firebase-login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+    const data = (await res.json().catch(() => ({}))) as Partial<AuthResponsePayload> & { pesan?: string };
+    if (!res.ok || !data.user || !data.role) {
+      return {
+        ok: false,
+        pesan: data.pesan || 'Gagal masuk menggunakan akun Google Firebase.'
+      };
+    }
+    const sesi = petakanPayloadKeSesi(data as AuthResponsePayload);
+    simpanSesi(sesi);
+    void db.syncWithFirebaseCloud();
+    return { ok: true, sesi };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request')) {
+      return { ok: false, pesan: 'Login Google dibatalkan.' };
+    }
+    return {
+      ok: false,
+      pesan: 'Tidak dapat menyelesaikan autentikasi Google Firebase. Periksa izin pop-up browser atau koneksi.'
+    };
+  }
+}
+
+export async function hubungkanGoogleFirebaseUntukSync(): Promise<{ ok: boolean; pesan: string }> {
+  try {
+    await signInWithGoogleFirebase();
+    const res = await db.syncWithFirebaseCloud();
+    return { ok: res.ok, pesan: res.pesan };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('popup-closed-by-user')) {
+      return { ok: false, pesan: 'Penghubungan akun Google dibatalkan.' };
+    }
+    return { ok: false, pesan: msg || 'Gagal menghubungkan akun Google Firebase.' };
+  }
+}
+
 export async function keluarDariServer(): Promise<void> {
   const lokal = bacaSesi();
   try {
@@ -282,6 +364,7 @@ export async function keluarDariServer(): Promise<void> {
       credentials: 'include',
       headers
     });
+    await signOutFirebase().catch(() => {});
   } catch {
     /* tetap bersihkan sesi lokal walau jaringan gagal */
   } finally {

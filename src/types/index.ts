@@ -1885,6 +1885,21 @@ export interface ServerUserPublic {
   updatedAt: string;
 }
 
+export interface ServerUserRecord {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  roleId: string;
+  department: string;
+  isActive: boolean;
+  isHiddenDeveloper?: boolean;
+  passwordHash: string;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ServerSessionSummary {
   id: string;
   userId: string;

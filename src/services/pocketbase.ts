@@ -80,7 +80,9 @@ import {
   KonfigurasiGudang,
   AuditInternalIso13485,
   AkunPengguna,
-  RoleSistem
+  RoleSistem,
+  RoleDefinition,
+  ServerUserRecord
 } from '../types';
 import {
   AKUN_BAWAAN_SISTEM,
@@ -218,6 +220,20 @@ import {
   INITIAL_VALUASI_BATCH
 } from '../data/seedKeuangan';
 
+import {
+  attachFirestoreRealtimeSync,
+  authFirebase,
+  deleteSyncEntryFromFirestore,
+  fetchPublicSiteFromFirestore,
+  getFirebaseProjectInfo,
+  pullAllCloudStateFromFirestore,
+  pushArchiveConfigToFirestore,
+  pushPublicSiteToFirestore,
+  pushRbacSnapshotToFirestore,
+  pushSyncEntryToFirestore,
+  subscribeFirebaseAuthState
+} from './firebase';
+
 const PB_URL =
   (typeof window !== 'undefined' && (window as unknown as { __PB_URL__?: string }).__PB_URL__) ||
   (typeof window !== 'undefined' ? `${window.location.origin}/api/ams-pb` : 'http://127.0.0.1:8091');
@@ -299,6 +315,12 @@ class AMSDatabaseManager {
   private lastSyncError: string | null = null;
   private isOnlineBrowser: boolean =
     typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+  private activeDbDriver: 'firebase' | 'pocketbase' = 'firebase';
+  private firebaseUserInfo: { uid: string; email: string; displayName: string } | null = null;
+  private firebaseSyncedAt: string | null = null;
+  private firebaseSyncError: string | null = null;
+  private firebaseUnsubRealtime: (() => void) | null = null;
+  private pocketbaseArchiveConfig: Record<string, unknown> | null = null;
 
   constructor() {
     this.ratakanNamaPerusahaan();
@@ -306,8 +328,92 @@ class AMSDatabaseManager {
     this.muatAntreanSyncPersisten();
     this.pasangPendengarLintasTab();
     if (typeof window !== 'undefined') {
-      this.checkPBConnection();
+      void this.initDatabaseDriverAndFirebase();
     }
+  }
+
+  private async initDatabaseDriverAndFirebase() {
+    await this.muatKonfigurasiDriverServer();
+    subscribeFirebaseAuthState((fbUser) => {
+      if (fbUser && fbUser.emailVerified) {
+        this.firebaseUserInfo = {
+          uid: fbUser.uid,
+          email: fbUser.email || '',
+          displayName: fbUser.displayName || fbUser.email || 'Admin Firebase'
+        };
+        this.pasangRealtimeFirestore();
+      } else {
+        this.firebaseUserInfo = null;
+        if (this.firebaseUnsubRealtime) {
+          this.firebaseUnsubRealtime();
+          this.firebaseUnsubRealtime = null;
+        }
+      }
+      this.updateConnectionStatusLabel();
+    });
+
+    if (this.activeDbDriver === 'pocketbase') {
+      await this.checkPBConnection();
+    } else {
+      this.updateConnectionStatusLabel();
+    }
+  }
+
+  public async muatKonfigurasiDriverServer(): Promise<void> {
+    if (typeof window === 'undefined' || typeof fetch !== 'function') return;
+    try {
+      const token = this.getAuthTokenFromStorage();
+      const res = await fetch('/api/system/db-config', {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        activeDriver?: 'firebase' | 'pocketbase';
+        pocketbaseArchive?: Record<string, unknown>;
+      };
+      if (data.activeDriver === 'firebase' || data.activeDriver === 'pocketbase') {
+        this.activeDbDriver = data.activeDriver;
+      }
+      if (data.pocketbaseArchive) {
+        this.pocketbaseArchiveConfig = data.pocketbaseArchive;
+      }
+      this.updateConnectionStatusLabel();
+    } catch {
+      /* abaikan bila server belum siap */
+    }
+  }
+
+  private pasangRealtimeFirestore() {
+    if (typeof window === 'undefined') return;
+    if (this.firebaseUnsubRealtime) return;
+    if (!authFirebase.currentUser?.emailVerified) return;
+
+    this.firebaseUnsubRealtime = attachFirestoreRealtimeSync({
+      onEntriesChanged: (entries) => {
+        const changed: string[] = [];
+        for (const [key, entry] of Object.entries(entries)) {
+          if (this.pendingSyncKeys.has(key)) continue;
+          if (this.applyRemoteEntry(key, entry.value, undefined, true, false)) {
+            changed.push(key);
+          }
+        }
+        if (changed.length > 0) {
+          this.firebaseSyncedAt = new Date().toISOString();
+          this.emitRemoteUpdate(changed, 'firebase-firestore');
+        }
+      },
+      onRbacChanged: () => {
+        this.rbacActivityListeners.forEach((cb) => {
+          try {
+            cb();
+          } catch {
+            /* abaikan */
+          }
+        });
+      }
+    });
   }
 
   public getClientId(): string {
@@ -512,12 +618,18 @@ class AMSDatabaseManager {
           : 'Offline — Penyimpanan Lokal Aktif';
     } else if (this.activeSyncKeys.size > 0) {
       this.syncStateStatus = 'syncing';
-      this.connectionStatusText = 'Menyinkronkan Perubahan ke Server...';
+      this.connectionStatusText = 'Menyinkronkan Perubahan ke Server & Cloud...';
     } else if (this.pendingSyncKeys.size > 0) {
       this.syncStateStatus = this.lastSyncError ? 'error' : 'pending';
       this.connectionStatusText = this.lastSyncError
         ? `${this.pendingSyncKeys.size} Perubahan Tertunda (${this.lastSyncError})`
         : `${this.pendingSyncKeys.size} Perubahan Menunggu Sinkronisasi`;
+    } else if (this.activeDbDriver === 'firebase' && this.firebaseUserInfo) {
+      this.syncStateStatus = 'idle';
+      this.connectionStatusText = `Firebase Firestore Aktif (${this.firebaseUserInfo.email})`;
+    } else if (this.wsConnected && this.activeDbDriver === 'firebase') {
+      this.syncStateStatus = 'idle';
+      this.connectionStatusText = 'Mode Firebase — Hubungkan Google Sync agar Persisten Lintas Re-publish';
     } else if (this.wsConnected) {
       this.syncStateStatus = 'idle';
       this.connectionStatusText = 'Server Real-Time Sync Aktif (WebSocket Terhubung)';
@@ -535,6 +647,11 @@ class AMSDatabaseManager {
   }
 
   private async checkPBConnection() {
+    if (this.activeDbDriver !== 'pocketbase') {
+      this.isOnlinePocketBase = false;
+      this.updateConnectionStatusLabel();
+      return;
+    }
     try {
       const health = await pb.health.check();
       this.isOnlinePocketBase = Boolean(health && health.code === 200);
@@ -550,11 +667,23 @@ class AMSDatabaseManager {
   public getConnectionStatus() {
     const originUrl =
       typeof window !== 'undefined' ? `${window.location.origin}/api/sync/ws` : PB_URL;
+    const fbProject = getFirebaseProjectInfo();
     return {
-      isPocketBaseConnected: this.wsConnected || this.isOnlinePocketBase,
+      isPocketBaseConnected:
+        this.activeDbDriver === 'firebase'
+          ? Boolean(this.firebaseUserInfo) || this.wsConnected
+          : this.wsConnected || this.isOnlinePocketBase,
       isPocketBaseServerReachable: this.isOnlinePocketBase,
       isRealtimeSyncConnected: this.wsConnected,
       isServerSyncActive: Boolean(this.getAuthTokenFromStorage()) && this.isOnlineBrowser,
+      activeDbDriver: this.activeDbDriver,
+      firebaseConnected: Boolean(this.firebaseUserInfo),
+      firebaseEmail: this.firebaseUserInfo?.email || null,
+      firebaseProjectId: fbProject.projectId,
+      firebaseDatabaseId: fbProject.firestoreDatabaseId,
+      firebaseSyncedAt: this.firebaseSyncedAt,
+      firebaseSyncError: this.firebaseSyncError,
+      pocketbaseArchived: true,
       revision: this.serverRevision,
       lastSyncedAt: this.lastSyncedAt,
       clientId: this.clientTabId,
@@ -791,6 +920,11 @@ class AMSDatabaseManager {
           this.lastSyncedAt = new Date().toISOString();
           this.lastSyncError = null;
 
+          // Cerminkan juga ke Firebase Firestore bila mode pengembangan aktif & terautentikasi
+          if (this.activeDbDriver === 'firebase' && authFirebase.currentUser?.emailVerified) {
+            void this.mirrorOpToFirestore(key, op, payload?.version ?? this.serverVersions[key] ?? 1);
+          }
+
           // Hapus hanya bila belum ada mutasi baru yang masuk selama request berjalan
           if (this.latestSyncOp.get(key) === op) {
             this.latestSyncOp.delete(key);
@@ -888,7 +1022,11 @@ class AMSDatabaseManager {
         this.lastSyncedAt = new Date().toISOString();
         this.lastSyncError = null;
         for (const k of keys) {
-          if (this.latestSyncOp.get(k) === snapshotOps.get(k)) {
+          const snapOp = snapshotOps.get(k);
+          if (this.activeDbDriver === 'firebase' && snapOp && authFirebase.currentUser?.emailVerified) {
+            void this.mirrorOpToFirestore(k, snapOp, payload?.versions?.[k] ?? this.serverVersions[k] ?? 1);
+          }
+          if (this.latestSyncOp.get(k) === snapOp) {
             this.latestSyncOp.delete(k);
             this.pendingSyncKeys.delete(k);
             this.syncRetryCounts.delete(k);
@@ -1026,30 +1164,46 @@ class AMSDatabaseManager {
 
   public async hydratePublicSettingsFromServer(): Promise<string[]> {
     if (typeof window === 'undefined' || typeof fetch !== 'function') return [];
+    const changed: string[] = [];
     try {
       const res = await fetch('/api/sync/public-settings', { cache: 'no-store' });
-      if (!res.ok) return [];
-      const data = (await res.json()) as {
-        revision?: number;
-        entries?: Record<string, { value: unknown; version: number }>;
-      };
-      if (typeof data.revision === 'number') {
-        this.serverRevision = Math.max(this.serverRevision, data.revision);
-      }
-      const changed: string[] = [];
-      for (const [key, entry] of Object.entries(data.entries || {})) {
-        if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
-          changed.push(key);
+      if (res.ok) {
+        const data = (await res.json()) as {
+          revision?: number;
+          entries?: Record<string, { value: unknown; version: number }>;
+        };
+        if (typeof data.revision === 'number') {
+          this.serverRevision = Math.max(this.serverRevision, data.revision);
+        }
+        for (const [key, entry] of Object.entries(data.entries || {})) {
+          if (this.applyRemoteEntry(key, entry.value, entry.version, true)) {
+            changed.push(key);
+          }
         }
       }
-      if (changed.length > 0) {
-        this.lastSyncedAt = new Date().toISOString();
-        this.emitRemoteUpdate(changed, 'hydrate-public');
-      }
-      return changed;
     } catch {
-      return [];
+      /* abaikan kegagalan HTTP sementara */
     }
+
+    // Jika baru re-publish & snapshot server belum ada atau ingin membandingkan Firestore publik
+    if (this.activeDbDriver === 'firebase') {
+      try {
+        const pubSite = await fetchPublicSiteFromFirestore();
+        if (pubSite && pubSite.identitas && pubSite.hero) {
+          if (this.applyRemoteEntry('website_published', pubSite, undefined, true, !changed.includes('website_published'))) {
+            if (!changed.includes('website_published')) changed.push('website_published');
+          }
+        }
+      } catch {
+        /* abaikan bila Firestore publik belum ditulis atau offline */
+      }
+    }
+
+    if (changed.length > 0) {
+      this.lastSyncedAt = new Date().toISOString();
+      this.emitRemoteUpdate(changed, 'hydrate-public');
+    }
+    return changed;
   }
 
   public async syncFromServer(deltaOnly = false): Promise<string[]> {
@@ -4322,6 +4476,233 @@ class AMSDatabaseManager {
       };
     } finally {
       this.isInternalProvenanceOp = false;
+    }
+  }
+
+  private async mirrorOpToFirestore(key: string, op: SyncOp, version: number): Promise<void> {
+    if (!authFirebase.currentUser?.emailVerified) return;
+    const actor = this.firebaseUserInfo?.email || 'ams-admin';
+    try {
+      if (op.type === 'put') {
+        await pushSyncEntryToFirestore(key, op.value, version, actor);
+        if (key === 'website_published' && op.value && typeof op.value === 'object') {
+          await pushPublicSiteToFirestore(op.value as Record<string, unknown>, actor);
+        }
+      } else {
+        await deleteSyncEntryFromFirestore(key);
+      }
+      this.firebaseSyncedAt = new Date().toISOString();
+      this.firebaseSyncError = null;
+      this.updateConnectionStatusLabel();
+    } catch (err) {
+      this.firebaseSyncError = err instanceof Error ? err.message : 'Gagal sinkronisasi ke Firestore';
+      this.updateConnectionStatusLabel();
+    }
+  }
+
+  public async pushRbacSnapshotToFirebase(): Promise<void> {
+    if (!authFirebase.currentUser?.emailVerified) return;
+    const token = this.getAuthTokenFromStorage();
+    if (!token || typeof fetch !== 'function') return;
+    try {
+      const res = await fetch('/api/firebase/rbac-snapshot', {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { roles?: RoleDefinition[]; users?: ServerUserRecord[] };
+      await pushRbacSnapshotToFirestore(data.roles || [], data.users || []);
+      this.firebaseSyncedAt = new Date().toISOString();
+      this.firebaseSyncError = null;
+      this.updateConnectionStatusLabel();
+    } catch (err) {
+      this.firebaseSyncError = err instanceof Error ? err.message : 'Gagal sinkronisasi RBAC ke Firestore';
+      this.updateConnectionStatusLabel();
+    }
+  }
+
+  public async archivePocketBaseSettingsToCloud(): Promise<void> {
+    if (!authFirebase.currentUser?.emailVerified) return;
+    await this.muatKonfigurasiDriverServer();
+    if (!this.pocketbaseArchiveConfig) return;
+    const actor = this.firebaseUserInfo?.email || 'ams-admin';
+    await pushArchiveConfigToFirestore(
+      'pocketbase_legacy',
+      this.activeDbDriver,
+      this.pocketbaseArchiveConfig,
+      actor
+    );
+    this.firebaseSyncedAt = new Date().toISOString();
+    this.updateConnectionStatusLabel();
+  }
+
+  public async syncWithFirebaseCloud(): Promise<{
+    ok: boolean;
+    pulledEntries: number;
+    pushedEntries: number;
+    rolesSynced: number;
+    usersSynced: number;
+    pesan: string;
+  }> {
+    if (!authFirebase.currentUser?.emailVerified) {
+      return {
+        ok: false,
+        pulledEntries: 0,
+        pushedEntries: 0,
+        rolesSynced: 0,
+        usersSynced: 0,
+        pesan: 'Akun Google Firebase belum terhubung di browser ini.'
+      };
+    }
+
+    const token = this.getAuthTokenFromStorage();
+    const actor = this.firebaseUserInfo?.email || 'ams-admin';
+
+    try {
+      // 1. Tarik seluruh state yang ada di Firestore
+      const cloud = await pullAllCloudStateFromFirestore();
+      const idToken = await authFirebase.currentUser.getIdToken();
+
+      // 2. Pulihkan data Cloud ke server Express (apabila server habis restart / re-publish)
+      if (
+        (Object.keys(cloud.entries).length > 0 || cloud.roles.length > 0 || cloud.users.length > 0 || cloud.pocketbaseArchive) &&
+        typeof fetch === 'function'
+      ) {
+        await fetch('/api/firebase/hydrate', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            idToken,
+            roles: cloud.roles,
+            users: cloud.users,
+            entries: cloud.entries,
+            activeDriver: cloud.pocketbaseArchive?.driver,
+            pocketbaseArchive: cloud.pocketbaseArchive?.config
+          })
+        });
+      }
+
+      // 3. Tarik snapshot terbaru dari Express dan unggah entri lokal/server yang belum ada di Cloud
+      await this.syncFromServer(false);
+      let pushedEntries = 0;
+      let rolesSynced = 0;
+      let usersSynced = 0;
+
+      if (token && typeof fetch === 'function') {
+        const [stateRes, rbacRes] = await Promise.all([
+          fetch('/api/sync/state', { cache: 'no-store', credentials: 'include', headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/firebase/rbac-snapshot', { cache: 'no-store', credentials: 'include', headers: { Authorization: `Bearer ${token}` } })
+        ]);
+
+        if (stateRes.ok) {
+          const serverState = (await stateRes.json()) as {
+            entries?: Record<string, { value: unknown; version: number; updatedAt: string; updatedBy: string }>;
+          };
+          for (const [k, entry] of Object.entries(serverState.entries || {})) {
+            const cloudItem = cloud.entries[k];
+            const serverTime = new Date(entry.updatedAt || 0).getTime();
+            const cloudTime = cloudItem ? new Date(cloudItem.updatedAt || 0).getTime() : 0;
+            if (!cloudItem || serverTime > cloudTime) {
+              await pushSyncEntryToFirestore(k, entry.value, entry.version || 1, entry.updatedBy || actor);
+              if (k === 'website_published' && entry.value && typeof entry.value === 'object') {
+                await pushPublicSiteToFirestore(entry.value as Record<string, unknown>, entry.updatedBy || actor);
+              }
+              pushedEntries += 1;
+            }
+          }
+        }
+
+        if (rbacRes.ok) {
+          const rbacData = (await rbacRes.json()) as { roles?: RoleDefinition[]; users?: ServerUserRecord[] };
+          const pushed = await pushRbacSnapshotToFirestore(rbacData.roles || [], rbacData.users || []);
+          rolesSynced = pushed.rolesPushed;
+          usersSynced = pushed.usersPushed;
+        }
+      }
+
+      // 4. Pastikan arsip konfigurasi PocketBase selalu aman tersimpan di Firestore
+      await this.archivePocketBaseSettingsToCloud();
+
+      this.firebaseSyncedAt = new Date().toISOString();
+      this.firebaseSyncError = null;
+      this.updateConnectionStatusLabel();
+
+      return {
+        ok: true,
+        pulledEntries: Object.keys(cloud.entries).length,
+        pushedEntries,
+        rolesSynced,
+        usersSynced,
+        pesan: 'Sinkronisasi dua arah dengan Firebase Firestore selesai.'
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal sinkronisasi dengan Firebase Firestore';
+      this.firebaseSyncError = msg;
+      this.updateConnectionStatusLabel();
+      return {
+        ok: false,
+        pulledEntries: 0,
+        pushedEntries: 0,
+        rolesSynced: 0,
+        usersSynced: 0,
+        pesan: msg
+      };
+    }
+  }
+
+  public async switchDbDriver(driver: 'firebase' | 'pocketbase', pocketbaseUrl?: string): Promise<{ ok: boolean; pesan: string }> {
+    const token = this.getAuthTokenFromStorage();
+    if (!token || typeof fetch !== 'function') {
+      return { ok: false, pesan: 'Sesi login aktif diperlukan untuk mengganti driver database.' };
+    }
+    try {
+      const res = await fetch('/api/system/db-driver', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ driver, pocketbaseUrl })
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        activeDriver?: 'firebase' | 'pocketbase';
+        pocketbaseArchive?: Record<string, unknown>;
+        pesan?: string;
+      };
+      if (!res.ok) {
+        return { ok: false, pesan: data.pesan || 'Gagal mengalihkan driver database.' };
+      }
+      if (data.activeDriver) this.activeDbDriver = data.activeDriver;
+      if (data.pocketbaseArchive) this.pocketbaseArchiveConfig = data.pocketbaseArchive;
+      if (authFirebase.currentUser?.emailVerified && this.pocketbaseArchiveConfig) {
+        await pushArchiveConfigToFirestore(
+          'pocketbase_legacy',
+          this.activeDbDriver,
+          this.pocketbaseArchiveConfig,
+          this.firebaseUserInfo?.email || 'ams-admin'
+        ).catch(() => {});
+      }
+      if (this.activeDbDriver === 'pocketbase') {
+        await this.checkPBConnection();
+      } else {
+        this.isOnlinePocketBase = false;
+        this.updateConnectionStatusLabel();
+      }
+      return {
+        ok: true,
+        pesan:
+          driver === 'pocketbase'
+            ? 'Mode database dikembalikan ke PocketBase. Seluruh pengaturan arsip PocketBase aktif kembali.'
+            : 'Mode database dialihkan ke Firebase Firestore (fase pengembangan). Pengaturan PocketBase tetap aman diarsipkan.'
+      };
+    } catch {
+      return { ok: false, pesan: 'Tidak dapat menghubungi server untuk mengubah mode database.' };
     }
   }
 

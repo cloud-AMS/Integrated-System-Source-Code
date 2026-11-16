@@ -251,4 +251,35 @@ export class ServerDataSyncStore {
     this.persist();
     return this.state.revision;
   }
+
+  public hydrateFromCloud(
+    cloudEntries: Record<string, { value: unknown; version?: number; updatedAt?: string; updatedBy?: string }>
+  ): { appliedKeys: string[]; revision: number } {
+    const appliedKeys: string[] = [];
+    for (const [key, item] of Object.entries(cloudEntries)) {
+      if (!isValidSyncKey(key) || !item || item.value === undefined) continue;
+      const existing = this.state.entries[key];
+      const incomingTime = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+      const existingTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      const shouldApply =
+        !existing ||
+        (Number.isFinite(incomingTime) && incomingTime > existingTime) ||
+        ((item.version ?? 0) > (existing.version ?? 0) && incomingTime >= existingTime);
+
+      if (shouldApply) {
+        this.state.entries[key] = {
+          value: item.value,
+          version: Math.max((existing?.version ?? 0) + 1, item.version ?? 1),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          updatedBy: item.updatedBy || 'firebase-sync'
+        };
+        appliedKeys.push(key);
+      }
+    }
+    if (appliedKeys.length > 0) {
+      this.state.revision += 1;
+      this.persist();
+    }
+    return { appliedKeys, revision: this.state.revision };
+  }
 }
