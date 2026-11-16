@@ -1598,12 +1598,18 @@ class AMSDatabaseManager {
     return normalisasiManifest(this.getJson<unknown>(KUNCI_MANIFEST_DATA));
   }
 
-  public saveManifestData(manifest: ManifestAsalData, skipRemoteSync = false): void {
+  public saveManifestData(
+    manifest: ManifestAsalData,
+    skipRemoteSync = false,
+    notifyListeners = true
+  ): void {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_PREFIX + KUNCI_MANIFEST_DATA, JSON.stringify(manifest));
       }
-      this.notify(KUNCI_MANIFEST_DATA);
+      if (notifyListeners) {
+        this.notify(KUNCI_MANIFEST_DATA);
+      }
       if (!skipRemoteSync && !this.isApplyingRemote && !this.migrasiDraftAktif) {
         this.enqueueKeySync(KUNCI_MANIFEST_DATA, { type: 'put', value: manifest });
       }
@@ -1759,7 +1765,7 @@ class AMSDatabaseManager {
       items = this.getCollection<AuditInternalIso13485>('audit_internal_iso', defaultAudits);
       const seededIds = defaultAudits.map((a) => a.id);
       if (seededIds.length > 0 && manifest.seededAuditIds.length === 0) {
-        this.saveManifestData({ ...manifest, seededAuditIds: seededIds }, true);
+        this.saveManifestData({ ...manifest, seededAuditIds: seededIds }, true, false);
       }
     }
 
@@ -3687,7 +3693,9 @@ class AMSDatabaseManager {
         return;
       }
       localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
-      this.notify(key);
+      if (!this.migrasiDraftAktif) {
+        this.notify(key);
+      }
       if (!this.isApplyingRemote && !this.migrasiDraftAktif) {
         this.enqueueKeySync(key, { type: 'put', value: data });
       }
