@@ -5,6 +5,7 @@ import { hashPassword, ServerRbacStore } from '../server/rbacStore';
 
 interface CliOptions {
   hashOnly: boolean;
+  requestReset: boolean;
   username?: string;
   fullName?: string;
   email?: string;
@@ -13,11 +14,13 @@ interface CliOptions {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  const opts: CliOptions = { hashOnly: false };
+  const opts: CliOptions = { hashOnly: false, requestReset: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--hash-only' || arg === '-H') {
       opts.hashOnly = true;
+    } else if (arg === '--request-reset' || arg === '-R') {
+      opts.requestReset = true;
     } else if (arg === '--username' && argv[i + 1]) {
       opts.username = argv[++i];
     } else if (arg === '--fullname' && argv[i + 1]) {
@@ -35,6 +38,7 @@ AMS RBAC Developer Bootstrap CLI
 Penggunaan:
   npm run auth:bootstrap   [-- --username <user> --fullname "<Nama>" --email <email> --role <roleId>]
   npm run auth:hash        Menghasilkan hash scrypt untuk BOOTSTRAP_DEV_PASSWORD_HASH (tanpa menulis DB)
+  npm run auth:reset-dev   Mencabut sesi developer & membuat kode reset satu kali untuk form reset di web
 
 Environment variables:
   AMS_DATA_DIR             Direktori persisten data RBAC (default: ./data)
@@ -132,6 +136,24 @@ function promptSecret(label: string): Promise<string> {
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
 
+  if (opts.requestReset) {
+    const dataDir = path.resolve(process.env.AMS_DATA_DIR?.trim() || path.resolve(process.cwd(), 'data'));
+    const store = new ServerRbacStore(dataDir);
+    const res = store.initiateDeveloperPasswordReset();
+    if (!res.ok) {
+      console.error(`Galat: ${res.message}`);
+      process.exit(1);
+    }
+    console.log('\nReset kata sandi developer aktif:');
+    console.log(`  Username   : ${res.username}`);
+    console.log(`  Nama       : ${res.fullName}`);
+    console.log(`  Peran      : ${res.roleName}`);
+    console.log(`  Kode Reset : ${res.resetCode}`);
+    console.log(`  Berlaku s/d: ${res.expiresAt}`);
+    console.log('\nBuka halaman login aplikasi untuk memasukkan Kode Reset dan kata sandi baru.');
+    return;
+  }
+
   const password = await promptSecret('Kata sandi developer (min. 8 karakter)');
   if (password.length < 8) {
     console.error('Galat: Kata sandi minimal 8 karakter.');
@@ -157,18 +179,23 @@ async function main() {
     ? readline.createInterface({ input: process.stdin, output: process.stdout })
     : null;
   try {
+    const defaultUsername = (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+    const defaultFullName = (process.env.BOOTSTRAP_DEV_FULLNAME || 'Langgo Bramandityo').trim();
+    const defaultEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim();
+    const defaultRoleId = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
+
     const username =
       opts.username?.trim().toLowerCase() ||
-      (await promptText(rl, 'Username developer', 'dev.admin')).toLowerCase();
+      (await promptText(rl, 'Username developer', defaultUsername)).toLowerCase();
     const fullName =
       opts.fullName?.trim() ||
-      (await promptText(rl, 'Nama lengkap developer', 'Developer Utama AMS'));
+      (await promptText(rl, 'Nama lengkap developer', defaultFullName));
     const email =
       opts.email?.trim() ||
-      (await promptText(rl, 'Email', `${username}@anugrahmitraselaras.co.id`));
+      (await promptText(rl, 'Email', defaultEmail || `${username}@anugrahmitraselaras.co.id`));
     const roleId =
       opts.roleId?.trim() ||
-      (await promptText(rl, 'Role ID (it_admin / pjt / dll.)', 'it_admin'));
+      (await promptText(rl, 'Role ID / Nama Peran', defaultRoleId));
 
     const dataDir = path.resolve(process.env.AMS_DATA_DIR?.trim() || path.resolve(process.cwd(), 'data'));
     const store = new ServerRbacStore(dataDir);

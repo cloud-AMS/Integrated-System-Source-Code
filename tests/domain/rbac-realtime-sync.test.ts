@@ -209,4 +209,98 @@ describe('ServerRbacStore & ServerDataSyncStore — Sinkronisasi Multi-User & Lo
     expect(deltaForUser2.revision).toBe(3);
     expect(Object.keys(deltaForUser2.entries).sort()).toEqual(['audit_trail', 'penjualan']);
   });
+
+  it('bootstrap developer dari env var memetakan BOOTSTRAP_DEV_* termasuk role "Developer & IT Support"', () => {
+    const prevEnv = {
+      BOOTSTRAP_DEV_USERNAME: process.env.BOOTSTRAP_DEV_USERNAME,
+      BOOTSTRAP_DEV_FULLNAME: process.env.BOOTSTRAP_DEV_FULLNAME,
+      BOOTSTRAP_DEV_EMAIL: process.env.BOOTSTRAP_DEV_EMAIL,
+      BOOTSTRAP_DEV_ROLE_ID: process.env.BOOTSTRAP_DEV_ROLE_ID,
+      BOOTSTRAP_DEV_PASSWORD: process.env.BOOTSTRAP_DEV_PASSWORD
+    };
+    try {
+      process.env.BOOTSTRAP_DEV_USERNAME = 'dev.admin';
+      process.env.BOOTSTRAP_DEV_FULLNAME = 'Langgo Bramandityo';
+      process.env.BOOTSTRAP_DEV_EMAIL = 'antraderyll@gmail.com';
+      process.env.BOOTSTRAP_DEV_ROLE_ID = 'Developer & IT Support';
+      process.env.BOOTSTRAP_DEV_PASSWORD = 'DevStrongPassword123!';
+
+      const dataDir = createTempDataDir();
+      const rbac = new ServerRbacStore(dataDir);
+      expect(rbac.needsInitialSetup()).toBe(false);
+
+      const loginRes = rbac.authenticate('dev.admin', 'DevStrongPassword123!', '127.0.0.1', 'Vitest');
+      expect(loginRes.ok).toBe(true);
+      if (!loginRes.ok) return;
+
+      expect(loginRes.user.username).toBe('dev.admin');
+      expect(loginRes.user.fullName).toBe('Langgo Bramandityo');
+      expect(loginRes.user.email).toBe('antraderyll@gmail.com');
+      expect(loginRes.role.id).toBe('developer_it_support');
+      expect(loginRes.role.name).toBe('Developer & IT Support');
+    } finally {
+      for (const [k, v] of Object.entries(prevEnv)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  it('reset kata sandi developer mencabut sesi lama, menolak sandi lama, dan aktif kembali dengan kode reset satu kali', () => {
+    const dataDir = createTempDataDir();
+    const rbac = new ServerRbacStore(dataDir);
+    const setupRes = rbac.bootstrapFirstDeveloper(
+      {
+        username: 'dev.admin',
+        password: 'SandiLamaDeveloper1!',
+        fullName: 'Langgo Bramandityo',
+        email: 'antraderyll@gmail.com'
+      },
+      '127.0.0.1',
+      'Vitest'
+    );
+    expect(setupRes.ok).toBe(true);
+    if (!setupRes.ok) return;
+
+    const resetReq = rbac.initiateDeveloperPasswordReset();
+    expect(resetReq.ok).toBe(true);
+    if (!resetReq.ok) return;
+
+    expect(rbac.needsDeveloperPasswordReset()).toBe(true);
+    expect(rbac.resolveSessionById(setupRes.session.id)).toBe(false);
+    expect(rbac.authenticate('dev.admin', 'SandiLamaDeveloper1!', '127.0.0.1', 'Vitest').ok).toBe(false);
+
+    // Kode reset salah ditolak
+    const wrongCode = rbac.completeDeveloperPasswordReset(
+      { resetCode: 'AMS-RESET-SALAH', newPassword: 'SandiBaruKuat2026!' },
+      '127.0.0.1',
+      'Vitest'
+    );
+    expect(wrongCode.ok).toBe(false);
+
+    // Kode reset benar + sandi baru berhasil & langsung mengeluarkan sesi
+    const resetDone = rbac.completeDeveloperPasswordReset(
+      { resetCode: resetReq.resetCode, newPassword: 'SandiBaruKuat2026!' },
+      '127.0.0.1',
+      'Vitest'
+    );
+    expect(resetDone.ok).toBe(true);
+    if (!resetDone.ok) return;
+
+    expect(rbac.needsDeveloperPasswordReset()).toBe(false);
+    expect(resetDone.user.username).toBe('dev.admin');
+    expect(rbac.resolveSessionById(resetDone.session.id)).toBe(true);
+
+    // Kode reset tidak dapat dipakai ulang (single-use)
+    const reuse = rbac.completeDeveloperPasswordReset(
+      { resetCode: resetReq.resetCode, newPassword: 'SandiLain9999!' },
+      '127.0.0.1',
+      'Vitest'
+    );
+    expect(reuse.ok).toBe(false);
+
+    // Bisa login ulang menggunakan kata sandi baru
+    const loginBaru = rbac.authenticate('dev.admin', 'SandiBaruKuat2026!', '127.0.0.1', 'Vitest');
+    expect(loginBaru.ok).toBe(true);
+  });
 });

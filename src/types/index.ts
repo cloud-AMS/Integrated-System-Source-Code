@@ -30,7 +30,8 @@ export type UserRole =
   | 'sales_medrep'
   | 'karyawan'
   | 'auditor_internal'
-  | 'it_admin';
+  | 'it_admin'
+  | 'developer_it_support';
 
 // 1. Regulatory Affairs (RA & PJT)
 export interface IzinEdarAlkes {

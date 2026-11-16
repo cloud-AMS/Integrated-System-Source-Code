@@ -10,6 +10,7 @@ import {
   ambilStatusSetupServer,
   buatAkunDeveloperAwalServer,
   masukDenganServer,
+  resetKataSandiDeveloperServer,
   type SesiLogin
 } from '../../../../utils/autentikasi';
 import LogoAplikasi from '../../../common/LogoAplikasi';
@@ -42,7 +43,7 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
     };
 
     void ambilStatusSetupServer().then((stSetup) => {
-      if (!batal && stSetup.needsSetup) {
+      if (!batal && (stSetup.needsSetup || stSetup.needsDeveloperReset)) {
         setFormTerbuka(true);
       }
     });
@@ -133,6 +134,9 @@ export function KartuMasuk({
   const [memeriksaSetup, setMemeriksaSetup] = useState(true);
   const [modeSetup, setModeSetup] = useState(false);
   const [butuhTokenSetup, setButuhTokenSetup] = useState(false);
+  const [resetDevTersedia, setResetDevTersedia] = useState(false);
+  const [modeResetDev, setModeResetDev] = useState(false);
+  const [infoResetDev, setInfoResetDev] = useState<{ username: string; fullName: string; roleName: string } | null>(null);
 
   // State Form Login Biasa
   const [namaPengguna, setNamaPengguna] = useState('');
@@ -148,22 +152,35 @@ export function KartuMasuk({
   const [setupToken, setSetupToken] = useState('');
   const [tampilSetupSandi, setTampilSetupSandi] = useState(false);
 
+  // State Form Reset Kata Sandi Developer
+  const [resetKode, setResetKode] = useState('');
+  const [resetSandiBaru, setResetSandiBaru] = useState('');
+  const [resetKonfirmasiSandi, setResetKonfirmasiSandi] = useState('');
+  const [tampilResetSandi, setTampilResetSandi] = useState(false);
+
   const [galat, setGalat] = useState('');
   const [memproses, setMemproses] = useState(false);
   const bidangRef = useRef<HTMLInputElement>(null);
   const setupRef = useRef<HTMLInputElement>(null);
+  const resetKodeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let aktif = true;
     const periksaSetup = () => {
       void ambilStatusSetupServer().then((st) => {
         if (!aktif) return;
+        const adaReset = Boolean(st.needsDeveloperReset);
         setModeSetup(st.needsSetup);
         setButuhTokenSetup(st.requiresSetupToken);
+        setResetDevTersedia(adaReset);
+        setModeResetDev(adaReset && !st.needsSetup);
+        setInfoResetDev(st.developerResetUser ?? null);
         setMemeriksaSetup(false);
         requestAnimationFrame(() => {
           if (st.needsSetup) {
             setupRef.current?.focus();
+          } else if (adaReset) {
+            resetKodeRef.current?.focus();
           } else {
             bidangRef.current?.focus();
           }
@@ -248,6 +265,40 @@ export function KartuMasuk({
     onTerima(hasil.sesi);
   };
 
+  const kirimResetDev = async (e: FormEvent) => {
+    e.preventDefault();
+    if (memproses) return;
+    setGalat('');
+
+    if (!resetKode.trim()) {
+      setGalat('Kode verifikasi reset wajib diisi.');
+      return;
+    }
+    if (resetSandiBaru.length < 8) {
+      setGalat('Kata sandi baru developer minimal 8 karakter.');
+      return;
+    }
+    if (resetSandiBaru !== resetKonfirmasiSandi) {
+      setGalat('Konfirmasi kata sandi baru tidak cocok.');
+      return;
+    }
+
+    setMemproses(true);
+    const hasil = await resetKataSandiDeveloperServer({
+      resetCode: resetKode,
+      newPassword: resetSandiBaru
+    });
+
+    if (!hasil.ok) {
+      setGalat(hasil.pesan);
+      setMemproses(false);
+      return;
+    }
+
+    setMemproses(false);
+    onTerima(hasil.sesi);
+  };
+
   const gayaBidang = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none';
 
   return (
@@ -256,12 +307,18 @@ export function KartuMasuk({
         <LogoAplikasi overrideUrl={logoUrl} ukuran="lg" />
         <div>
           <h2 className="text-base font-bold text-slate-900 leading-tight">
-            {modeSetup ? 'Setup Developer Awal (Sekali Pakai)' : 'Masuk ke Aplikasi AMS'}
+            {modeSetup
+              ? 'Setup Developer Awal (Sekali Pakai)'
+              : modeResetDev
+                ? 'Reset Kata Sandi Developer'
+                : 'Masuk ke Aplikasi AMS'}
           </h2>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">
             {modeSetup
               ? 'Belum ada akun terdaftar di server. Buat akun Administrator / Developer pertama; setelah tersimpan, wizard ini terkunci permanen.'
-              : 'Halaman ini memakai tampilan situs perusahaan. Dashboard CDAKB & ISO terbuka setelah Anda masuk.'}
+              : modeResetDev
+                ? 'Masukkan kode reset satu kali dan tetapkan kata sandi baru untuk akun developer.'
+                : 'Halaman ini memakai tampilan situs perusahaan. Dashboard CDAKB & ISO terbuka setelah Anda masuk.'}
           </p>
         </div>
         <button
@@ -385,6 +442,96 @@ export function KartuMasuk({
             {memproses ? 'Menyimpan & Mengunci Setup…' : 'Buat Akun Developer & Masuk'}
           </button>
         </form>
+      ) : modeResetDev ? (
+        <form onSubmit={kirimResetDev} className="mt-5 space-y-3">
+          <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2.5 space-y-1 text-xs text-amber-950">
+            <div className="flex items-center gap-2 font-semibold">
+              <KeyRound className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Akun Target: {infoResetDev?.username || 'dev.admin'}</span>
+            </div>
+            <p className="text-slate-700">
+              {infoResetDev?.fullName || 'Langgo Bramandityo'} · {infoResetDev?.roleName || 'Developer & IT Support'}
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="block text-2xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Kode Verifikasi Reset Satu Kali
+            </span>
+            <input
+              ref={resetKodeRef}
+              value={resetKode}
+              onChange={(e) => { setResetKode(e.target.value); setGalat(''); }}
+              autoComplete="one-time-code"
+              className={`${gayaBidang} font-mono tracking-wide`}
+              placeholder="Contoh: AMS-RESET-XXXXXXXXXXXX"
+            />
+          </label>
+
+          <label className="block">
+            <span className="block text-2xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Kata Sandi Baru (Min. 8 Karakter)
+            </span>
+            <span className="relative block">
+              <input
+                value={resetSandiBaru}
+                onChange={(e) => { setResetSandiBaru(e.target.value); setGalat(''); }}
+                type={tampilResetSandi ? 'text' : 'password'}
+                autoComplete="new-password"
+                className={`${gayaBidang} pr-10`}
+                placeholder="Masukkan kata sandi baru minimal 8 karakter"
+              />
+              <button
+                type="button"
+                onClick={() => setTampilResetSandi((t) => !t)}
+                aria-label={tampilResetSandi ? 'Sembunyikan kata sandi baru' : 'Tampilkan kata sandi baru'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                {tampilResetSandi ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="block text-2xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Konfirmasi Kata Sandi Baru
+            </span>
+            <input
+              value={resetKonfirmasiSandi}
+              onChange={(e) => { setResetKonfirmasiSandi(e.target.value); setGalat(''); }}
+              type={tampilResetSandi ? 'text' : 'password'}
+              autoComplete="new-password"
+              className={gayaBidang}
+              placeholder="Ulangi kata sandi baru"
+            />
+          </label>
+
+          {galat && (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+              {galat}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60"
+            disabled={memproses || !resetKode.trim() || !resetSandiBaru || !resetKonfirmasiSandi}
+          >
+            <KeyRound className="w-4 h-4" />
+            {memproses ? 'Menyimpan Kata Sandi Baru…' : 'Simpan Kata Sandi Baru & Masuk'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setModeResetDev(false);
+              setGalat('');
+            }}
+            className="w-full text-center text-xs font-semibold text-slate-600 hover:text-slate-900 py-1 cursor-pointer"
+          >
+            Masuk dengan akun pengguna lain
+          </button>
+        </form>
       ) : (
         <form onSubmit={kirimLogin} className="mt-5 space-y-3">
           <label className="block">
@@ -434,6 +581,19 @@ export function KartuMasuk({
             <LogIn className="w-4 h-4" />
             {memproses ? 'Memverifikasi…' : 'Masuk'}
           </button>
+
+          {resetDevTersedia && (
+            <button
+              type="button"
+              onClick={() => {
+                setModeResetDev(true);
+                setGalat('');
+              }}
+              className="w-full text-center text-xs font-semibold text-amber-800 hover:text-amber-950 py-1 cursor-pointer"
+            >
+              Lanjutkan Reset Kata Sandi Developer ({infoResetDev?.username || 'dev.admin'})
+            </button>
+          )}
         </form>
       )}
     </div>

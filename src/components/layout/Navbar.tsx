@@ -141,6 +141,7 @@ export const namaPengguna = (r: UserRole) => {
     case 'sales_medrep': return 'Sales & Medical Representative';
     case 'karyawan': return 'Karyawan AMS';
     case 'it_admin': return 'Admin IT & Traceability Hub';
+    case 'developer_it_support': return 'Developer & IT Support';
     default: return 'Pengguna Terdaftar';
   }
 };
@@ -159,6 +160,7 @@ export const peranPengguna = (r: UserRole) => {
     case 'sales_medrep': return 'Sales & MedRep Lapangan';
     case 'karyawan': return 'Karyawan (HRIS Mobile)';
     case 'it_admin': return 'IT & Traceability Hub';
+    case 'developer_it_support': return 'Developer & IT Support';
     default: return 'Staff';
   }
 };

@@ -366,9 +366,18 @@ async function startServer() {
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
   app.get('/api/auth/setup-status', (_req, res) => {
+    const devReset = rbacStore.getDeveloperResetInfo();
     res.set('Cache-Control', 'no-store').json({
       needsSetup: rbacStore.needsInitialSetup(),
-      requiresSetupToken: Boolean((process.env.INITIAL_SETUP_TOKEN || '').trim())
+      requiresSetupToken: Boolean((process.env.INITIAL_SETUP_TOKEN || '').trim()),
+      needsDeveloperReset: devReset.required,
+      developerResetUser: devReset.required
+        ? {
+            username: devReset.username || 'dev.admin',
+            fullName: devReset.fullName || 'Developer & IT Support',
+            roleName: devReset.roleName || 'Developer & IT Support'
+          }
+        : undefined
     });
   });
 
@@ -391,6 +400,30 @@ async function startServer() {
     setSessionCookie(req, res, result.token);
     broadcastRbacUpdated();
     res.status(201).json({
+      user: result.user,
+      role: result.role,
+      permissions: result.role.permissions,
+      token: result.token,
+      expiresAt: result.session.expiresAt
+    });
+  });
+
+  app.post('/api/auth/reset-developer', (req, res) => {
+    const { resetCode, newPassword } = (req.body || {}) as { resetCode?: string; newPassword?: string };
+    const result = rbacStore.completeDeveloperPasswordReset(
+      {
+        resetCode: String(resetCode || ''),
+        newPassword: String(newPassword || '')
+      },
+      getClientIp(req),
+      String(req.headers['user-agent'] || '')
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'DEV_RESET_FAILED', pesan: result.message });
+    }
+    setSessionCookie(req, res, result.token);
+    broadcastRbacUpdated();
+    res.json({
       user: result.user,
       role: result.role,
       permissions: result.role.permissions,

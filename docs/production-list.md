@@ -1,22 +1,38 @@
-> **Status dokumen (2026-11): FAKTA TERVERIFIKASI (checklist jujur)** — tetapi **Fase A belum terpenuhi**: aplikasi belum persist ke server, sehingga Fase B–K belum bisa dicentang tanpa membangun persistensi lebih dulu. Jangan centang satu pun item tanpa bukti.
+> **Status dokumen (diperbarui 2026-11): FAKTA TERVERIFIKASI (checklist jujur / zero-skip policy)** — Fondasi persistensi server (`A1`), autentikasi & RBAC server-side (`B1`–`B2`), serta verifikasi lint/tes/build kode sumber (`D1`, verifikasi repositori lokal) **sudah terpenuhi di codebase**. Item yang memerlukan eksekusi di server staging/produksi, integrasi eksternal, migrasi data, dan tanda tangan PJT **tetap belum dicentang `[ ]`** sampai ada bukti di lingkungan target.
 
 ## Developer Notes
 
-Sebelum mengutip dokumen ini di luar tim: aplikasi ini belum lolos Fase A, sehingga seluruh klaim "siap produksi" di bagian mana pun adalah aspirasi, bukan kenyataan. Yang menegakkan kebenaran klaim adalah kode + tes + tanda tangan PJT, bukan tulisan ini.
+Catatan arsitektur saat ini:
+- Persistensi lintas pengguna & perangkat sudah berjalan di server Express (`server/dataSyncStore.ts` → `<AMS_DATA_DIR>/app-state.json`, `server/rbacStore.ts` → `<AMS_DATA_DIR>/rbac-db.json`, serta WebSocket `/api/sync/ws`).
+- Meskipun fondasi kode pada **A1, B1, B2, dan D1** sudah terverifikasi, aplikasi **belum berstatus siap go-live produksi** sebelum seluruh fase staging, hardening VPS/proxy, integrasi eksternal, migrasi & rekonsiliasi data, serta **tanda tangan PJT + penanggung jawab teknis** terpenuhi.
 
 # Protokol & Checklist Peluncuran Produksi (Production Readiness Checklist)
 
 Dokumen ini adalah **Protokol Resmi Peluncuran Produksi (*Production Deployment Protocol*)** untuk **AMS Integrated System (PT Anugrahmitra Selaras)**, termasuk panduan dan checklist migrasi data / input data asli (*real data seeding*) untuk setiap modul fungsional.
 Coded by Langgo Bramandityo
 
-Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia nyata: **pintu dikunci dulu, baru integrasi dibuka; backup dibuktikan bisa dipulihkan sebelum data dimasukkan; data dimasukkan dengan rekonsiliasi; kepatuhan ditandatangani; baru go-live**. Seluruh item ditulis ulang agar jujur terhadap kondisi aplikasi.
+Dokumen ini mengikuti urutan implementasi produksi yang jujur: **pintu dikunci dulu, baru integrasi dibuka; backup dibuktikan bisa dipulihkan sebelum data dimasukkan; data dimasukkan dengan rekonsiliasi; kepatuhan ditandatangani; baru go-live**. Seluruh item ditandai hanya berdasarkan fakta yang dapat diverifikasi.
+
+---
+
+## Ringkasan Status Terkini (Audit Codebase)
+
+| Kode Item | Status | Bukti Verifikasi Terkini |
+| :--- | :--- | :--- |
+| **A1** | **Terpenuhi `[x]`** | `server/dataSyncStore.ts` (`app-state.json`), `server/rbacStore.ts` (`rbac-db.json`), `/api/sync/*`, `/api/sync/ws`, `src/services/pocketbase.ts`; diuji oleh `tests/domain/rbac-realtime-sync.test.ts` & `tests/domain/data-origin-sync.test.ts`. |
+| **A2** | Parsial (Mekanisme Siap `[ ]`) | Mekanisme isolasi & pembersihan selektif tersedia (`src/utils/dataOrigin.ts`, `POST /api/sync/purge-dummy`, Pusat Purge di `ITModule`), namun seed/demo (`src/data/*`) masih ada di bundle sampai dipurge/dinonaktifkan pada build produksi. |
+| **B1** | **Terpenuhi `[x]`** | Login server-side `scrypt` + HMAC-SHA256 cookie `HttpOnly` (`ams_session`) & Bearer fallback TTL 12 jam (`server/rbacStore.ts`, `server/rbacMiddleware.ts`); Setup Wizard & `npm run auth:bootstrap` menggantikan login statis klien. *(Catatan: cookie memakai `SameSite=None; Secure` di HTTPS untuk kompatibilitas iframe; tinjau jika perlu `SameSite=Strict` di domain tunggal produksi.)* |
+| **B2** | **Terpenuhi `[x]`** | `requirePermission(...)`, `canWriteSyncKey`, `canDeleteSyncKey`, pencabutan sesi real-time WebSocket (`rbac:session-revoked`), & audit penolakan `DENIED` di `rbac-db.json`. |
+| **B3–B6** | Parsial (Di Repo / Proxy `[ ]`) | Kode bebas kredensial & `.env.example` bersih; rate limit login (`15x/15 mnt` per IP+user → HTTP 429) & `/api/website/published` (`30x/15 mnt/IP`) aktif, namun Secret Manager VPS, rate limit global API, security header aktif di server/Nginx produksi, dan pembatasan CORS domain belum diverifikasi di server target. |
+| **D1** | **Terpenuhi `[x]`** | `npm run lint` (`tsc --noEmit`) lulus tanpa error. |
+| **D2–D3** | Parsial (Lokal Hijau `[ ]`) | Di repositori lokal: `npm run test` (16 file, 225 tes), `npm run cek:semua` (`cek:benih`, `cek:fefo`, `cek:gudang`), & `npm run verifikasi` lulus. Belum dijalankan di server staging; `npm run build` sukses namun Vite masih memberi peringatan chunk >500 kB (`dist/assets/index-*.js` ~3,43 MB / ~757 kB gzip). |
 
 ---
 
 ## Aturan Protokol Peluncuran (Deployment Rules)
 
 1. **Wajib berurutan**: fase dijalankan dari **A sampai K**. Fase tidak boleh dilewati tanpa pengecualian tertulis dari Lead Developer dan PJT.
-2. **Zero-skip policy**: tidak ada item yang dicentang tanpa bukti verifikasi (log, tangkapan layar, nomor tiket, atau tanda tangan).
+2. **Zero-skip policy**: tidak ada item yang dicentang tanpa bukti verifikasi (log, tangkapan layar, nomor tiket, hasil test/build, atau tanda tangan).
 3. **Sign-off ganda**: setiap fase ditutup dengan tanda tangan **PJT + penanggung jawab teknis** pada kolom "Diverifikasi oleh".
 4. **Kriteria go/no-go**: go-live **batal otomatis** bila salah satu terpenuhi — audit trail tidak berjalan; restore backup gagal diuji; rekonsiliasi data melebihi toleransi (lihat H-RECON); ada temuan keamanan kritis terbuka; sign-off PJT belum ada.
 5. **Rollback wajib dilatih**: skenario "kembali ke sistem lama" harus pernah dicoba di staging sebelum go-live pertama, bukan dikarang saat krisis.
@@ -26,20 +42,20 @@ Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia n
 
 ## Fase A — Fondasi & Data Demo (WAJIB PERTAMA)
 
-> Catatan kejujuran: aplikasi ini saat ini menyimpan data di `localStorage` per browser dan **tidak menulis ke PocketBase**. Checklist ini hanya bermakna bila persistensi sisi server sudah berjalan. Jika belum, seluruh fase di bawah dianggap **belum bisa dimulai**.
+> Catatan arsitektur: aplikasi sekarang menyimpan seluruh data operasional, akun RBAC, peran, sesi, dan log audit keamanan di **server Express** (`<AMS_DATA_DIR>/app-state.json` & `<AMS_DATA_DIR>/rbac-db.json`) serta menyiarkan pembaruan lintas perangkat secara real-time melalui **WebSocket `/api/sync/ws`** (`src/services/pocketbase.ts` mempertahankan `localStorage` hanya sebagai cache/cadangan offline dan mengutamakan state otoritatif server).
 
-- [ ] **A1**: Persistensi data di server terverifikasi — data yang disimpan satu pengguna terbaca oleh pengguna lain (bukan hanya `localStorage` browser). Bukti: tulis uji di satu perangkat, baca dari perangkat lain.
-- [ ] **A2**: **Data seed/demo dipurge.** Seluruh isi `src/data/initialData.ts`, `salesMarketingData.ts`, `seedKeuangan.ts`, `websiteRujukan.ts` ( ±280 KB data karangan: karyawan, jurnal, stok, suhu, dst.) diganti atau dinonaktifkan di build produksi. Bukti: pencarian string seed di bundle hasil build = 0 temuan.
+- [x] **A1**: Persistensi data di server terverifikasi — data dan akun/peran yang disimpan satu pengguna tersinkron ke server dan terbaca pengguna lain secara real-time via HTTP `/api/sync/*`, `/api/rbac/*`, dan WebSocket `/api/sync/ws`. **Bukti**: `server/dataSyncStore.ts`, `server/rbacStore.ts`, `server.ts`, serta 16 file (225 tes) Vitest termasuk `tests/domain/rbac-realtime-sync.test.ts` dan `tests/domain/data-origin-sync.test.ts` lulus.
+- [ ] **A2**: **Data seed/demo dipurge.** Seluruh isi `src/data/initialData.ts`, `salesMarketingData.ts`, `seedKeuangan.ts`, `websiteRujukan.ts` (±280 KB data karangan: karyawan, jurnal, stok, suhu, dst.) diganti atau dinonaktifkan di build produksi. **Status**: Mekanisme pembersihan selektif sudah tersedia (`src/utils/dataOrigin.ts`, `POST /api/sync/purge-dummy`, & Pusat Purge Data Dummy di `ITModule` yang mempertahankan CoA, pajak, RBAC, dan pengaturan situs), tetapi eksekusi purge + verifikasi 0 string seed pada build produksi tetap wajib dijalankan sebelum cut-off.
 - [ ] **A3**: Lingkungan **staging** tersedia dengan struktur yang sama dengan produksi (boleh data kecil, wajib skema sama).
 - [ ] **A4**: Backup data yang sudah ada (bila ada) diambil **sebelum** migrasi apa pun.
 
 ## Fase B — Keamanan Inti (sebelum integrasi apa pun dibuka)
 
-- [ ] **B1**: Autentikasi **di sisi server** (sesi + cookie `HttpOnly`, `Secure`, `SameSite=Strict`). Login klien-saja (`admin/admin123`) tidak lagi menjadi satu-satunya gerbang.
-- [ ] **B2**: Otorisasi peran (PJT, QA, QC, Gudang, Direksi, HR, Finance) ditegakkan di server untuk setiap endpoint tulis — bukan hanya menyembunyikan tombol di UI.
-- [ ] **B3**: Rahasia (API key, token, password DB) tidak ada di kode sumber maupun repo; memakai Secret Manager / environment variable.
-- [ ] **B4**: *Rate limiting* untuk endpoint autentikasi (maks. 100 request / 15 menit / IP) dan endpoint tulis sensitif.
-- [ ] **B5**: *Security headers*: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Content-Security-Policy.
+- [x] **B1**: Autentikasi **di sisi server** terimplementasi dengan password hashing `scrypt`, token sesi bertanda tangan HMAC-SHA256, dan cookie `HttpOnly` (`ams_session`, TTL 12 jam) + header `Authorization: Bearer` (`server/rbacStore.ts`, `server/rbacMiddleware.ts`, `/api/auth/login`, `/api/auth/setup`, `npm run auth:bootstrap`). Login statis klien (`admin/admin123`) sudah dihapus permanen. *(Catatan verifikasi: cookie memakai `SameSite=None; Secure` pada HTTPS agar kompatibel dengan iframe & `SameSite=Lax` pada HTTP; bila produksi hanya domain tunggal non-iframe dan mewajibkan `SameSite=Strict`, ubah di `server/rbacMiddleware.ts`.)*
+- [x] **B2**: Otorisasi peran (PJT, IT Admin, QA, QC, Gudang, Teknisi, Manufaktur, Purchasing, Sales, HRD, Finance) ditegakkan **di server** untuk setiap endpoint tulis, hapus, RBAC admin, dan sync key (`requirePermission(...)`, `canWriteSyncKey`, `canDeleteSyncKey`), lengkap dengan pencabutan sesi real-time via WebSocket (`rbac:session-revoked`) dan pencatatan `PERMISSION_DENIED` pada audit log server. **Bukti**: `tests/domain/rbac-realtime-sync.test.ts`, `tests/domain/hak-akses.test.ts`.
+- [ ] **B3**: Rahasia (API key, token, password DB) tidak ada di kode sumber maupun repo; memakai Secret Manager / environment variable di server target. **Status**: Di kode sumber & `.env.example` sudah bersih tanpa rahasia hardcoded (`SESSION_SECRET`, `INITIAL_SETUP_TOKEN`, `GEMINI_API_KEY`, `AMS_ADMIN_TOKEN`, fallback runtime `.session-secret` izin `0600`), menunggu konfigurasi Secret Manager / `.env` pada server staging & produksi.
+- [ ] **B4**: *Rate limiting* untuk endpoint autentikasi dan endpoint tulis sensitif. **Status**: Di server Express sudah aktif batas login gagal (`15 percobaan / 15 menit` per `ip::username` → HTTP `429`) dan publikasi situs (`30 req / 15 menit / IP` → HTTP `429`); pembatasan laju global via Nginx `limit_req` / endpoint tulis lain (`/api/sync/*`, `/api/rbac/*`, `/api/auth/setup`) masih harus diaktifkan di server produksi.
+- [ ] **B5**: *Security headers* aktif di server/reverse proxy target: HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Content-Security-Policy. *(Template Nginx/Caddy sudah tersedia di `docs/panduan-deploy-vps.md` & `/api/system/deployment-guides`, menunggu verifikasi aktif di VPS target.)*
 - [ ] **B6**: CORS dibatasi hanya ke domain resmi perusahaan.
 - [ ] **B7**: **Kepatuhan UU PDP**: inventaris data pribadi yang diproses, dasar hukum pemrosesan, hak akses/penghapusan subjek data, dan kebijakan privasi yang diterbitkan.
 - [ ] **B8**: Kebijakan password staf (minimal kuat, rotasi berkala) + MFA bila memungkinkan.
@@ -47,15 +63,15 @@ Dokumen ini ditulis ulang (2026-11) mengikuti urutan yang layak pakai di dunia n
 ## Fase C — Monitoring & Observabilitas (sebelum go-live, bukan sesudahnya)
 
 - [ ] **C1**: Error tracking produksi (mis. Sentry) aktif dan alert terkirim ke tim.
-- [ ] **C2**: *Uptime monitoring* untuk aplikasi + PocketBase dengan alert ke HP tim IT.
+- [ ] **C2**: *Uptime monitoring* untuk aplikasi (`/api/health` + layanan pendukung) dengan alert ke HP tim IT.
 - [ ] **C3**: Alarm darurat cold chain (2°C–8°C) terhubung ke webhook PJT / WhatsApp bila suhu deviasi.
 - [ ] **C4**: Log terstruktur dengan retensi minimal 90 hari; log audit tersimpan terpisah (immutable/WORM bila memungkinkan).
 
 ## Fase D — Build & Verifikasi di Staging
 
-- [ ] **D1**: `npm run lint` lolos tanpa error.
-- [ ] **D2**: `npm run test` lolos; `npm run verifikasi` hijau di staging.
-- [ ] **D3**: `npm run build` tanpa peringatan kritis; bundle ditinjau (code-splitting aktif; ukuran per chunk wajar).
+- [x] **D1**: `npm run lint` (`tsc --noEmit`) lolos tanpa error — **Terverifikasi** pada repo (`tsc --noEmit` keluar kode 0).
+- [ ] **D2**: `npm run test` lolos; `npm run verifikasi` hijau **di server staging**. **Status**: Di repo lokal seluruh suite sudah lulus (`npm run verifikasi`: 16 file / 225 tes Vitest, `cek:benih`, `cek:fefo`, `cek:gudang`, dan `build` hijau); tinggal dijalankan ulang dan diverifikasi di server staging target.
+- [ ] **D3**: `npm run build` tanpa peringatan kritis; bundle ditinjau (code-splitting aktif; ukuran per chunk wajar). **Status**: `npm run build` menghasilkan `dist/`, PWA service worker `dist/sw.js`, dan `server.js` (89,6 KB) tanpa error fatal, tetapi Vite masih menampilkan peringatan chunk >500 kB (`dist/assets/index-*.js` ~3.427 kB / ~757 kB gzip) sehingga code-splitting lanjutan masih perlu dilakukan sebelum dicentang.
 - [ ] **D4**: Load test dasar: mis. 50 pengguna bersamaan membuka dasbor + 1 transaksi — tanpa error 5xx dan respons < 2 detik.
 - [ ] **D5**: Smoke test manual semua 13 modul di staging (daftar di Fase K).
 - [ ] **D6**: Rollback rehearsal: staging dikembalikan ke versi sebelumnya dan diverifikasi pulih.

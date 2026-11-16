@@ -108,6 +108,12 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
 export interface StatusSetupServer {
   needsSetup: boolean;
   requiresSetupToken: boolean;
+  needsDeveloperReset?: boolean;
+  developerResetUser?: {
+    username: string;
+    fullName: string;
+    roleName: string;
+  };
 }
 
 export async function ambilStatusSetupServer(): Promise<StatusSetupServer> {
@@ -118,15 +124,17 @@ export async function ambilStatusSetupServer(): Promise<StatusSetupServer> {
       cache: 'no-store'
     });
     if (!res.ok) {
-      return { needsSetup: false, requiresSetupToken: false };
+      return { needsSetup: false, requiresSetupToken: false, needsDeveloperReset: false };
     }
     const data = (await res.json()) as Partial<StatusSetupServer>;
     return {
       needsSetup: Boolean(data.needsSetup),
-      requiresSetupToken: Boolean(data.requiresSetupToken)
+      requiresSetupToken: Boolean(data.requiresSetupToken),
+      needsDeveloperReset: Boolean(data.needsDeveloperReset),
+      developerResetUser: data.developerResetUser
     };
   } catch {
-    return { needsSetup: false, requiresSetupToken: false };
+    return { needsSetup: false, requiresSetupToken: false, needsDeveloperReset: false };
   }
 }
 
@@ -164,6 +172,38 @@ export async function buatAkunDeveloperAwalServer(payload: {
     return {
       ok: false,
       pesan: 'Tidak dapat terhubung ke server untuk Setup Wizard awal.'
+    };
+  }
+}
+
+export async function resetKataSandiDeveloperServer(payload: {
+  resetCode: string;
+  newPassword: string;
+}): Promise<{ ok: true; sesi: SesiLogin } | { ok: false; pesan: string }> {
+  try {
+    const res = await fetch('/api/auth/reset-developer', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resetCode: payload.resetCode.trim(),
+        newPassword: payload.newPassword
+      })
+    });
+    const data = (await res.json().catch(() => ({}))) as Partial<AuthResponsePayload> & { pesan?: string };
+    if (!res.ok || !data.user || !data.role) {
+      return {
+        ok: false,
+        pesan: data.pesan || 'Gagal mengatur ulang kata sandi developer.'
+      };
+    }
+    const sesi = petakanPayloadKeSesi(data as AuthResponsePayload);
+    simpanSesi(sesi);
+    return { ok: true, sesi };
+  } catch {
+    return {
+      ok: false,
+      pesan: 'Tidak dapat terhubung ke server untuk reset kata sandi developer.'
     };
   }
 }
