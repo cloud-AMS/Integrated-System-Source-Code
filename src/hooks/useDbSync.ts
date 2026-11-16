@@ -13,11 +13,19 @@ export function useDbTick(daftarKunci: readonly string[]): number {
   daftarRef.current = daftarKunci;
 
   useEffect(() => {
+    let aktif = true;
     const daftar = Array.from(new Set([...daftarRef.current, 'all']));
     const lepas = db.subscribeKoleksi(daftar, () => {
-      setTick((t) => t + 1);
+      queueMicrotask(() => {
+        if (aktif) {
+          setTick((t) => t + 1);
+        }
+      });
     });
-    return lepas;
+    return () => {
+      aktif = false;
+      lepas();
+    };
   }, [kunciKey]);
 
   return tick;

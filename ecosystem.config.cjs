@@ -8,8 +8,10 @@ module.exports = {
     {
       name: 'ams-integrated-system',
       script: 'server.js',
-      instances: 2, // Mode kluster memanfaatkan 2-4 vCPU
-      exec_mode: 'cluster',
+      // Wajib 1 instance (fork) karena hub WebSocket (/api/sync/ws), sesi memori, dan store JSON
+      // (rbac-db.json & app-state.json) tidak berbagi state lintas proses cluster.
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',

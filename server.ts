@@ -27,6 +27,7 @@ import {
   PUBLIC_SYNC_KEYS,
   ServerDataSyncStore
 } from './server/dataSyncStore';
+import { ActiveDbDriver, PocketBaseArchiveConfig, ServerDbDriverManager } from './server/dbDriverManager';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +38,79 @@ const BERKAS_SNAPSHOT_STATIS = path.resolve(__dirname, 'public', 'website-publis
 const BERKAS_INDEKS = path.resolve(__dirname, 'index.html');
 const rbacStore = new ServerRbacStore(DATA_DIR);
 const dataSyncStore = new ServerDataSyncStore(DATA_DIR);
+const dbDriverManager = new ServerDbDriverManager(DATA_DIR, __dirname);
 const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
+
+interface FirebaseClientConfig {
+  projectId: string;
+  apiKey: string;
+  authDomain: string;
+  firestoreDatabaseId: string;
+}
+
+function readFirebaseClientConfig(): FirebaseClientConfig | null {
+  try {
+    const cfgPath = path.resolve(__dirname, 'firebase-applet-config.json');
+    if (!fs.existsSync(cfgPath)) return null;
+    const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) as Partial<FirebaseClientConfig>;
+    if (!parsed.apiKey || !parsed.projectId) return null;
+    return {
+      projectId: parsed.projectId,
+      apiKey: parsed.apiKey,
+      authDomain: parsed.authDomain || '',
+      firestoreDatabaseId: parsed.firestoreDatabaseId || '(default)'
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function verifyFirebaseIdToken(idToken: string): Promise<
+  | { ok: true; uid: string; email: string; emailVerified: boolean; displayName: string }
+  | { ok: false; message: string }
+> {
+  const cfg = readFirebaseClientConfig();
+  if (!cfg?.apiKey) {
+    return { ok: false, message: 'Konfigurasi Firebase belum tersedia di server.' };
+  }
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(cfg.apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      }
+    );
+    if (!res.ok) {
+      return { ok: false, message: 'Token Firebase tidak valid atau sudah kedaluwarsa.' };
+    }
+    const payload = (await res.json()) as {
+      users?: Array<{
+        localId?: string;
+        email?: string;
+        emailVerified?: boolean;
+        displayName?: string;
+      }>;
+    };
+    const u = payload.users?.[0];
+    if (!u?.localId || !u.email) {
+      return { ok: false, message: 'Akun Firebase tidak memiliki alamat email yang sah.' };
+    }
+    if (!u.emailVerified) {
+      return { ok: false, message: 'Email akun Google belum terverifikasi.' };
+    }
+    return {
+      ok: true,
+      uid: u.localId,
+      email: u.email.trim().toLowerCase(),
+      emailVerified: true,
+      displayName: u.displayName || u.email
+    };
+  } catch {
+    return { ok: false, message: 'Gagal memverifikasi token Firebase ke layanan identitas Google.' };
+  }
+}
 
 /** Snapshot harus berbentuk KonfigurasiSitus; penolakan melindungi berkas data dari muatan sembarangan. */
 function adalahKonfigurasiSitus(nilai: unknown): nilai is Record<string, any> {
@@ -323,14 +396,23 @@ async function startServer() {
   // Admin UI, superuser, pengaturan, dan tulis/hapus sengaja ditolak di sini —
   // aplikasi hanya butuh sinyal realtime + baca koleksi publik.
   const PB_GET_DIIZINKAN = /^\/api\/(health|realtime|collections\/[A-Za-z0-9_-]+\/records)\/?$/;
-  app.use('/api/ams-pb', (req, res, next) => {
-    if (req.method === 'GET' && PB_GET_DIIZINKAN.test(req.path)) return next();
-    return res.status(403).json({ pesan: 'Jalur PocketBase ini tidak diizinkan lewat proxy.' });
-  }, createProxyMiddleware({
-    target: 'http://127.0.0.1:8091',
+  const pbProxy = createProxyMiddleware({
+    target: dbDriverManager.getPocketBaseUrl(),
     changeOrigin: true,
     pathRewrite: { '^/api/ams-pb': '' }
-  }));
+  });
+  app.use('/api/ams-pb', (req, res, next) => {
+    if (dbDriverManager.getActiveDriver() !== 'pocketbase') {
+      return res.status(503).json({
+        mode: dbDriverManager.getActiveDriver(),
+        archived: true,
+        pesan:
+          'Database aktif berada pada mode Firebase Firestore (fase pengembangan). Pengaturan PocketBase aman diarsipkan dan dapat diaktifkan kembali kapan saja.'
+      });
+    }
+    if (req.method === 'GET' && PB_GET_DIIZINKAN.test(req.path)) return next();
+    return res.status(403).json({ pesan: 'Jalur PocketBase ini tidak diizinkan lewat proxy.' });
+  }, pbProxy);
 
   app.use(express.json({ limit: '10mb' }));
   app.use(attachAuth);
@@ -349,12 +431,19 @@ async function startServer() {
 
   // Status and regulatory compliance info
   app.get('/api/health', (req, res) => {
+    const fbCfg = readFirebaseClientConfig();
     res.json({
       status: 'aktif',
       sistem: 'AMS Integrated System - PT Anugrahmitra Selaras',
       versi: '2.4.0-cdakb',
       standar: ['CDAKB Permenkes 4/2014', 'CPAKB Permenkes 20/2017', 'SDAK OSS-RBA', 'ISO 13485:2016'],
-      basisData: 'Server Persistent Sync (app-state.json + WebSocket) + RBAC Server',
+      basisData:
+        dbDriverManager.getActiveDriver() === 'firebase'
+          ? 'Firebase Firestore (Fase Pengembangan) + Server Real-Time Sync'
+          : 'PocketBase Server + Persistent JSON Store + WebSocket',
+      databaseDriver: dbDriverManager.getActiveDriver(),
+      pocketbaseArchived: true,
+      firebaseProjectId: fbCfg?.projectId || null,
       rbacAktif: true,
       realtimeSyncAktif: true,
       needsInitialSetup: rbacStore.needsInitialSetup(),
@@ -366,9 +455,18 @@ async function startServer() {
 
   // ================= AUTENTIKASI & RBAC SERVER-SIDE =================
   app.get('/api/auth/setup-status', (_req, res) => {
+    const devReset = rbacStore.getDeveloperResetInfo();
     res.set('Cache-Control', 'no-store').json({
       needsSetup: rbacStore.needsInitialSetup(),
-      requiresSetupToken: Boolean((process.env.INITIAL_SETUP_TOKEN || '').trim())
+      requiresSetupToken: Boolean((process.env.INITIAL_SETUP_TOKEN || '').trim()),
+      needsDeveloperReset: devReset.required,
+      developerResetUser: devReset.required
+        ? {
+            username: devReset.username || 'dev.admin',
+            fullName: devReset.fullName || 'Developer & IT Support',
+            roleName: devReset.roleName || 'Developer & IT Support'
+          }
+        : undefined
     });
   });
 
@@ -399,6 +497,30 @@ async function startServer() {
     });
   });
 
+  app.post('/api/auth/reset-developer', (req, res) => {
+    const { resetCode, newPassword } = (req.body || {}) as { resetCode?: string; newPassword?: string };
+    const result = rbacStore.completeDeveloperPasswordReset(
+      {
+        resetCode: String(resetCode || ''),
+        newPassword: String(newPassword || '')
+      },
+      getClientIp(req),
+      String(req.headers['user-agent'] || '')
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'DEV_RESET_FAILED', pesan: result.message });
+    }
+    setSessionCookie(req, res, result.token);
+    broadcastRbacUpdated();
+    res.json({
+      user: result.user,
+      role: result.role,
+      permissions: result.role.permissions,
+      token: result.token,
+      expiresAt: result.session.expiresAt
+    });
+  });
+
   app.post('/api/auth/login', (req, res) => {
     const { username, password } = (req.body || {}) as { username?: string; password?: string };
     if (!username || !password) {
@@ -421,6 +543,191 @@ async function startServer() {
       permissions: result.role.permissions,
       token: result.token,
       expiresAt: result.session.expiresAt
+    });
+  });
+
+  app.post('/api/auth/firebase-login', async (req, res) => {
+    const { idToken } = (req.body || {}) as { idToken?: string };
+    if (!idToken || typeof idToken !== 'string') {
+      return res.status(400).json({ error: 'BAD_REQUEST', pesan: 'Token autentikasi Firebase wajib disertakan.' });
+    }
+    const verified = await verifyFirebaseIdToken(idToken);
+    if (!verified.ok) {
+      return res.status(401).json({ error: 'FIREBASE_AUTH_FAILED', pesan: verified.message });
+    }
+    const result = rbacStore.authenticateByVerifiedEmail(
+      verified.email,
+      verified.uid,
+      verified.displayName,
+      getClientIp(req),
+      String(req.headers['user-agent'] || '')
+    );
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'AUTH_FAILED', pesan: result.message });
+    }
+    setSessionCookie(req, res, result.token);
+    broadcastRbacActivity();
+    res.json({
+      user: result.user,
+      role: result.role,
+      permissions: result.role.permissions,
+      token: result.token,
+      expiresAt: result.session.expiresAt
+    });
+  });
+
+  app.get('/api/firebase/rbac-snapshot', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({
+      roles: rbacStore.listRoles(),
+      users: rbacStore.listAllUsersForCloudSync()
+    });
+  });
+
+  app.post('/api/firebase/hydrate', async (req, res) => {
+    const body = (req.body || {}) as {
+      idToken?: string;
+      roles?: any[];
+      users?: any[];
+      entries?: Record<string, { value: unknown; version?: number; updatedAt?: string; updatedBy?: string }>;
+      activeDriver?: ActiveDbDriver;
+      pocketbaseArchive?: Partial<PocketBaseArchiveConfig>;
+    };
+
+    let actorUsername = req.auth?.user.username || '';
+    let authorized = false;
+
+    if (req.auth) {
+      const permsRbac = req.auth.role.permissions['rbac-admin'] || [];
+      const permsIt = req.auth.role.permissions['it-traceability'] || [];
+      authorized =
+        Boolean(req.auth.user.isHiddenDeveloper) ||
+        permsRbac.includes('update') ||
+        permsIt.includes('update');
+    }
+
+    if (!authorized && typeof body.idToken === 'string' && body.idToken.trim()) {
+      const verified = await verifyFirebaseIdToken(body.idToken.trim());
+      if (verified.ok) {
+        const bootstrappedEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+        const matchedUser = rbacStore.listAllUsersForCloudSync().find(
+          (u) => u.email.trim().toLowerCase() === verified.email
+        );
+        if (verified.email === bootstrappedEmail || matchedUser?.isHiddenDeveloper || matchedUser?.roleId === 'it_admin' || matchedUser?.roleId === 'developer_it_support') {
+          authorized = true;
+          actorUsername = verified.email;
+        }
+      }
+    }
+
+    if (!authorized) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        pesan: 'Hanya administrator atau developer terverifikasi Firebase yang dapat memulihkan state cloud.'
+      });
+    }
+
+    const rbacRes = rbacStore.hydrateFromCloud({ roles: body.roles, users: body.users });
+    const syncRes = body.entries ? dataSyncStore.hydrateFromCloud(body.entries) : { appliedKeys: [], revision: dataSyncStore.getRevision() };
+
+    if (body.activeDriver || body.pocketbaseArchive) {
+      dbDriverManager.hydrateArchiveFromCloud(body.activeDriver, body.pocketbaseArchive, actorUsername || 'firebase-sync');
+    }
+
+    if (syncRes.appliedKeys.includes('website_published') && body.entries?.website_published?.value && adalahKonfigurasiSitus(body.entries.website_published.value)) {
+      try {
+        const serialized = JSON.stringify(body.entries.website_published.value, null, 2);
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT, serialized, 'utf8');
+        fs.mkdirSync(path.dirname(BERKAS_SNAPSHOT_STATIS), { recursive: true });
+        fs.writeFileSync(BERKAS_SNAPSHOT_STATIS, serialized, 'utf8');
+      } catch {
+        /* lanjutkan meskipun public snapshot tidak dapat ditulis */
+      }
+    }
+
+    if (rbacRes.rolesApplied > 0 || rbacRes.usersApplied > 0) {
+      broadcastRbacUpdated();
+    }
+    if (syncRes.appliedKeys.length > 0) {
+      const updatedEntries: Record<string, { value: unknown; version: number; updatedAt: string; updatedBy: string }> = {};
+      const all = dataSyncStore.getAllState().entries;
+      for (const k of syncRes.appliedKeys) {
+        if (all[k]) updatedEntries[k] = all[k];
+      }
+      broadcastSyncBatch(updatedEntries, [], syncRes.revision);
+    }
+
+    res.json({
+      ok: true,
+      rolesApplied: rbacRes.rolesApplied,
+      usersApplied: rbacRes.usersApplied,
+      entriesApplied: syncRes.appliedKeys.length,
+      revision: syncRes.revision
+    });
+  });
+
+  app.get('/api/system/db-config', (req, res) => {
+    const fbCfg = readFirebaseClientConfig();
+    const summary = dbDriverManager.getRuntimeSummary();
+    res.set('Cache-Control', 'no-store').json({
+      activeDriver: summary.activeDriver,
+      updatedAt: summary.updatedAt,
+      updatedBy: summary.updatedBy,
+      pocketbaseArchived: summary.pocketbaseArchived,
+      pocketbaseUrl: summary.pocketbaseUrl,
+      firebase: fbCfg
+        ? {
+            configured: true,
+            projectId: fbCfg.projectId,
+            firestoreDatabaseId: fbCfg.firestoreDatabaseId,
+            authDomain: fbCfg.authDomain
+          }
+        : { configured: false },
+      ...(req.auth ? { pocketbaseArchive: summary.pocketbaseArchive } : {})
+    });
+  });
+
+  app.post('/api/system/db-driver', requireAuth, (req, res) => {
+    const permsIt = req.auth!.role.permissions['it-traceability'] || [];
+    const permsRbac = req.auth!.role.permissions['rbac-admin'] || [];
+    const boleh =
+      Boolean(req.auth!.user.isHiddenDeveloper) ||
+      permsRbac.includes('update') ||
+      permsIt.includes('update');
+    if (!boleh) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        pesan: 'Anda tidak memiliki otoritas mengubah driver database sistem.'
+      });
+    }
+    const { driver, pocketbaseUrl } = (req.body || {}) as { driver?: string; pocketbaseUrl?: string };
+    if (driver !== 'firebase' && driver !== 'pocketbase') {
+      return res.status(400).json({ error: 'BAD_REQUEST', pesan: 'Driver harus bernilai "firebase" atau "pocketbase".' });
+    }
+    const next = dbDriverManager.switchDriver(driver, req.auth!.user.username, pocketbaseUrl);
+    rbacStore.recordAudit({
+      actorUsername: req.auth!.user.username,
+      actorRole: req.auth!.role.id,
+      action: 'DB_DRIVER_SWITCHED',
+      resource: 'it-traceability',
+      status: 'ALLOWED',
+      ip: getClientIp(req),
+      detail: `Mode database aktif diubah ke "${driver}". Arsip konfigurasi PocketBase tetap dipertahankan.`
+    });
+    broadcastMessage({ type: 'system:db-driver', activeDriver: next.activeDriver }, true);
+    res.json({ ok: true, ...next });
+  });
+
+  app.get('/api/system/migration-bundle', requirePermission('rbac-admin', 'view'), (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({
+      exportedAt: new Date().toISOString(),
+      activeDriver: dbDriverManager.getActiveDriver(),
+      pocketbaseArchive: dbDriverManager.getPocketBaseArchive(),
+      rbac: {
+        roles: rbacStore.listRoles(),
+        users: rbacStore.listAllUsersForCloudSync()
+      },
+      appState: dataSyncStore.getAllState()
     });
   });
 

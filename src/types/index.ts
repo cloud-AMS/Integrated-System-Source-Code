@@ -30,7 +30,8 @@ export type UserRole =
   | 'sales_medrep'
   | 'karyawan'
   | 'auditor_internal'
-  | 'it_admin';
+  | 'it_admin'
+  | 'developer_it_support';
 
 // 1. Regulatory Affairs (RA & PJT)
 export interface IzinEdarAlkes {
@@ -1966,6 +1967,21 @@ export interface ServerUserPublic {
   department: string;
   isActive: boolean;
   isHiddenDeveloper?: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServerUserRecord {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  roleId: string;
+  department: string;
+  isActive: boolean;
+  isHiddenDeveloper?: boolean;
+  passwordHash: string;
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;

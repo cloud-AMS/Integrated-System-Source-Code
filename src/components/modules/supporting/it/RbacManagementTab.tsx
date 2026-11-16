@@ -259,6 +259,7 @@ export default function RbacManagementTab({
         : `Akun @${cleanUsername} tersimpan di server dan langsung aktif untuk login dari internet.`
     );
     await loadAll();
+    void db.pushRbacSnapshotToFirebase();
     onPermissionsUpdated?.();
   };
 
@@ -271,6 +272,7 @@ export default function RbacManagementTab({
     }
     showMsg('ok', `Akun "${u.username}" dihapus dan seluruh sesinya dicabut.`);
     await loadAll();
+    void db.pushRbacSnapshotToFirebase();
   };
 
   const togglePerm = (resourceId: RbacResourceId, action: PermissionAction) => {
@@ -319,6 +321,7 @@ export default function RbacManagementTab({
       }
       showMsg('ok', `Matriks izin peran "${draftRoleName}" tersimpan di server.`);
       await loadAll();
+      void db.pushRbacSnapshotToFirebase();
       onPermissionsUpdated?.();
     } finally {
       setSavingRole(false);
@@ -346,6 +349,7 @@ export default function RbacManagementTab({
     setSelectedRoleId(data.role.id);
     showMsg('ok', `Peran kustom "${data.role.name}" berhasil dibuat.`);
     await loadAll();
+    void db.pushRbacSnapshotToFirebase();
   };
 
   const removeRole = async (role: RoleDefinition) => {
@@ -357,6 +361,7 @@ export default function RbacManagementTab({
     }
     showMsg('ok', `Peran "${role.name}" dihapus.`);
     await loadAll();
+    void db.pushRbacSnapshotToFirebase();
   };
 
   const revokeSession = async (sessionId: string) => {

