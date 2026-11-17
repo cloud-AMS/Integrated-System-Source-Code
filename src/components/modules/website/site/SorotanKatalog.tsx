@@ -19,7 +19,6 @@ export function SorotanKatalog({
   const kategori = Array.from(
     new Set(cfg.produk.item.filter((produk) => produk.isActive).map((produk) => produk.kategori).filter(Boolean))
   ).slice(0, 4);
-  const sertifikasi = cfg.kepercayaan.item.filter((item) => item.isActive).slice(0, 3);
 
   return (
     <section className="situs-hero katalog-hero border-b border-slate-200">
@@ -94,22 +93,6 @@ export function SorotanKatalog({
           </div>
         </div>
       </div>
-
-      {sertifikasi.length > 0 && (
-        <div className="katalog-trust-wrap">
-          <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 pb-8 grid sm:grid-cols-3 gap-3">
-            {sertifikasi.map((item) => (
-              <div key={item.id} className="katalog-trust-item">
-                <ShieldCheck className="w-5 h-5 text-[var(--brand)] shrink-0" />
-                <span className="min-w-0">
-                  <span className="block text-xs font-bold text-slate-800">{item.teks}</span>
-                  {item.keterangan && <span className="block text-2xs text-slate-500 mt-0.5">{item.keterangan}</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }
