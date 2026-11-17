@@ -114,12 +114,13 @@ $env:DEPLOYMENT_ENV = "staging"
 $env:VITE_DEPLOYMENT_ENV = "staging"
 $env:AMS_DATA_DIR = "C:\AMS\Data"
 
-if (-not (Test-Path "C:\AMS\Data\rbac-db.json")) {
-  throw "Database RBAC tidak ditemukan. Pastikan AMS_DATA_DIR sama dengan konfigurasi service; jangan bootstrap ke folder lain."
+New-Item -ItemType Directory -Force -Path "C:\AMS\Data", "C:\AMS\Backups" | Out-Null
+if (Test-Path "C:\AMS\Data\rbac-db.json") {
+  Copy-Item "C:\AMS\Data\rbac-db.json" `
+    ("C:\AMS\Backups\rbac-db-before-dev-update-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".json")
+} else {
+  Write-Host "Database RBAC belum ada; CLI akan membuatnya di C:\AMS\Data."
 }
-New-Item -ItemType Directory -Force -Path "C:\AMS\Backups" | Out-Null
-Copy-Item "C:\AMS\Data\rbac-db.json" `
-  ("C:\AMS\Backups\rbac-db-before-dev-update-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".json")
 
 npm run auth:bootstrap -- --username "USERNAME_DEVELOPER"
 if ($LASTEXITCODE -ne 0) {
