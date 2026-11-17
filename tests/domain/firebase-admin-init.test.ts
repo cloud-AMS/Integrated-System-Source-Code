@@ -14,7 +14,9 @@ import {
   normalizePrivateKey,
   resetFirebaseAdminForTests,
   resolveFirebaseAdminConfig,
-  resolveWindowsFriendlyPath
+  resolveFirestoreDatabaseId,
+  resolveWindowsFriendlyPath,
+  validateVpsFirebaseConfig
 } from '../../server/firebaseAdmin';
 
 function generateEphemeralRsaPrivateKeyPem(): string {
@@ -220,5 +222,101 @@ describe('Firebase Admin SDK & Named Firestore Database (Windows VPS)', () => {
 
     expect(resolved.projectId).toBe('sixth-cedar-f5v9p');
     expect(resolved.databaseId).toBe(DEFAULT_FIRESTORE_DATABASE_ID);
+  });
+
+  it('memvalidasi FIREBASE_SERVICE_ACCOUNT_JSON valid dan memuat FIRESTORE_DATABASE_ID eksplisit di VPS', () => {
+    const privateKey = generateEphemeralRsaPrivateKeyPem();
+    const saJson = JSON.stringify({
+      project_id: 'sixth-cedar-f5v9p',
+      client_email: 'vps-runner@sixth-cedar-f5v9p.iam.gserviceaccount.com',
+      private_key: privateKey
+    });
+
+    const validation = validateVpsFirebaseConfig({
+      rootDir: os.tmpdir(),
+      env: {
+        DEPLOYMENT_ENV: 'staging',
+        FIREBASE_SERVICE_ACCOUNT_JSON: saJson,
+        FIRESTORE_DATABASE_ID: DEFAULT_FIRESTORE_DATABASE_ID
+      }
+    });
+
+    expect(validation.isVpsRuntime).toBe(true);
+    expect(validation.hasServiceAccountJson).toBe(true);
+    expect(validation.serviceAccountJsonValid).toBe(true);
+    expect(validation.serviceAccountJsonStatus).toBe('valid');
+    expect(validation.firestoreDatabaseId).toBe(DEFAULT_FIRESTORE_DATABASE_ID);
+    expect(validation.databaseIdSource).toBe('FIRESTORE_DATABASE_ID');
+    expect(validation.databaseIdMatchesTarget).toBe(true);
+    expect(validation.readyForStableConnection).toBe(true);
+    expect(validation.errors).toEqual([]);
+  });
+
+  it('melaporkan error saat FIREBASE_SERVICE_ACCOUNT_JSON tidak valid atau hilang tanpa fallback di VPS', () => {
+    const invalidRes = validateVpsFirebaseConfig({
+      rootDir: os.tmpdir(),
+      env: {
+        FIREBASE_PROJECT_ID: 'sixth-cedar-f5v9p',
+        FIREBASE_SERVICE_ACCOUNT_JSON: 'bukan-json-valid',
+        FIRESTORE_DATABASE_ID: DEFAULT_FIRESTORE_DATABASE_ID
+      }
+    });
+    expect(invalidRes.serviceAccountJsonStatus).toBe('invalid');
+    expect(invalidRes.serviceAccountJsonValid).toBe(false);
+    expect(invalidRes.readyForStableConnection).toBe(false);
+    expect(invalidRes.errors.length).toBeGreaterThan(0);
+
+    const missingRes = validateVpsFirebaseConfig({
+      rootDir: os.tmpdir(),
+      env: {
+        FIREBASE_PROJECT_ID: 'sixth-cedar-f5v9p'
+      }
+    });
+    expect(missingRes.serviceAccountJsonStatus).toBe('missing');
+    expect(missingRes.readyForStableConnection).toBe(false);
+    expect(missingRes.firestoreDatabaseId).toBe(DEFAULT_FIRESTORE_DATABASE_ID);
+    expect(missingRes.warnings.some((w) => w.includes('FIRESTORE_DATABASE_ID belum diset eksplisit'))).toBe(true);
+  });
+
+  it('mengabaikan placeholder FIREBASE_SERVICE_ACCOUNT_JSON jika FIREBASE_SERVICE_ACCOUNT_PATH valid tersedia', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ams-fb-admin-placeholder-'));
+    tempDirs.push(dir);
+    const keyPath = path.join(dir, 'sa.json');
+    fs.writeFileSync(
+      keyPath,
+      JSON.stringify({
+        project_id: 'sixth-cedar-f5v9p',
+        client_email: 'sa@sixth-cedar-f5v9p.iam.gserviceaccount.com',
+        private_key: generateEphemeralRsaPrivateKeyPem()
+      }),
+      'utf8'
+    );
+
+    const validation = validateVpsFirebaseConfig({
+      rootDir: dir,
+      env: {
+        FIREBASE_SERVICE_ACCOUNT_JSON: 'GANTI_DENGAN_SERVICE_ACCOUNT_JSON',
+        FIREBASE_SERVICE_ACCOUNT_PATH: keyPath,
+        FIRESTORE_DATABASE_ID: DEFAULT_FIRESTORE_DATABASE_ID
+      }
+    });
+
+    expect(validation.serviceAccountJsonStatus).toBe('placeholder');
+    expect(validation.hasAlternativeCredential).toBe(true);
+    expect(validation.credentialSource).toBe('service-account-file');
+    expect(validation.readyForStableConnection).toBe(true);
+  });
+
+  it('resolveFirestoreDatabaseId memberi prioritas pada FIRESTORE_DATABASE_ID lalu fallback ke target bernama', () => {
+    const res = resolveFirestoreDatabaseId({
+      rootDir: os.tmpdir(),
+      env: {
+        FIRESTORE_DATABASE_ID: `"${DEFAULT_FIRESTORE_DATABASE_ID}"`,
+        VITE_FIRESTORE_DATABASE_ID: '(default)'
+      }
+    });
+    expect(res.databaseId).toBe(DEFAULT_FIRESTORE_DATABASE_ID);
+    expect(res.source).toBe('FIRESTORE_DATABASE_ID');
+    expect(res.matchesExpectedDatabaseId).toBe(true);
   });
 });

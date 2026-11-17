@@ -27,7 +27,7 @@ Jangan memakai kredensial production atau `firebase-applet-config.json` secara l
    npx firebase login
    npx firebase deploy --only firestore:rules --project <FIREBASE_STAGING_PROJECT_ID>
    ```
-7. Tambahkan hostname domain staging Anda (tanpa `https://`, misalnya `staging-ams.perusahaan-anda.co.id`) pada **Firebase Authentication → Settings → Authorized domains**.
+7. Tambahkan hostname domain staging Anda (tanpa `https://`, misalnya `ams.bejodigitalprint.com`) pada **Firebase Authentication → Settings → Authorized domains**.
 
 ---
 
@@ -61,7 +61,7 @@ Pastikan minimal variabel berikut di `C:\AMS\App\.env.staging` terisi lengkap:
 ```env
 NODE_ENV=production
 PORT=3000
-APP_URL=https://staging-ams.perusahaan-anda.co.id
+APP_URL=https://ams.bejodigitalprint.com
 DEPLOYMENT_ENV=staging
 VITE_DEPLOYMENT_ENV=staging
 AMS_DB_DRIVER=firebase
@@ -105,7 +105,7 @@ Gunakan skrip otomasi resmi dari repositori:
 ```powershell
 cd C:\AMS\App
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy-windows-vps.ps1 `
-  -Domain "staging-ams.perusahaan-anda.co.id" `
+  -Domain "ams.bejodigitalprint.com" `
   -ConfigureFirewall
 ```
 
@@ -131,11 +131,11 @@ pm2 start ecosystem.config.cjs --env staging
 
 1. Uji endpoint lokal maupun domain publik:
    ```powershell
-   Invoke-RestMethod -Uri "https://staging-ams.perusahaan-anda.co.id/api/health"
-   Invoke-RestMethod -Uri "https://staging-ams.perusahaan-anda.co.id/api/system/db-config"
+   Invoke-RestMethod -Uri "https://ams.bejodigitalprint.com/api/health"
+   Invoke-RestMethod -Uri "https://ams.bejodigitalprint.com/api/system/db-config"
    ```
    Pastikan `deploymentEnv` bernilai `"staging"`, `activeDriver` bernilai `"firebase"`, dan `firebase.projectId` sesuai dengan proyek Firebase Staging Anda.
-2. Buat akun administrator pertama melalui **Setup Wizard** di browser (`https://staging-ams.perusahaan-anda.co.id/`) atau lewat CLI PowerShell:
+2. Buat akun administrator pertama melalui **Setup Wizard** di browser (`https://ams.bejodigitalprint.com/`) atau lewat CLI PowerShell:
    ```powershell
    $env:DEPLOYMENT_ENV="staging"
    npm run auth:bootstrap

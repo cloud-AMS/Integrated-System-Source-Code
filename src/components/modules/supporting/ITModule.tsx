@@ -174,7 +174,7 @@ export default function ITModule({
     isStaging: true,
     caddyfile: `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis (Windows Server VPS)
 # Lokasi file: C:\\caddy\\Caddyfile
-staging-ams.perusahaan-anda.co.id {
+ams.bejodigitalprint.com {
     encode gzip zstd
 
     reverse_proxy 127.0.0.1:3000 {
@@ -220,14 +220,14 @@ staging-ams.perusahaan-anda.co.id {
     envStagingTemplate: `# Simpan sebagai C:\\AMS\\App\\.env.staging
 NODE_ENV=production
 PORT=3000
-APP_URL=https://staging-ams.perusahaan-anda.co.id
+APP_URL=https://ams.bejodigitalprint.com
 DEPLOYMENT_ENV=staging
 VITE_DEPLOYMENT_ENV=staging
 AMS_DB_DRIVER=firebase
 AMS_DATA_DIR=C:\\AMS\\Data`,
     powershellQuickDeploy: [
       'cd C:\\AMS\\App',
-      'powershell -ExecutionPolicy Bypass -File .\\scripts\\deploy-windows-vps.ps1 -Domain "staging-ams.perusahaan-anda.co.id" -ConfigureFirewall'
+      'powershell -ExecutionPolicy Bypass -File .\\scripts\\deploy-windows-vps.ps1 -Domain "ams.bejodigitalprint.com" -ConfigureFirewall'
     ]
   });
 

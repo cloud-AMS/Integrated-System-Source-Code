@@ -17,8 +17,8 @@ export function buildWindowsDeploymentGuides(opts?: {
   const environment =
     rawEnv === 'staging' ? 'staging' : rawEnv === 'production' ? 'production' : 'development';
   const isStaging = environment === 'staging';
-  const domain = (opts?.domain || (isStaging ? 'staging-ams.perusahaan-anda.co.id' : 'ams.perusahaan-anda.co.id')).trim();
-  const firebaseProjectId = opts?.firebaseProjectId || '<FIREBASE_STAGING_PROJECT_ID>';
+  const domain = (opts?.domain || 'ams.bejodigitalprint.com').trim();
+  const firebaseProjectId = opts?.firebaseProjectId || 'ams-integrated-staging';
 
   const caddyfile = `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis (Windows Server VPS)
 # Lokasi file: C:\\caddy\\Caddyfile
@@ -66,7 +66,7 @@ ${domain} {
     '# ===== 2. PASANG NODE EXPRESS SERVICE (WAJIB 1 INSTANCE TUNGGAL) =====',
     'nssm install AMS_AppService "C:\\Program Files\\nodejs\\node.exe" "C:\\AMS\\App\\server.js"',
     'nssm set AMS_AppService AppDirectory "C:\\AMS\\App"',
-    'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production DEPLOYMENT_ENV=staging VITE_DEPLOYMENT_ENV=staging AMS_DB_DRIVER=firebase PORT=3000 AMS_DATA_DIR=C:\\AMS\\Data FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439 FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json',
+    'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production DEPLOYMENT_ENV=staging VITE_DEPLOYMENT_ENV=staging AMS_DB_DRIVER=firebase PORT=3000 AMS_DATA_DIR=C:\\AMS\\Data FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439 FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439 FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json',
     'nssm set AMS_AppService AppStdout "C:\\AMS\\Logs\\service_output.log"',
     'nssm set AMS_AppService AppStderr "C:\\AMS\\Logs\\service_error.log"',
     'nssm set AMS_AppService Start SERVICE_AUTO_START',
@@ -104,6 +104,7 @@ VITE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96
 VITE_FIREBASE_ADMIN_EMAIL=cloud.ams2026@gmail.com
 
 # Firebase Admin SDK Server-to-Server (simpan JSON di C:\\AMS\\Secrets)
+FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
 FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
 FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json
 

@@ -32,11 +32,14 @@ import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/se
 import { loadDeploymentEnv, resolveDeploymentEnvironment } from './server/envLoader';
 import { buildWindowsDeploymentGuides } from './server/deploymentGuides';
 import {
+  DEFAULT_FIRESTORE_DATABASE_ID,
   getFirebaseAdminStatus,
   initializeFirebaseAdmin,
   isAiStudioPreviewRuntime,
+  validateVpsFirebaseConfig,
   verifyFirebaseAdminFirestoreConnection,
-  verifyIdTokenViaAdmin
+  verifyIdTokenViaAdmin,
+  type VpsFirebaseValidationResult
 } from './server/firebaseAdmin';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -88,6 +91,40 @@ function readFirebaseClientConfig(): FirebaseClientConfig | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Memvalidasi keberadaan FIREBASE_SERVICE_ACCOUNT_JSON (dan sumber kredensial VPS lainnya)
+ * serta memuat FIRESTORE_DATABASE_ID secara konsisten ke environment runtime agar koneksi
+ * ke database Firestore bernama (ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439)
+ * tetap stabil saat dijalankan di VPS.
+ */
+function validasiDanMuatFirebaseVps(emitLog = false): VpsFirebaseValidationResult {
+  const hasil = validateVpsFirebaseConfig({
+    rootDir: __dirname,
+    expectedDatabaseId: DEFAULT_FIRESTORE_DATABASE_ID
+  });
+
+  if (!process.env.FIRESTORE_DATABASE_ID?.trim()) {
+    process.env.FIRESTORE_DATABASE_ID = hasil.firestoreDatabaseId;
+  }
+  if (!process.env.FIREBASE_FIRESTORE_DATABASE_ID?.trim()) {
+    process.env.FIREBASE_FIRESTORE_DATABASE_ID = hasil.firestoreDatabaseId;
+  }
+
+  if (emitLog) {
+    console.log(
+      `[Firebase VPS Validator] env=${hasil.isVpsRuntime ? 'VPS/Server' : 'AI-Studio-Preview'}, FIREBASE_SERVICE_ACCOUNT_JSON=${hasil.serviceAccountJsonStatus}, sumberKredensial=${hasil.credentialSource}, FIRESTORE_DATABASE_ID=${hasil.firestoreDatabaseId} (${hasil.databaseIdSource}), siapKoneksiStabil=${hasil.readyForStableConnection}`
+    );
+    for (const warning of hasil.warnings) {
+      console.warn(`[Firebase VPS Validator][PERINGATAN] ${warning}`);
+    }
+    for (const err of hasil.errors) {
+      console.error(`[Firebase VPS Validator][GALAT] ${err}`);
+    }
+  }
+
+  return hasil;
 }
 
 async function verifyFirebaseIdToken(idToken: string): Promise<
@@ -193,13 +230,16 @@ async function startServer() {
   // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
   const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
 
+  // Validasi keberadaan FIREBASE_SERVICE_ACCOUNT_JSON & muat FIRESTORE_DATABASE_ID untuk stabilitas koneksi VPS
+  validasiDanMuatFirebaseVps(true);
+
   // Inisialisasi Firebase Admin SDK untuk koneksi server-to-server aman ke named Firestore database
   const adminInitStatus = initializeFirebaseAdmin({ rootDir: __dirname });
   if (adminInitStatus.initialized) {
     console.log(
       `[Firebase Admin SDK] Terinisialisasi (project=${adminInitStatus.projectId}, databaseId=${adminInitStatus.databaseId}, sumber=${adminInitStatus.credentialSource})`
     );
-    void verifyFirebaseAdminFirestoreConnection().then((verified) => {
+    void verifyFirebaseAdminFirestoreConnection(8000, 3).then((verified) => {
       if (verified.connected) {
         console.log(
           `[Firebase Admin SDK] Koneksi Firestore "${verified.databaseId}" terverifikasi (${verified.latencyMs} ms, koleksi akar=${verified.collectionCount ?? 0}).`
@@ -505,6 +545,7 @@ async function startServer() {
       pocketbaseArchived: true,
       firebaseProjectId: fbCfg?.projectId || null,
       firebaseAdmin: getFirebaseAdminStatus(),
+      firebaseVpsValidation: validasiDanMuatFirebaseVps(false),
       rbacAktif: true,
       realtimeSyncAktif: true,
       needsInitialSetup: rbacStore.needsInitialSetup(),
@@ -763,16 +804,19 @@ async function startServer() {
           }
         : { configured: false },
       firebaseAdmin: getFirebaseAdminStatus(),
+      firebaseVpsValidation: validasiDanMuatFirebaseVps(false),
       ...(req.auth ? { pocketbaseArchive: summary.pocketbaseArchive } : {})
     });
   });
 
   app.post('/api/system/firebase-admin-verify', requirePermission('it-traceability', 'view'), async (_req, res) => {
+    const validation = validasiDanMuatFirebaseVps(false);
     initializeFirebaseAdmin({ rootDir: __dirname });
-    const status = await verifyFirebaseAdminFirestoreConnection();
+    const status = await verifyFirebaseAdminFirestoreConnection(8000, 3);
     res.set('Cache-Control', 'no-store').json({
       ok: status.connected,
-      status
+      status,
+      validation
     });
   });
 
@@ -1301,9 +1345,7 @@ async function startServer() {
     const domain =
       domainFromEnv && domainFromEnv !== 'localhost' && domainFromEnv !== '127.0.0.1'
         ? domainFromEnv
-        : envInfo.isStaging
-          ? 'staging-ams.perusahaan-anda.co.id'
-          : 'ams.perusahaan-anda.co.id';
+        : 'ams.bejodigitalprint.com';
 
     res.json(
       buildWindowsDeploymentGuides({

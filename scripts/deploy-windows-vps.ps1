@@ -6,12 +6,12 @@
   menjalankan build Vite mode staging (npm run build:staging), mendaftarkan/me-restart service NSSM
   (AMS_AppService & CaddyWebServer), mengonfigurasi firewall opsional, serta memverifikasi /api/health.
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\scripts\deploy-windows-vps.ps1 -Domain "staging-ams.perusahaan-anda.co.id" -ConfigureFirewall
+  powershell -ExecutionPolicy Bypass -File .\scripts\deploy-windows-vps.ps1 -Domain "ams.bejodigitalprint.com" -ConfigureFirewall
 #>
 
 [CmdletBinding()]
 param(
-  [string]$Domain = "staging-ams.perusahaan-anda.co.id",
+  [string]$Domain = "ams.bejodigitalprint.com",
   [string]$AppDir = "C:\AMS\App",
   [string]$DataDir = "C:\AMS\Data",
   [string]$SecretsDir = "C:\AMS\Secrets",
@@ -176,7 +176,7 @@ if (-not $SkipServiceRestart) {
     & nssm set $svcName Application $nodeExe
     & nssm set $svcName AppParameters $serverJs
   }
-  $firestoreDbId = if ($envMap["FIREBASE_FIRESTORE_DATABASE_ID"]) { $envMap["FIREBASE_FIRESTORE_DATABASE_ID"] } elseif ($envMap["VITE_FIRESTORE_DATABASE_ID"]) { $envMap["VITE_FIRESTORE_DATABASE_ID"] } else { "ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439" }
+  $firestoreDbId = if ($envMap["FIRESTORE_DATABASE_ID"]) { $envMap["FIRESTORE_DATABASE_ID"] } elseif ($envMap["FIREBASE_FIRESTORE_DATABASE_ID"]) { $envMap["FIREBASE_FIRESTORE_DATABASE_ID"] } elseif ($envMap["VITE_FIRESTORE_DATABASE_ID"]) { $envMap["VITE_FIRESTORE_DATABASE_ID"] } else { "ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439" }
   $defaultSaPath = Join-Path $SecretsDir "firebase-service-account.json"
   $saPath = if ($envMap["FIREBASE_SERVICE_ACCOUNT_PATH"]) { $envMap["FIREBASE_SERVICE_ACCOUNT_PATH"] } else { $defaultSaPath }
   if (-not (Test-Path $saPath) -and -not $envMap["FIREBASE_SERVICE_ACCOUNT_JSON"]) {
@@ -184,7 +184,7 @@ if (-not $SkipServiceRestart) {
   }
 
   & nssm set $svcName AppDirectory $AppDir
-  & nssm set $svcName AppEnvironmentExtra "NODE_ENV=production" "DEPLOYMENT_ENV=staging" "VITE_DEPLOYMENT_ENV=staging" "AMS_DB_DRIVER=firebase" "PORT=$Port" "AMS_DATA_DIR=$DataDir" "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
+  & nssm set $svcName AppEnvironmentExtra "NODE_ENV=production" "DEPLOYMENT_ENV=staging" "VITE_DEPLOYMENT_ENV=staging" "AMS_DB_DRIVER=firebase" "PORT=$Port" "AMS_DATA_DIR=$DataDir" "FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
   & nssm set $svcName AppStdout (Join-Path $LogsDir "service_output.log")
   & nssm set $svcName AppStderr (Join-Path $LogsDir "service_error.log")
   & nssm set $svcName AppRotateFiles 1

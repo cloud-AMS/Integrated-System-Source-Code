@@ -47,6 +47,36 @@ export interface FirebaseAdminStatus {
   lastError?: string | null;
 }
 
+export type ServiceAccountJsonValidationStatus = 'valid' | 'missing' | 'placeholder' | 'invalid';
+
+export interface FirestoreDatabaseIdResolution {
+  databaseId: string;
+  source:
+    | 'FIRESTORE_DATABASE_ID'
+    | 'FIREBASE_FIRESTORE_DATABASE_ID'
+    | 'VITE_FIRESTORE_DATABASE_ID'
+    | 'firebase-applet-config.json'
+    | 'default';
+  matchesExpectedDatabaseId: boolean;
+}
+
+export interface VpsFirebaseValidationResult {
+  isVpsRuntime: boolean;
+  hasServiceAccountJson: boolean;
+  serviceAccountJsonValid: boolean;
+  serviceAccountJsonStatus: ServiceAccountJsonValidationStatus;
+  hasAlternativeCredential: boolean;
+  credentialSource: FirebaseAdminCredentialSource;
+  projectId: string | null;
+  firestoreDatabaseId: string;
+  databaseIdSource: FirestoreDatabaseIdResolution['source'];
+  databaseIdMatchesTarget: boolean;
+  serviceAccountEmailMasked: string | null;
+  readyForStableConnection: boolean;
+  warnings: string[];
+  errors: string[];
+}
+
 interface RawServiceAccountJson {
   project_id?: unknown;
   projectId?: unknown;
@@ -195,6 +225,53 @@ export function isAiStudioPreviewRuntime(env: Record<string, string | undefined>
   return /^ais-(?:dev|pre)-/i.test(kService) || /^https?:\/\/ais-(?:dev|pre)-/i.test(appUrl);
 }
 
+export function isPlaceholderEnvValue(raw?: string | null): boolean {
+  const cleaned = (raw || '').trim().replace(/^["']|["']$/g, '');
+  if (!cleaned) return true;
+  return /^(?:GANTI_|MY_|YOUR_|PLACEHOLDER|<[^>]+>)/i.test(cleaned);
+}
+
+export function resolveFirestoreDatabaseId(opts?: {
+  rootDir?: string;
+  env?: Record<string, string | undefined>;
+  expectedDatabaseId?: string;
+}): FirestoreDatabaseIdResolution {
+  const rootDir = opts?.rootDir || process.cwd();
+  const env = opts?.env || process.env;
+  const expected = (opts?.expectedDatabaseId || DEFAULT_FIRESTORE_DATABASE_ID).trim();
+  const appletCfg = readAppletConfigFile(rootDir);
+  const inAiStudioPreview = isAiStudioPreviewRuntime(env);
+
+  const cleanVal = (v?: string) => (v || '').trim().replace(/^["']|["']$/g, '');
+  const firebaseDbEnv = cleanVal(env.FIREBASE_FIRESTORE_DATABASE_ID);
+  const firestoreDbEnv = cleanVal(env.FIRESTORE_DATABASE_ID);
+  const viteDbEnv = cleanVal(env.VITE_FIRESTORE_DATABASE_ID);
+  const appletDb = cleanVal(appletCfg.firestoreDatabaseId);
+
+  let databaseId = DEFAULT_FIRESTORE_DATABASE_ID;
+  let source: FirestoreDatabaseIdResolution['source'] = 'default';
+
+  if (firestoreDbEnv && !isPlaceholderEnvValue(firestoreDbEnv)) {
+    databaseId = firestoreDbEnv;
+    source = 'FIRESTORE_DATABASE_ID';
+  } else if (firebaseDbEnv && !isPlaceholderEnvValue(firebaseDbEnv)) {
+    databaseId = firebaseDbEnv;
+    source = 'FIREBASE_FIRESTORE_DATABASE_ID';
+  } else if (!inAiStudioPreview && viteDbEnv && !isPlaceholderEnvValue(viteDbEnv)) {
+    databaseId = viteDbEnv;
+    source = 'VITE_FIRESTORE_DATABASE_ID';
+  } else if (appletDb && !isPlaceholderEnvValue(appletDb)) {
+    databaseId = appletDb;
+    source = 'firebase-applet-config.json';
+  }
+
+  return {
+    databaseId,
+    source,
+    matchesExpectedDatabaseId: databaseId === expected
+  };
+}
+
 export function resolveFirebaseAdminConfig(opts?: {
   rootDir?: string;
   env?: Record<string, string | undefined>;
@@ -218,20 +295,11 @@ export function resolveFirebaseAdminConfig(opts?: {
       appletCfg.projectId ||
       '';
 
-  const databaseId = inAiStudioPreview
-    ? env.FIREBASE_FIRESTORE_DATABASE_ID?.trim() ||
-      env.FIRESTORE_DATABASE_ID?.trim() ||
-      appletCfg.firestoreDatabaseId ||
-      DEFAULT_FIRESTORE_DATABASE_ID
-    : env.FIREBASE_FIRESTORE_DATABASE_ID?.trim() ||
-      env.FIRESTORE_DATABASE_ID?.trim() ||
-      env.VITE_FIRESTORE_DATABASE_ID?.trim() ||
-      appletCfg.firestoreDatabaseId ||
-      DEFAULT_FIRESTORE_DATABASE_ID;
+  const { databaseId } = resolveFirestoreDatabaseId({ rootDir, env });
 
   // 1. Inline JSON / Base64 JSON (cocok untuk secret manager atau .env single-line)
   const rawJson = env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
-  if (rawJson) {
+  if (rawJson && !isPlaceholderEnvValue(rawJson)) {
     const parsed = decodeServiceAccountJsonString(rawJson, projectId);
     if (!parsed.ok) {
       return {
@@ -341,7 +409,115 @@ export function resolveFirebaseAdminConfig(opts?: {
     databaseId,
     credentialSource: 'unconfigured',
     configError:
-      'Kredensial Firebase Admin SDK belum dikonfigurasi (atur FIREBASE_SERVICE_ACCOUNT_PATH atau FIREBASE_SERVICE_ACCOUNT_JSON untuk koneksi server-to-server penuh).'
+      'Kredensial Firebase Admin SDK belum dikonfigurasi (atur FIREBASE_SERVICE_ACCOUNT_JSON atau FIREBASE_SERVICE_ACCOUNT_PATH untuk koneksi server-to-server penuh).'
+  };
+}
+
+export function validateVpsFirebaseConfig(opts?: {
+  rootDir?: string;
+  env?: Record<string, string | undefined>;
+  expectedDatabaseId?: string;
+}): VpsFirebaseValidationResult {
+  const rootDir = opts?.rootDir || process.cwd();
+  const env = opts?.env || process.env;
+  const expectedDb = (opts?.expectedDatabaseId || DEFAULT_FIRESTORE_DATABASE_ID).trim();
+  const isVpsRuntime = !isAiStudioPreviewRuntime(env);
+
+  const dbResolution = resolveFirestoreDatabaseId({
+    rootDir,
+    env,
+    expectedDatabaseId: expectedDb
+  });
+  const resolved = resolveFirebaseAdminConfig({ rootDir, env });
+
+  const rawServiceAccountJson = (env.FIREBASE_SERVICE_ACCOUNT_JSON || '').trim();
+  const hasServiceAccountJson = rawServiceAccountJson.length > 0;
+  let serviceAccountJsonStatus: ServiceAccountJsonValidationStatus = 'missing';
+  let serviceAccountJsonValid = false;
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  if (hasServiceAccountJson) {
+    if (isPlaceholderEnvValue(rawServiceAccountJson)) {
+      serviceAccountJsonStatus = 'placeholder';
+      warnings.push(
+        'FIREBASE_SERVICE_ACCOUNT_JSON masih berisi nilai placeholder contoh; ganti dengan Service Account JSON / Base64 asli di VPS.'
+      );
+    } else {
+      const decoded = decodeServiceAccountJsonString(rawServiceAccountJson, resolved.projectId);
+      if (!decoded.ok) {
+        serviceAccountJsonStatus = 'invalid';
+        errors.push(decoded.error);
+      } else if (
+        !decoded.account.privateKey?.includes('BEGIN') ||
+        !decoded.account.privateKey?.includes('PRIVATE KEY')
+      ) {
+        serviceAccountJsonStatus = 'invalid';
+        errors.push('private_key pada FIREBASE_SERVICE_ACCOUNT_JSON tidak berformat PEM yang valid.');
+      } else {
+        serviceAccountJsonStatus = 'valid';
+        serviceAccountJsonValid = true;
+      }
+    }
+  } else {
+    warnings.push(
+      'FIREBASE_SERVICE_ACCOUNT_JSON tidak ditemukan di environment; server memeriksa sumber kredensial alternatif (FIREBASE_SERVICE_ACCOUNT_PATH / GOOGLE_APPLICATION_CREDENTIALS).'
+    );
+  }
+
+  const hasAlternativeCredential =
+    resolved.credentialSource === 'service-account-file' ||
+    resolved.credentialSource === 'env-keypair' ||
+    resolved.credentialSource === 'adc';
+
+  if (resolved.credentialSource === 'unconfigured' && resolved.configError && errors.length === 0) {
+    if (isVpsRuntime) {
+      errors.push(resolved.configError);
+    } else {
+      warnings.push(resolved.configError);
+    }
+  }
+
+  if (!dbResolution.matchesExpectedDatabaseId) {
+    warnings.push(
+      `FIRESTORE_DATABASE_ID aktif (${dbResolution.databaseId}, sumber=${dbResolution.source}) berbeda dari target database (${expectedDb}).`
+    );
+  }
+
+  if (
+    dbResolution.source !== 'FIRESTORE_DATABASE_ID' &&
+    dbResolution.source !== 'FIREBASE_FIRESTORE_DATABASE_ID' &&
+    isVpsRuntime
+  ) {
+    warnings.push(
+      `FIRESTORE_DATABASE_ID belum diset eksplisit di environment VPS; memuat nilai fallback "${dbResolution.databaseId}" dari ${dbResolution.source}.`
+    );
+  }
+
+  if (!resolved.projectId) {
+    errors.push('Project ID Firebase belum terdefinisi untuk koneksi Admin SDK.');
+  }
+
+  const readyForStableConnection =
+    Boolean(resolved.projectId) &&
+    Boolean(dbResolution.databaseId) &&
+    (serviceAccountJsonValid || hasAlternativeCredential);
+
+  return {
+    isVpsRuntime,
+    hasServiceAccountJson,
+    serviceAccountJsonValid,
+    serviceAccountJsonStatus,
+    hasAlternativeCredential,
+    credentialSource: resolved.credentialSource,
+    projectId: resolved.projectId || null,
+    firestoreDatabaseId: dbResolution.databaseId,
+    databaseIdSource: dbResolution.source,
+    databaseIdMatchesTarget: dbResolution.matchesExpectedDatabaseId,
+    serviceAccountEmailMasked: maskClientEmail(resolved.serviceAccount?.clientEmail),
+    readyForStableConnection,
+    warnings,
+    errors
   };
 }
 
@@ -468,46 +644,80 @@ export function initializeFirebaseAdmin(opts?: {
   }
 }
 
+function isTransientFirestoreConnectionError(err: unknown): boolean {
+  const code = String((err as { code?: unknown } | null)?.code || '').toUpperCase();
+  const msg = (err instanceof Error ? err.message : String(err || '')).toLowerCase();
+  if (code === '7' || code === 'PERMISSION_DENIED' || code === '16' || code === 'UNAUTHENTICATED') {
+    return false;
+  }
+  if (msg.includes('permission_denied') || msg.includes('unauthenticated') || msg.includes('invalid_grant')) {
+    return false;
+  }
+  return (
+    code === '14' ||
+    code === '4' ||
+    code === 'UNAVAILABLE' ||
+    code === 'DEADLINE_EXCEEDED' ||
+    msg.includes('timeout') ||
+    msg.includes('unavailable') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('enotfound')
+  );
+}
+
 export async function verifyFirebaseAdminFirestoreConnection(
-  timeoutMs = 8000
+  timeoutMs = 8000,
+  maxAttempts = 3
 ): Promise<FirebaseAdminStatus> {
   if (!cachedDb || !currentStatus.initialized) {
     return { ...currentStatus };
   }
 
+  const attempts = Math.max(1, Math.min(5, Math.floor(maxAttempts)));
   const started = Date.now();
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    const collections = await Promise.race([
-      cachedDb.listCollections(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          reject(new Error(`Timeout koneksi Firestore Admin (${timeoutMs} ms)`));
-        }, timeoutMs);
-      })
-    ]);
-    currentStatus = {
-      ...currentStatus,
-      connected: true,
-      verifiedAt: new Date().toISOString(),
-      latencyMs: Date.now() - started,
-      collectionCount: collections.length,
-      lastError: null
-    };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : 'Gagal memverifikasi koneksi Firestore Admin SDK.';
-    currentStatus = {
-      ...currentStatus,
-      connected: false,
-      verifiedAt: new Date().toISOString(),
-      latencyMs: Date.now() - started,
-      lastError: message
-    };
-  } finally {
-    if (timer) clearTimeout(timer);
+  let lastMessage = 'Gagal memverifikasi koneksi Firestore Admin SDK.';
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      const collections = await Promise.race([
+        cachedDb.listCollections(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`Timeout koneksi Firestore Admin (${timeoutMs} ms)`));
+          }, timeoutMs);
+        })
+      ]);
+      currentStatus = {
+        ...currentStatus,
+        connected: true,
+        verifiedAt: new Date().toISOString(),
+        latencyMs: Date.now() - started,
+        collectionCount: collections.length,
+        lastError: null
+      };
+      if (timer) clearTimeout(timer);
+      return { ...currentStatus };
+    } catch (err) {
+      if (timer) clearTimeout(timer);
+      lastMessage =
+        err instanceof Error ? err.message : 'Gagal memverifikasi koneksi Firestore Admin SDK.';
+      if (attempt < attempts && isTransientFirestoreConnectionError(err)) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 600));
+        continue;
+      }
+      break;
+    }
   }
 
+  currentStatus = {
+    ...currentStatus,
+    connected: false,
+    verifiedAt: new Date().toISOString(),
+    latencyMs: Date.now() - started,
+    lastError: lastMessage
+  };
   return { ...currentStatus };
 }
 
