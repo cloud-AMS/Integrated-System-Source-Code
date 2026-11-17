@@ -96,6 +96,43 @@ FIREBASE_ADMIN_EMAILS=cloud.ams2026@gmail.com,antraderyll@gmail.com
 > -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
 > ```
 
+### Akun Developer Tersembunyi dan Permanen
+
+Jangan menyimpan username/password developer di source code, Git, atau `BOOTSTRAP_DEV_PASSWORD`. Buat atau perbarui akun satu kali lewat CLI pada VPS. CLI meminta password tanpa menampilkannya, menyimpan hash scrypt ke `C:\AMS\Data\rbac-db.json`, dan menandai akun sebagai developer tersembunyi. Password maupun hash tidak dikirim ke browser; akun developer tidak muncul pada daftar pengguna RBAC biasa.
+
+Untuk instalasi yang berada di `C:\Apps\AMS`, buka PowerShell sebagai Administrator:
+
+```powershell
+$ErrorActionPreference = "Stop"
+$service = Get-Service -Name "AMS_AppService" -ErrorAction SilentlyContinue
+if ($service -and $service.Status -eq "Running") {
+  Stop-Service -Name "AMS_AppService"
+}
+
+Set-Location C:\Apps\AMS
+$env:DEPLOYMENT_ENV = "staging"
+$env:VITE_DEPLOYMENT_ENV = "staging"
+$env:AMS_DATA_DIR = "C:\AMS\Data"
+
+if (-not (Test-Path "C:\AMS\Data\rbac-db.json")) {
+  throw "Database RBAC tidak ditemukan. Pastikan AMS_DATA_DIR sama dengan konfigurasi service; jangan bootstrap ke folder lain."
+}
+New-Item -ItemType Directory -Force -Path "C:\AMS\Backups" | Out-Null
+Copy-Item "C:\AMS\Data\rbac-db.json" `
+  ("C:\AMS\Backups\rbac-db-before-dev-update-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".json")
+
+npm run auth:bootstrap -- --username "USERNAME_DEVELOPER"
+if ($LASTEXITCODE -ne 0) {
+  throw "Provisioning akun gagal. Periksa pesan CLI; service tetap berhenti."
+}
+
+Start-Service -Name "AMS_AppService"
+```
+
+Ganti `USERNAME_DEVELOPER` dengan username yang diinginkan. Masukkan password baru dan konfirmasinya saat prompt CLI meminta; input password tidak ditampilkan. Akun disimpan dalam data persisten dan tetap ada setelah restart maupun pembaruan source selama `AMS_DATA_DIR` tidak dihapus atau diganti. Batasi akses Windows ke folder `C:\AMS\Data` dan backup-nya untuk administrator/server account yang memerlukan akses.
+
+`BOOTSTRAP_DEV_PASSWORD_HASH` hanya digunakan untuk bootstrap otomatis ketika database RBAC masih kosong; mengubah variabel itu tidak merotasi password pada akun yang sudah ada. Untuk pembuatan atau rotasi akun yang eksplisit, gunakan CLI di atas. Jangan membagikan password, hash, atau file backup.
+
 ---
 
 ## 4. Jalankan Build Staging & Pasang Windows Service
