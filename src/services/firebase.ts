@@ -24,7 +24,8 @@ import {
   where,
   type Unsubscribe
 } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import defaultFirebaseConfig from '../../firebase-applet-config.json';
+import { resolveFirebaseClientConfig } from './firebaseConfig';
 import type { RoleDefinition, ServerUserRecord } from '../types';
 
 export enum OperationType {
@@ -56,6 +57,7 @@ export interface FirestoreErrorInfo {
 const BOOTSTRAPPED_ADMIN_EMAIL = 'antraderyll@gmail.com';
 const MAX_DOC_BYTES = 920_000;
 
+const firebaseConfig = resolveFirebaseClientConfig(import.meta.env, defaultFirebaseConfig);
 const existingApps = getApps();
 const app = existingApps.length > 0 ? existingApps[0] : initializeApp(firebaseConfig);
 export const dbFirestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);

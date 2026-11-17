@@ -28,6 +28,7 @@ import {
   ServerDataSyncStore
 } from './server/dataSyncStore';
 import { ActiveDbDriver, PocketBaseArchiveConfig, ServerDbDriverManager } from './server/dbDriverManager';
+import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/services/firebaseConfig';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,25 +42,34 @@ const dataSyncStore = new ServerDataSyncStore(DATA_DIR);
 const dbDriverManager = new ServerDbDriverManager(DATA_DIR, __dirname);
 const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
 
-interface FirebaseClientConfig {
-  projectId: string;
-  apiKey: string;
-  authDomain: string;
-  firestoreDatabaseId: string;
-}
-
 function readFirebaseClientConfig(): FirebaseClientConfig | null {
   try {
     const cfgPath = path.resolve(__dirname, 'firebase-applet-config.json');
     if (!fs.existsSync(cfgPath)) return null;
     const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) as Partial<FirebaseClientConfig>;
-    if (!parsed.apiKey || !parsed.projectId) return null;
-    return {
-      projectId: parsed.projectId,
-      apiKey: parsed.apiKey,
-      authDomain: parsed.authDomain || '',
-      firestoreDatabaseId: parsed.firestoreDatabaseId || '(default)'
-    };
+    const config = resolveFirebaseClientConfig(
+      {
+        VITE_DEPLOYMENT_ENV: process.env.VITE_DEPLOYMENT_ENV || process.env.DEPLOYMENT_ENV,
+        VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY,
+        VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+        VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_STORAGE_BUCKET: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+        VITE_FIREBASE_MESSAGING_SENDER_ID: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID,
+        VITE_FIRESTORE_DATABASE_ID: process.env.VITE_FIRESTORE_DATABASE_ID
+      },
+      {
+        apiKey: parsed.apiKey || '',
+        authDomain: parsed.authDomain || '',
+        projectId: parsed.projectId || '',
+        storageBucket: parsed.storageBucket || '',
+        messagingSenderId: parsed.messagingSenderId || '',
+        appId: parsed.appId || '',
+        firestoreDatabaseId: parsed.firestoreDatabaseId || '(default)'
+      }
+    );
+    if (!config.apiKey || !config.projectId) return null;
+    return config;
   } catch {
     return null;
   }
@@ -148,7 +158,7 @@ function suntikSeo(html: string, snapshot: Record<string, any> | null): string {
     .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${deskripsi}$2`)
     .replace(
       '</head>',
-      `<link rel="canonical" href="${process.env.APP_URL || 'http://localhost:3000'}/web" />\n</head>`
+      `<link rel="canonical" href="${process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000'}/web" />\n</head>`
     );
 }
 
