@@ -48,31 +48,29 @@ function KartuTemplate({ id }: { id: TampilanSitus['templateId'] }) {
   }
   if (id === 'remedi-vscode') {
     return (
-      <div className="h-28 w-full bg-[#0b1220] flex flex-col">
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-slate-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-400/80" />
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-300/80" />
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
-          <span className="h-1.5 w-12 rounded bg-slate-700 ml-2" />
-          <span className="ml-auto h-1.5 w-6 rounded bg-[var(--brand)]" />
+      <div className="h-28 w-full bg-[#f1f8f6] p-2.5 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 h-3">
+          <span className="w-4 h-3 rounded-sm bg-[var(--brand)]" />
+          <span className="h-1.5 w-14 rounded bg-slate-300" />
+          <span className="ml-auto h-1.5 w-9 rounded bg-slate-200" />
+          <span className="h-2.5 w-9 rounded-full bg-[var(--brand)]" />
         </div>
-        <div className="flex flex-1 min-h-0">
-          <div className="w-4 border-r border-slate-800 flex flex-col items-center gap-1.5 py-2">
-            <span className="w-1.5 h-1.5 rounded-sm bg-[var(--brand)]" />
-            <span className="w-1.5 h-1.5 rounded-sm bg-slate-700" />
-            <span className="w-1.5 h-1.5 rounded-sm bg-slate-700" />
-          </div>
-          <div className="flex-1 px-2.5 py-2">
-            <div className="h-1.5 w-14 rounded bg-[color-mix(in_srgb,var(--brand)_70%,white)]" />
-            <div className="h-2 w-20 rounded bg-slate-100 mt-1.5" />
-            <div className="h-1.5 w-16 rounded bg-slate-600 mt-1" />
-            <div className="h-1.5 w-12 rounded bg-slate-600 mt-1" />
+        <div className="flex flex-1 gap-2 min-h-0">
+          <div className="w-1/2 flex flex-col justify-center">
+            <span className="h-1.5 w-10 rounded bg-[color-mix(in_srgb,var(--brand)_45%,white)]" />
+            <span className="h-2 w-20 rounded bg-slate-800 mt-1.5" />
+            <span className="h-1.5 w-16 rounded bg-slate-300 mt-1" />
             <div className="flex gap-1 mt-2">
-              <span className="h-2 w-8 rounded-full bg-[var(--brand)]" />
-              <span className="h-2 w-8 rounded-full border border-slate-700" />
+              <span className="h-2.5 w-9 rounded-full bg-[var(--brand)]" />
+              <span className="h-2.5 w-9 rounded-full border border-slate-300" />
             </div>
           </div>
-          <div className="w-1/3 m-2 mt-2 rounded bg-slate-800/80 border border-slate-700" />
+          <div className="flex-1 rounded-lg bg-white border border-slate-200 p-1.5 grid grid-cols-2 gap-1">
+            <span className="rounded bg-[#e6f2ef]" />
+            <span className="rounded bg-[#e6f2ef]" />
+            <span className="rounded bg-[#e6f2ef]" />
+            <span className="rounded bg-[#e6f2ef]" />
+          </div>
         </div>
       </div>
     );

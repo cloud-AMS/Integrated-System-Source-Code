@@ -307,7 +307,7 @@
   letter-spacing: -0.02em;
 }
 
-/* REMEDI Studio (VS Code): header gelap ber-blur, hero bergaris aksen, motion halus. */
+/* REMEDI Katalog Medis: lapisan tampilan untuk template CMS yang kini memakai desain katalog. */
 .template-remedi-vscode {
   --vscode-aksen: color-mix(in srgb, var(--brand) 58%, white);
   --vscode-garis: #1e293b;
@@ -816,6 +816,251 @@
     transition: none;
   }
   .template-remedi-vscode .sorotan-tautan svg {
+    transition: none;
+  }
+}
+
+/* REMEDI Katalog Medis: presentasi katalog terang dengan kategori dan bukti mutu. */
+.template-remedi-vscode {
+  --commerce-line: #dce9e6;
+  --commerce-ink: #153b38;
+}
+
+.template-remedi-vscode .situs-header {
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: var(--commerce-line);
+  box-shadow: 0 6px 24px -20px rgba(21, 59, 56, 0.55);
+}
+.template-remedi-vscode .situs-header .text-slate-900,
+.template-remedi-vscode .situs-header .text-slate-800 {
+  color: var(--commerce-ink);
+}
+.template-remedi-vscode .situs-header .text-slate-700,
+.template-remedi-vscode .situs-header .text-slate-600 {
+  color: #475f5c;
+}
+.template-remedi-vscode .situs-header .text-slate-500 {
+  color: #718682;
+}
+.template-remedi-vscode .situs-header .bg-white {
+  background: #ffffff;
+}
+.template-remedi-vscode .situs-header .border-slate-200,
+.template-remedi-vscode .situs-header .border-slate-300,
+.template-remedi-vscode .situs-header .border-slate-100 {
+  border-color: var(--commerce-line);
+}
+.template-remedi-vscode .situs-header .hover\:bg-slate-100:hover,
+.template-remedi-vscode .situs-header .hover\:bg-slate-200:hover {
+  background: #f1f8f6;
+}
+.template-remedi-vscode .situs-header nav > button:hover,
+.template-remedi-vscode .situs-header nav > div > button:hover {
+  color: var(--brand);
+}
+.template-remedi-vscode .situs-header nav > button::after,
+.template-remedi-vscode .situs-header nav > div > button::after {
+  background: var(--brand);
+}
+
+.template-remedi-vscode .situs-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom-color: var(--commerce-line);
+  background:
+    radial-gradient(ellipse at 86% 16%, color-mix(in srgb, var(--brand) 13%, transparent), transparent 34rem),
+    linear-gradient(135deg, #f8fcfb 0%, #edf7f4 100%);
+}
+.template-remedi-vscode .situs-hero::before {
+  content: none;
+}
+.template-remedi-vscode .situs-hero > div {
+  position: relative;
+  z-index: 1;
+}
+.template-remedi-vscode .situs-hero h1 {
+  color: var(--commerce-ink);
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  letter-spacing: -0.035em;
+}
+.template-remedi-vscode .situs-hero h1::after {
+  content: none;
+  display: none;
+}
+.template-remedi-vscode .situs-hero .text-slate-900,
+.template-remedi-vscode .situs-hero .text-slate-800 {
+  color: var(--commerce-ink);
+}
+.template-remedi-vscode .situs-hero .text-slate-700,
+.template-remedi-vscode .situs-hero .text-slate-600 {
+  color: #4b625e;
+}
+.template-remedi-vscode .situs-hero .text-slate-500 {
+  color: #70827f;
+}
+.template-remedi-vscode main > section p.uppercase {
+  font-family: inherit;
+}
+.template-remedi-vscode .situs-hero .bg-slate-50 {
+  background: #f4f9f8;
+}
+.template-remedi-vscode .situs-hero .border-slate-200 {
+  border-color: var(--commerce-line);
+}
+.template-remedi-vscode .katalog-intro {
+  animation: katalog-rise 0.6s ease both;
+}
+.template-remedi-vscode .katalog-visual-card {
+  position: relative;
+  min-height: 22rem;
+  aspect-ratio: 1.16 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(ellipse at 50% 42%, #ffffff 0%, #f6fbfa 62%, #e8f3f0 100%);
+  box-shadow: 0 28px 68px -38px rgba(21, 59, 56, 0.42), 0 0 0 1px rgba(21, 59, 56, 0.06);
+}
+.template-remedi-vscode .katalog-visual-card > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: clamp(1.25rem, 5vw, 3.75rem);
+  animation: katalog-rise 0.75s 0.08s ease both;
+}
+.template-remedi-vscode .katalog-visual-fallback {
+  height: 100%;
+  min-height: 22rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: var(--brand);
+  text-align: center;
+}
+.template-remedi-vscode .katalog-visual-fallback span {
+  max-width: 16rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--commerce-ink);
+}
+.template-remedi-vscode .katalog-featured-product {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: calc(100% - 2rem);
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(220, 233, 230, 0.9);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 32px -22px rgba(21, 59, 56, 0.6);
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+.template-remedi-vscode .katalog-featured-product:hover {
+  border-color: color-mix(in srgb, var(--brand) 42%, white);
+}
+.template-remedi-vscode .katalog-featured-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--brand) 10%, white);
+  color: var(--brand);
+  flex: 0 0 auto;
+}
+.template-remedi-vscode .katalog-search-link,
+.template-remedi-vscode .katalog-category-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--commerce-line);
+  border-radius: 9999px;
+  background: #ffffff;
+  color: var(--commerce-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.template-remedi-vscode .katalog-search-link {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+}
+.template-remedi-vscode .katalog-category-chip {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.8rem;
+  color: #48635e;
+  font-size: 0.75rem;
+}
+.template-remedi-vscode .katalog-search-link:hover,
+.template-remedi-vscode .katalog-category-chip:hover {
+  border-color: color-mix(in srgb, var(--brand) 46%, white);
+  color: var(--brand);
+  transform: translateY(-1px);
+}
+.template-remedi-vscode .katalog-trust-wrap {
+  position: relative;
+  z-index: 1;
+}
+.template-remedi-vscode .katalog-trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-height: 4.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(220, 233, 230, 0.9);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+.template-remedi-vscode main > section h2 {
+  color: var(--commerce-ink);
+  letter-spacing: -0.025em;
+}
+.template-remedi-vscode .situs-footer {
+  border-top: 3px solid color-mix(in srgb, var(--brand) 55%, white);
+  background: #123b38;
+}
+
+@keyframes katalog-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .template-remedi-vscode .katalog-visual-card {
+    min-height: 17rem;
+  }
+  .template-remedi-vscode .katalog-visual-fallback {
+    min-height: 17rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .template-remedi-vscode .katalog-intro,
+  .template-remedi-vscode .katalog-visual-card > img {
+    animation: none;
+  }
+  .template-remedi-vscode .katalog-search-link,
+  .template-remedi-vscode .katalog-category-chip {
     transition: none;
   }
 }

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { ArrowLeft, ArrowRight, ChevronDown, ClipboardList, Globe, LogIn, Mail, Menu, Phone, X } from 'lucide-react';
 import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite } from '../../../../types';
 import { PETA_HALAMAN, TampilkanSeksi, TombolSitus, type ItemRfqPublik, type PropsSeksi } from './SiteSections';
-import { SorotanGulir } from './SorotanGulir';
+import { SorotanKatalog } from './SorotanKatalog';
 import { hrefTautan, selesaikanGambar } from '../../../../utils/website';
 import { tampilanEfektif, tumpukanFont } from '../../../../utils/tampilan';
 
@@ -539,7 +539,7 @@ export default function PublicWebsite({
         )}
         {seksi.map((kunci) =>
           kunci === 'hero' && tema.templateId === 'remedi-vscode' && rute.halaman === 'beranda' ? (
-            <SorotanGulir key={kunci} cfg={konfigurasi} ke={ke} />
+            <SorotanKatalog key={kunci} cfg={konfigurasi} ke={ke} />
           ) : (
             <TampilkanSeksi key={kunci} kunci={kunci} propsSeksi={propsSeksi} />
           )

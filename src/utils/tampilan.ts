@@ -29,8 +29,8 @@ export const TEMPLATES_SITUS: { id: TemplateSitus; nama: string; deskripsi: stri
   },
   {
     id: 'remedi-vscode',
-    nama: 'REMEDI Studio (VS Code)',
-    deskripsi: 'Header gelap ber-blur; hero dengan panel gambar menempel yang berganti mengikuti scroll, animasi masuk halus, dan seksi yang muncul saat digulir.'
+    nama: 'REMEDI Katalog Medis',
+    deskripsi: 'Tampilan katalog alat kesehatan dengan akses kategori, produk pilihan, dan bukti mutu dari konten CMS.'
   }
 ];
 
