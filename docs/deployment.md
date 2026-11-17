@@ -1,5 +1,7 @@
 # Panduan & Checklist Deployment VPS — AMS Integrated System
 
+> **Panduan legacy.** Dokumen ini masih memuat rancangan PocketBase yang bukan konfigurasi deployment preview Firebase saat ini. Untuk preview gratis, ikuti [panduan Oracle Cloud + Firebase](./deployment-oracle-free-preview.md). State server tetap disimpan di volume VM; Firebase bukan satu-satunya penyimpanan aplikasi.
+
 Dokumen ini memuat panduan teknis, spesifikasi infrastruktur server, checklist kesiapan, serta langkah-langkah deployment end-to-end untuk sistem **AMS Integrated System (PT Anugrahmitra Selaras)** pada Virtual Private Server (VPS) berbasis Linux (Ubuntu 22.04 / 24.04 LTS).
 
 ---

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Script Otomasi Instalasi & Deployment VPS — AMS Integrated System
-# Sistem Operasi Target: Ubuntu 22.04 / 24.04 LTS (64-bit)
+# Sistem Operasi Target: Ubuntu 22.04 / 24.04 LTS (AMD64 / ARM64)
 # ==============================================================================
 
 set -euo pipefail
@@ -15,16 +15,14 @@ if [ -z "$DOMAIN" ]; then
 fi
 
 echo "=========================================================="
-echo "Memulai Provisioning VPS untuk Domain: $DOMAIN"
+echo "Memulai Provisioning Server untuk Domain: $DOMAIN"
 echo "=========================================================="
 
-# 1. Update OS & Paket Esensial
-echo "[1/7] Memperbarui sistem operasi dan paket dasar..."
+echo "[1/6] Memperbarui sistem operasi dan paket dasar..."
 apt-get update && apt-get upgrade -y
-apt-get install -y curl wget git ufw fail2ban unzip build-essential nginx certbot python3-certbot-nginx
+apt-get install -y curl git ufw fail2ban build-essential nginx certbot python3-certbot-nginx
 
-# 2. Firewall UFW Hardening
-echo "[2/7] Mengonfigurasi firewall UFW..."
+echo "[2/6] Mengonfigurasi firewall..."
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment 'SSH'
@@ -32,60 +30,84 @@ ufw allow 80/tcp comment 'HTTP Web'
 ufw allow 443/tcp comment 'HTTPS Secure Web'
 ufw --force enable
 
-# 3. Instalasi Node.js 22 LTS & PM2
-echo "[3/7] Menginstal Node.js 22 LTS dan PM2..."
+echo "[3/6] Menginstal Node.js 22 LTS dan PM2..."
 if ! command -v node >/dev/null 2>&1; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
 fi
 npm install -g pm2
 
-# 4. Setup Basis Data PocketBase AMS
-echo "[4/7] Menyiapkan daemon PocketBase AMS di port 8091..."
-mkdir -p /opt/pocketbase-ams
-cd /opt/pocketbase-ams
-if [ ! -f /opt/pocketbase-ams/pocketbase ]; then
-  wget -q https://github.com/pocketbase/pocketbase/releases/download/v0.28.1/pocketbase_0.28.1_linux_amd64.zip
-  unzip -q pocketbase_0.28.1_linux_amd64.zip
-  rm -f pocketbase_0.28.1_linux_amd64.zip
-  chmod +x pocketbase
+echo "[4/6] Build aplikasi dan menyiapkan penyimpanan persisten..."
+APP_DIR="/var/www/ams-integrated-system"
+DATA_DIR="/var/lib/ams-data"
+APP_USER="amsadmin"
+APP_HOME="/home/$APP_USER"
+if ! id "$APP_USER" >/dev/null 2>&1; then
+  useradd --system --create-home --home-dir "$APP_HOME" --shell /bin/bash "$APP_USER"
+fi
+mkdir -p "$APP_DIR/logs" "$DATA_DIR"
+chmod 750 "$DATA_DIR"
+
+if [ ! -f "$APP_DIR/.env" ]; then
+  echo "File $APP_DIR/.env wajib disiapkan sebelum deployment."
+  exit 1
 fi
 
-cat <<EOF > /etc/systemd/system/ams-pocketbase.service
+set -a
+# shellcheck disable=SC1091
+. "$APP_DIR/.env"
+set +a
+export APP_URL="https://$DOMAIN"
+export AMS_DB_DRIVER="firebase"
+export AMS_DATA_DIR="$DATA_DIR"
+chmod 600 "$APP_DIR/.env"
+chown -R "$APP_USER:$APP_USER" "$APP_DIR" "$DATA_DIR"
+
+if [ ! -f "$APP_DIR/package.json" ]; then
+  echo "Repository aplikasi tidak ditemukan di $APP_DIR."
+  exit 1
+fi
+
+cd "$APP_DIR"
+runuser -u "$APP_USER" -- env APP_DIR="$APP_DIR" DEPLOY_APP_URL="$APP_URL" DEPLOY_DATA_DIR="$AMS_DATA_DIR" bash -c '
+  cd "$APP_DIR"
+  set -a
+  . ./.env
+  set +a
+  export APP_URL="$DEPLOY_APP_URL"
+  export AMS_DB_DRIVER=firebase
+  export AMS_DATA_DIR="$DEPLOY_DATA_DIR"
+  npm ci
+  npm run build
+  pm2 start ecosystem.config.cjs --env production --update-env || pm2 restart ams-integrated-system --update-env
+  pm2 save
+'
+
+PM2_BIN="$(command -v pm2)"
+cat <<EOF > /etc/systemd/system/pm2-amsadmin.service
 [Unit]
-Description=PocketBase AMS Database Service
+Description=PM2 process manager for AMS
 After=network.target
 
 [Service]
-Type=simple
-WorkingDirectory=/opt/pocketbase-ams
-ExecStart=/opt/pocketbase-ams/pocketbase serve --http=127.0.0.1:8091
+Type=forking
+User=$APP_USER
+LimitNOFILE=infinity
+Environment=PM2_HOME=$APP_HOME/.pm2
+PIDFile=$APP_HOME/.pm2/pm2.pid
+ExecStart=$PM2_BIN resurrect
+ExecReload=$PM2_BIN reload all
+ExecStop=$PM2_BIN kill
 Restart=on-failure
-RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
 systemctl daemon-reload
-systemctl enable ams-pocketbase
-systemctl restart ams-pocketbase
+runuser -u "$APP_USER" -- pm2 kill
+systemctl enable --now pm2-amsadmin
 
-# 5. Build Aplikasi Node.js
-echo "[5/7] Melakukan build aplikasi produksi..."
-APP_DIR="/var/www/ams-integrated-system"
-mkdir -p "$APP_DIR/logs"
-
-if [ -f "$APP_DIR/package.json" ]; then
-  cd "$APP_DIR"
-  npm ci
-  npm run build
-  pm2 start ecosystem.config.cjs --env production || pm2 restart ams-integrated-system
-  pm2 save
-fi
-
-# 6. Konfigurasi Nginx Reverse Proxy
-echo "[6/7] Menyiapkan konfigurasi Nginx reverse proxy..."
+echo "[5/6] Menyiapkan Nginx reverse proxy..."
 cat <<EOF > /etc/nginx/sites-available/ams-system
 server {
     listen 80;
@@ -96,7 +118,6 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     client_max_body_size 25M;
 
-    # Aplikasi Utama (Express + Frontend Vite PWA)
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -107,17 +128,6 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
-    # Proxy ke PocketBase AMS (SSE & Kanal Realtime)
-    location /api/ams-pb/ {
-        proxy_pass http://127.0.0.1:8091/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_buffering off;
-        proxy_read_timeout 86400s;
-    }
 }
 EOF
 
@@ -125,13 +135,14 @@ ln -sf /etc/nginx/sites-available/ams-system /etc/nginx/sites-enabled/
 nginx -t
 systemctl reload nginx
 
-# 7. Sertifikat SSL Otomatis Let's Encrypt
-echo "[7/7] Menerbitkan sertifikat SSL Let's Encrypt..."
-certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "admin@$DOMAIN" --redirect || {
-  echo "Peringatan: Certbot SSL belum dapat diselesaikan otomatis. Pastikan DNS A-Record domain sudah mengarah ke IP VPS ini."
+echo "[6/6] Menerbitkan sertifikat SSL Let's Encrypt..."
+LETSENCRYPT_EMAIL="${LETSENCRYPT_EMAIL:-admin@$DOMAIN}"
+certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect || {
+  echo "Peringatan: SSL belum dapat diterbitkan. Pastikan DNS A record mengarah ke VM, lalu jalankan certbot kembali."
 }
 
 echo "=========================================================="
 echo "Selesai! Aplikasi AMS Integrated System siap diakses di:"
 echo "https://$DOMAIN"
+echo "Data server tersimpan di $DATA_DIR."
 echo "=========================================================="
