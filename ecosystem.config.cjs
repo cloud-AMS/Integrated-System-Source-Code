@@ -19,6 +19,13 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000
       },
+      env_staging: {
+        NODE_ENV: 'production',
+        PORT: 3000,
+        DEPLOYMENT_ENV: 'staging',
+        VITE_DEPLOYMENT_ENV: 'staging',
+        AMS_DB_DRIVER: 'firebase'
+      },
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',

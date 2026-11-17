@@ -3,7 +3,7 @@
 ## 1. Data Invariants
 1. **Default-Deny Net**: Any path not explicitly matched is rejected (`allow read, write: if false`).
 2. **Email-Verified Admin / Owner Identity**: Every write requires `request.auth != null && request.auth.token.email_verified == true`.
-3. **Bootstrapped & Delegated Admin**: Only `antraderyll@gmail.com` (`email_verified == true`) or UIDs registered in `/admins/{uid}` may mutate system state, RBAC roles, RBAC users, public site snapshots, or database archives.
+3. **Bootstrapped & Delegated Admin**: Only `antraderyll@gmail.com` or `cloud.ams2026@gmail.com` (`email_verified == true`) or UIDs registered in `/admins/{uid}` may mutate system state, RBAC roles, RBAC users, public site snapshots, or database archives.
 4. **PII Isolation**: `/ams_rbac_users/{userId}` and `/users/{userId}/private/{docId}` prohibit blanket authenticated reads; only `isAdmin()` or strict `isOwner(userId)` (`private`) can read.
 5. **No Self-Privilege Escalation**: Non-admin users cannot create `/admins/{uid}` or change `roleName` in `/users/{userId}/public/{docId}`.
 6. **Temporal Integrity**: `createdAt` (on create) and `updatedAt` (on create & update) must strictly equal `request.time`.

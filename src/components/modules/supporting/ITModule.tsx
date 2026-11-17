@@ -50,6 +50,8 @@ import RbacManagementTab from './it/RbacManagementTab';
 
 interface DbConfigResponse {
   activeDriver: 'firebase' | 'pocketbase';
+  deploymentEnv?: string;
+  isStaging?: boolean;
   updatedAt?: string;
   updatedBy?: string;
   pocketbaseArchived?: boolean;
@@ -150,26 +152,31 @@ export default function ITModule({
 
   // Deployment configs
   const [deploymentConfig, setDeploymentConfig] = useState<{
+    environment?: string;
+    isStaging?: boolean;
     caddyfile: string;
     nssmCommands: string[];
+    envStagingTemplate?: string;
+    powershellQuickDeploy?: string[];
   }>({
-    caddyfile: `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis
+    environment: 'staging',
+    isStaging: true,
+    caddyfile: `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis (Windows Server VPS)
 # Lokasi file: C:\\caddy\\Caddyfile
-alkes.perusahaan-anda.co.id {
-    # Reverse proxy ke dev/prod server port 3000
-    reverse_proxy localhost:3000
+staging-ams.perusahaan-anda.co.id {
+    encode gzip zstd
 
-    # Header Keamanan Standar Medis & Privasi Data
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "SAMEORIGIN"
         Referrer-Policy "strict-origin-when-cross-origin"
-    }
-
-    # Penanganan PocketBase websocket & REST API
-    handle /api/pocketbase/* {
-        reverse_proxy localhost:8090
     }
 
     log {
@@ -180,28 +187,36 @@ alkes.perusahaan-anda.co.id {
     }
 }`,
     nssmCommands: [
-      '# 1. Build lebih dulu (hasilkan dist/ untuk aset dan server.js untuk bundel runtime)',
-      'cd C:\\inetpub\\ams-alkes',
+      '# 1. Siapkan direktori persisten & build mode staging Firebase (PowerShell Admin)',
+      'New-Item -ItemType Directory -Force -Path C:\\AMS\\App, C:\\AMS\\Data, C:\\AMS\\Backups, C:\\AMS\\Logs, C:\\caddy\\logs | Out-Null',
+      'cd C:\\AMS\\App',
+      'Copy-Item .env.staging.example .env.staging -Force',
       'npm ci',
-      'npm run build',
+      'npm run build:staging',
       '',
-      '# 2. Pasang Node Express Server sebagai Service Windows',
-      'nssm install AMS_AppService "C:\\Program Files\\nodejs\\node.exe" "C:\\inetpub\\ams-alkes\\server.js"',
-      'nssm set AMS_AppService AppDirectory "C:\\inetpub\\ams-alkes"',
-      'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production PORT=3000',
-      'nssm set AMS_AppService AppStdout "C:\\inetpub\\ams-alkes\\logs\\service_output.log"',
-      'nssm set AMS_AppService AppStderr "C:\\inetpub\\ams-alkes\\logs\\service_error.log"',
+      '# 2. Pasang Node Express Server sebagai Service Windows (WAJIB 1 instance tunggal)',
+      'nssm install AMS_AppService "C:\\Program Files\\nodejs\\node.exe" "C:\\AMS\\App\\server.js"',
+      'nssm set AMS_AppService AppDirectory "C:\\AMS\\App"',
+      'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production DEPLOYMENT_ENV=staging VITE_DEPLOYMENT_ENV=staging AMS_DB_DRIVER=firebase PORT=3000 AMS_DATA_DIR=C:\\AMS\\Data',
+      'nssm set AMS_AppService AppStdout "C:\\AMS\\Logs\\service_output.log"',
+      'nssm set AMS_AppService AppStderr "C:\\AMS\\Logs\\service_error.log"',
       'nssm start AMS_AppService',
       '',
-      '# 3. Pasang PocketBase Service di Windows Server',
-      'nssm install AMS_PocketBase "C:\\pocketbase\\pocketbase.exe" "serve --http=0.0.0.0:8090"',
-      'nssm set AMS_PocketBase AppDirectory "C:\\pocketbase"',
-      'nssm set AMS_PocketBase AppStdout "C:\\pocketbase\\logs\\pb_output.log"',
-      'nssm start AMS_PocketBase',
-      '',
-      '# 4. Pasang Caddy Web Server sebagai Service',
+      '# 3. Pasang Caddy Web Server sebagai Service (HTTPS + WebSocket /api/sync/ws)',
       'nssm install CaddyWebServer "C:\\caddy\\caddy.exe" "run --config C:\\caddy\\Caddyfile"',
       'nssm start CaddyWebServer'
+    ],
+    envStagingTemplate: `# Simpan sebagai C:\\AMS\\App\\.env.staging
+NODE_ENV=production
+PORT=3000
+APP_URL=https://staging-ams.perusahaan-anda.co.id
+DEPLOYMENT_ENV=staging
+VITE_DEPLOYMENT_ENV=staging
+AMS_DB_DRIVER=firebase
+AMS_DATA_DIR=C:\\AMS\\Data`,
+    powershellQuickDeploy: [
+      'cd C:\\AMS\\App',
+      'powershell -ExecutionPolicy Bypass -File .\\scripts\\deploy-windows-vps.ps1 -Domain "staging-ams.perusahaan-anda.co.id" -ConfigureFirewall'
     ]
   });
 
@@ -720,7 +735,9 @@ alkes.perusahaan-anda.co.id {
                     }`}
                   >
                     {connStatus.activeDbDriver === 'firebase'
-                      ? 'Aktif: Firebase Firestore (Fase Pengembangan)'
+                      ? dbConfigData?.isStaging
+                        ? 'Aktif: Firebase Firestore (Staging VPS)'
+                        : 'Aktif: Firebase Firestore (Fase Pengembangan)'
                       : 'Aktif: PocketBase (Mode Lokal/VPS)'}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
@@ -1315,20 +1332,88 @@ alkes.perusahaan-anda.co.id {
         </div>
       )}
 
-      {/* Tab 3: Caddy + NSSM Deployment */}
+      {/* Tab 3: Caddy + NSSM + Firebase Staging Deployment */}
       {activeTab === 'deployment' && (
         <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="font-bold text-blue-900 flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-blue-600" />
+                <span>Blueprint Deployment Firebase Staging — Windows Server VPS</span>
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-2xs font-bold border border-blue-200">
+                  {dbConfigData?.isStaging ? 'Staging Aktif' : 'Siap Staging'}
+                </span>
+              </div>
+              <p className="text-blue-800 leading-relaxed">
+                Gunakan proyek Firebase Staging terpisah lewat <code>.env.staging</code> dan bangun aplikasi dengan{' '}
+                <code>npm run build:staging</code>. Pastikan hostname domain VPS didaftarkan ke{' '}
+                <strong>Firebase Authentication → Authorized domains</strong> dan aturan <code>firestore.rules</code>{' '}
+                sudah diterbitkan ke proyek staging.
+              </p>
+            </div>
+          </div>
+
+          {/* .env.staging Template Box */}
+          {deploymentConfig.envStagingTemplate && (
+            <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  <h4 className="font-bold text-xs text-white">
+                    1. Konfigurasi Firebase Staging (.env.staging di C:\AMS\App)
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(deploymentConfig.envStagingTemplate || '', 'env')}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {copiedSection === 'env' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedSection === 'env' ? 'Tersalin' : 'Salin .env.staging'}
+                </button>
+              </div>
+              <pre className="p-4 bg-slate-950 rounded-xl text-slate-300 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">
+                {deploymentConfig.envStagingTemplate}
+              </pre>
+            </div>
+          )}
+
+          {/* PowerShell Automation Box */}
+          {deploymentConfig.powershellQuickDeploy && deploymentConfig.powershellQuickDeploy.length > 0 && (
+            <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-cyan-400" />
+                  <h4 className="font-bold text-xs text-white">
+                    2. Skrip Otomasi PowerShell &amp; Publish Firestore Rules Staging
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy((deploymentConfig.powershellQuickDeploy || []).join('\n'), 'ps')}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {copiedSection === 'ps' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedSection === 'ps' ? 'Tersalin' : 'Salin Perintah PowerShell'}
+                </button>
+              </div>
+              <pre className="p-4 bg-slate-950 rounded-xl text-slate-300 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">
+                {deploymentConfig.powershellQuickDeploy.join('\n')}
+              </pre>
+            </div>
+          )}
           
           {/* Caddyfile Box */}
           <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileCode className="w-4 h-4 text-blue-400" />
-                <h4 className="font-bold text-xs text-white">1. Caddyfile (Reverse Proxy + HTTPS Otomatis)</h4>
+                <h4 className="font-bold text-xs text-white">3. Caddyfile (Reverse Proxy + HTTPS Otomatis + WebSocket)</h4>
               </div>
               <button
+                type="button"
                 onClick={() => handleCopy(deploymentConfig.caddyfile, 'caddy')}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 {copiedSection === 'caddy' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedSection === 'caddy' ? 'Tersalin' : 'Salin Caddyfile'}
@@ -1344,14 +1429,15 @@ alkes.perusahaan-anda.co.id {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-amber-400" />
-                <h4 className="font-bold text-xs text-white">2. Perintah Instalasi NSSM di Windows Server (Service Background)</h4>
+                <h4 className="font-bold text-xs text-white">4. Perintah Manual NSSM di Windows Server (Service Background)</h4>
               </div>
               <button
+                type="button"
                 onClick={() => handleCopy(deploymentConfig.nssmCommands.join('\n'), 'nssm')}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 {copiedSection === 'nssm' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedSection === 'nssm' ? 'Tersalin' : 'Salin Perintah CMD'}
+                {copiedSection === 'nssm' ? 'Tersalin' : 'Salin Perintah NSSM'}
               </button>
             </div>
             <pre className="p-4 bg-slate-950 rounded-xl text-slate-300 font-mono text-xs overflow-x-auto leading-relaxed border border-slate-800">

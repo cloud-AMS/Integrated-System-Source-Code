@@ -9,10 +9,10 @@ export interface FirebaseClientConfig {
 }
 
 export function resolveFirebaseClientConfig(
-  env: Record<string, string | undefined>,
+  env: Record<string, string | undefined> | undefined,
   defaultConfig: FirebaseClientConfig
 ): FirebaseClientConfig {
-  if (env.VITE_DEPLOYMENT_ENV !== 'staging') {
+  if (!env || env.VITE_DEPLOYMENT_ENV !== 'staging') {
     return defaultConfig;
   }
 

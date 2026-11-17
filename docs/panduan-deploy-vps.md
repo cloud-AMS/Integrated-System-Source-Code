@@ -2,6 +2,8 @@
 
 Dokumen ini memuat panduan teknis, spesifikasi infrastruktur, dan checklist kesiapan deployment sistem **AMS Integrated System (PT Anugrahmitra Selaras)** pada Virtual Private Server (VPS) berbasis Linux (Ubuntu 22.04 / 24.04 LTS).
 
+> Untuk deployment **Firebase Staging di Windows Server VPS (NSSM + Caddy + PowerShell)**, lihat [panduan VPS Windows](./panduan-deploy-vps-windows.md).
+
 ---
 
 ## 1. Rekomendasi Spesifikasi Server VPS

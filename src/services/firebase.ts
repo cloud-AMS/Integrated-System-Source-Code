@@ -54,7 +54,14 @@ export interface FirestoreErrorInfo {
   };
 }
 
-const BOOTSTRAPPED_ADMIN_EMAIL = 'antraderyll@gmail.com';
+const BOOTSTRAPPED_ADMIN_EMAILS = new Set([
+  'antraderyll@gmail.com',
+  'cloud.ams2026@gmail.com',
+  ...String(import.meta.env?.VITE_FIREBASE_ADMIN_EMAIL || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+]);
 const MAX_DOC_BYTES = 920_000;
 
 const firebaseConfig = resolveFirebaseClientConfig(import.meta.env, defaultFirebaseConfig);
@@ -67,7 +74,8 @@ export function getFirebaseProjectInfo() {
   return {
     projectId: firebaseConfig.projectId,
     firestoreDatabaseId: firebaseConfig.firestoreDatabaseId,
-    authDomain: firebaseConfig.authDomain
+    authDomain: firebaseConfig.authDomain,
+    deploymentEnv: import.meta.env?.VITE_DEPLOYMENT_ENV === 'staging' ? 'staging' : 'default'
   };
 }
 
@@ -187,7 +195,7 @@ async function ensureUserSplitProfile(user: FirebaseUser): Promise<void> {
   const privPath = `users/${user.uid}/private/info`;
   const displayName = (user.displayName || user.email.split('@')[0] || 'Pengguna').slice(0, 120);
   const defaultRoleName =
-    user.email.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL
+    BOOTSTRAPPED_ADMIN_EMAILS.has(user.email.toLowerCase())
       ? 'Developer & IT Support'
       : 'Karyawan (HRIS Self-Service)';
 
@@ -479,7 +487,7 @@ export async function pullAllCloudStateFromFirestore(): Promise<CloudPulledState
     return { entries: {}, roles: [], users: [] };
   }
 
-  const isBootstrapped = user.email?.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL;
+  const isBootstrapped = Boolean(user.email && BOOTSTRAPPED_ADMIN_EMAILS.has(user.email.toLowerCase()));
   const buildScopedQuery = (collName: string) =>
     isBootstrapped
       ? query(collection(dbFirestore, collName))
@@ -592,7 +600,7 @@ export function attachFirestoreRealtimeSync(callbacks: {
   const user = authFirebase.currentUser;
   if (!user || !user.emailVerified) return null;
 
-  const isBootstrapped = user.email?.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL;
+  const isBootstrapped = Boolean(user.email && BOOTSTRAPPED_ADMIN_EMAILS.has(user.email.toLowerCase()));
   const entriesQuery = isBootstrapped
     ? query(collection(dbFirestore, 'ams_sync_entries'))
     : query(collection(dbFirestore, 'ams_sync_entries'), where('ownerUid', '==', user.uid));

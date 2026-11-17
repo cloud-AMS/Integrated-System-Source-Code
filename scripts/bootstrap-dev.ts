@@ -1,7 +1,9 @@
-import 'dotenv/config';
 import path from 'path';
 import readline from 'readline';
+import { loadDeploymentEnv } from '../server/envLoader';
 import { hashPassword, ServerRbacStore } from '../server/rbacStore';
+
+loadDeploymentEnv();
 
 interface CliOptions {
   hashOnly: boolean;

@@ -714,10 +714,21 @@ export class ServerRbacStore {
       return { ok: false, status: 400, message: 'Email Google terverifikasi tidak ditemukan.' };
     }
 
-    const bootstrappedAdminEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+    const configuredBootstrapEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+    const extraAdminEmails = (process.env.FIREBASE_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const bootstrappedAdminEmails = new Set([
+      configuredBootstrapEmail,
+      'antraderyll@gmail.com',
+      'cloud.ams2026@gmail.com',
+      ...extraAdminEmails
+    ]);
+
     let user = this.state.users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
 
-    if (!user && cleanEmail === bootstrappedAdminEmail) {
+    if (!user && bootstrappedAdminEmails.has(cleanEmail)) {
       const now = new Date().toISOString();
       const configuredRole = (process.env.BOOTSTRAP_DEV_ROLE_ID || 'Developer & IT Support').trim();
       const matchedRole =
@@ -729,21 +740,26 @@ export class ServerRbacStore {
         return { ok: false, status: 500, message: 'Peran RBAC sistem tidak ditemukan.' };
       }
       const existingDev = this.state.users.find((u) => u.isHiddenDeveloper);
-      if (existingDev) {
+      if (existingDev && (!existingDev.email || existingDev.email.trim().toLowerCase() === cleanEmail)) {
         existingDev.email = cleanEmail;
         existingDev.updatedAt = now;
         user = existingDev;
       } else {
-        const username = (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+        const baseUsername = existingDev
+          ? cleanEmail.split('@')[0].replace(/[^a-z0-9._-]/g, '.').slice(0, 24) || 'staging.admin'
+          : (process.env.BOOTSTRAP_DEV_USERNAME || 'dev.admin').trim().toLowerCase();
+        const uniqueUsername = this.state.users.some((u) => u.username.toLowerCase() === baseUsername)
+          ? `${baseUsername.slice(0, 22)}.${crypto.randomUUID().slice(0, 4)}`
+          : baseUsername;
         user = {
           id: `usr-dev-${crypto.randomUUID().slice(0, 8)}`,
-          username,
-          fullName: displayName.trim() || (process.env.BOOTSTRAP_DEV_FULLNAME || 'Langgo Bramandityo').trim(),
+          username: uniqueUsername,
+          fullName: displayName.trim() || (process.env.BOOTSTRAP_DEV_FULLNAME || 'Administrator AMS').trim(),
           email: cleanEmail,
           roleId: matchedRole.id,
           department: 'Developer & IT Support',
           isActive: true,
-          isHiddenDeveloper: true,
+          isHiddenDeveloper: !existingDev,
           passwordHash: `firebase_sso$${crypto.randomBytes(16).toString('hex')}`,
           createdAt: now,
           updatedAt: now

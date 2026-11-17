@@ -2,6 +2,8 @@
 
 Konfigurasi [render.yaml](../render.yaml) membuat Web Service Node.js dengan WebSocket, health check, dan persistent disk terpisah di `/var/data`. URL publik `*.onrender.com` baru dibuat oleh Render setelah Blueprint diterapkan di akun Anda. Paket `starter` dan persistent disk berbayar; periksa biaya Render sebelum melanjutkan.
 
+> Untuk deployment **Firebase Staging di VPS Windows Server** (PowerShell + NSSM + Caddy HTTPS), lihat [panduan VPS Windows](./panduan-deploy-vps-windows.md).
+
 ## 1. Buat proyek Firebase staging terpisah
 
 Jangan gunakan konfigurasi dari `firebase-applet-config.json` untuk staging. Di Firebase Console:

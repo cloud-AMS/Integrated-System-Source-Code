@@ -29,9 +29,13 @@ import {
 } from './server/dataSyncStore';
 import { ActiveDbDriver, PocketBaseArchiveConfig, ServerDbDriverManager } from './server/dbDriverManager';
 import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/services/firebaseConfig';
+import { loadDeploymentEnv, resolveDeploymentEnvironment } from './server/envLoader';
+import { buildWindowsDeploymentGuides } from './server/deploymentGuides';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+loadDeploymentEnv(__dirname);
 
 const DATA_DIR = path.resolve(process.env.AMS_DATA_DIR?.trim() || path.resolve(__dirname, 'data'));
 const BERKAS_SNAPSHOT = path.join(DATA_DIR, 'website-published.json');
@@ -442,14 +446,17 @@ async function startServer() {
   // Status and regulatory compliance info
   app.get('/api/health', (req, res) => {
     const fbCfg = readFirebaseClientConfig();
+    const envInfo = resolveDeploymentEnvironment();
     res.json({
       status: 'aktif',
       sistem: 'AMS Integrated System - PT Anugrahmitra Selaras',
       versi: '2.4.0-cdakb',
+      deploymentEnv: envInfo.deploymentEnv,
+      isStaging: envInfo.isStaging,
       standar: ['CDAKB Permenkes 4/2014', 'CPAKB Permenkes 20/2017', 'SDAK OSS-RBA', 'ISO 13485:2016'],
       basisData:
         dbDriverManager.getActiveDriver() === 'firebase'
-          ? 'Firebase Firestore (Fase Pengembangan) + Server Real-Time Sync'
+          ? 'Firebase Firestore (Staging/Dev) + Server Real-Time Sync'
           : 'PocketBase Server + Persistent JSON Store + WebSocket',
       databaseDriver: dbDriverManager.getActiveDriver(),
       pocketbaseArchived: true,
@@ -619,10 +626,25 @@ async function startServer() {
       const verified = await verifyFirebaseIdToken(body.idToken.trim());
       if (verified.ok) {
         const bootstrappedEmail = (process.env.BOOTSTRAP_DEV_EMAIL || 'antraderyll@gmail.com').trim().toLowerCase();
+        const extraAdmins = (process.env.FIREBASE_ADMIN_EMAILS || '')
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        const adminEmailSet = new Set([
+          bootstrappedEmail,
+          'antraderyll@gmail.com',
+          'cloud.ams2026@gmail.com',
+          ...extraAdmins
+        ]);
         const matchedUser = rbacStore.listAllUsersForCloudSync().find(
           (u) => u.email.trim().toLowerCase() === verified.email
         );
-        if (verified.email === bootstrappedEmail || matchedUser?.isHiddenDeveloper || matchedUser?.roleId === 'it_admin' || matchedUser?.roleId === 'developer_it_support') {
+        if (
+          adminEmailSet.has(verified.email) ||
+          matchedUser?.isHiddenDeveloper ||
+          matchedUser?.roleId === 'it_admin' ||
+          matchedUser?.roleId === 'developer_it_support'
+        ) {
           authorized = true;
           actorUsername = verified.email;
         }
@@ -679,8 +701,11 @@ async function startServer() {
   app.get('/api/system/db-config', (req, res) => {
     const fbCfg = readFirebaseClientConfig();
     const summary = dbDriverManager.getRuntimeSummary();
+    const envInfo = resolveDeploymentEnvironment();
     res.set('Cache-Control', 'no-store').json({
       activeDriver: summary.activeDriver,
+      deploymentEnv: envInfo.deploymentEnv,
+      isStaging: envInfo.isStaging,
       updatedAt: summary.updatedAt,
       updatedBy: summary.updatedBy,
       pocketbaseArchived: summary.pocketbaseArchived,
@@ -1209,59 +1234,31 @@ async function startServer() {
     res.json({ ok: true, revision });
   });
 
-  // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server
-  app.get('/api/system/deployment-guides', requirePermission('it-traceability', 'view'), (req, res) => {
-    res.json({
-      caddyfile: `# Caddyfile Konfigurasi Reverse Proxy + HTTPS Otomatis
-# Lokasi: C:\\caddy\\Caddyfile
-alkes.perusahaan-anda.co.id {
-    reverse_proxy localhost:3000
-    
-    # Header keamanan standar medis & privasi data
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
+  // IT & DevOps Deployment Guide & Config for Caddy + NSSM Windows Server (Firebase Staging)
+  app.get('/api/system/deployment-guides', requirePermission('it-traceability', 'view'), (_req, res) => {
+    const fbCfg = readFirebaseClientConfig();
+    const envInfo = resolveDeploymentEnvironment();
+    let domainFromEnv = '';
+    try {
+      domainFromEnv = envInfo.appUrl.startsWith('http') ? new URL(envInfo.appUrl).hostname : '';
+    } catch {
+      domainFromEnv = '';
     }
+    const domain =
+      domainFromEnv && domainFromEnv !== 'localhost' && domainFromEnv !== '127.0.0.1'
+        ? domainFromEnv
+        : envInfo.isStaging
+          ? 'staging-ams.perusahaan-anda.co.id'
+          : 'ams.perusahaan-anda.co.id';
 
-    # Penanganan PocketBase websocket & streaming
-    handle /api/pocketbase/* {
-        reverse_proxy localhost:8090
-    }
-
-    log {
-        output file C:\\caddy\\logs\\ams_access.log {
-            roll_size 20mb
-            roll_keep 10
-        }
-    }
-}`,
-      nssmCommands: [
-        '# 1. Build lebih dulu (hasilkan dist/ untuk aset dan server.js untuk bundel runtime)',
-        'cd C:\\inetpub\\ams-alkes',
-        'npm ci',
-        'npm run build',
-        '',
-        '# 2. Pasang Node Express Server sebagai Service Windows',
-        'nssm install AMS_AppService "C:\\Program Files\\nodejs\\node.exe" "C:\\inetpub\\ams-alkes\\server.js"',
-        'nssm set AMS_AppService AppDirectory "C:\\inetpub\\ams-alkes"',
-        'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production PORT=3000',
-        'nssm set AMS_AppService AppStdout "C:\\inetpub\\ams-alkes\\logs\\service_output.log"',
-        'nssm set AMS_AppService AppStderr "C:\\inetpub\\ams-alkes\\logs\\service_error.log"',
-        'nssm start AMS_AppService',
-        '',
-        '# 3. Pasang PocketBase Service di Windows Server',
-        'nssm install AMS_PocketBase "C:\\pocketbase\\pocketbase.exe" "serve --http=0.0.0.0:8090"',
-        'nssm set AMS_PocketBase AppDirectory "C:\\pocketbase"',
-        'nssm set AMS_PocketBase AppStdout "C:\\pocketbase\\logs\\pb_output.log"',
-        'nssm start AMS_PocketBase',
-        '',
-        '# 4. Pasang Caddy Web Server sebagai Service',
-        'nssm install CaddyWebServer "C:\\caddy\\caddy.exe" "run --config C:\\caddy\\Caddyfile"',
-        'nssm start CaddyWebServer'
-      ]
-    });
+    res.json(
+      buildWindowsDeploymentGuides({
+        domain,
+        deploymentEnv: envInfo.isStaging ? 'staging' : 'staging',
+        activeDriver: dbDriverManager.getActiveDriver(),
+        firebaseProjectId: fbCfg?.projectId
+      })
+    );
   });
 
   // Kemenkes NIE format verification helper
