@@ -13,3 +13,6 @@ C:*AMS*
 C:*AMS Integrated System*/
 *.qoder.site
 dev-dist/
+*service-account*.json
+*firebase-adminsdk*.json
+

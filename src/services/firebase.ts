@@ -15,6 +15,7 @@ import {
   getDocFromServer,
   getDocs,
   getFirestore,
+  initializeFirestore,
   onSnapshot,
   query,
   serverTimestamp,
@@ -64,10 +65,28 @@ const BOOTSTRAPPED_ADMIN_EMAILS = new Set([
 ]);
 const MAX_DOC_BYTES = 920_000;
 
-const firebaseConfig = resolveFirebaseClientConfig(import.meta.env, defaultFirebaseConfig);
+const firebaseConfig = resolveFirebaseClientConfig(import.meta.env, defaultFirebaseConfig, {
+  hostname: typeof window !== 'undefined' ? window.location.hostname : undefined
+});
 const existingApps = getApps();
 const app = existingApps.length > 0 ? existingApps[0] : initializeApp(firebaseConfig);
-export const dbFirestore = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+function createFirestoreDb() {
+  try {
+    if (typeof window !== 'undefined') {
+      return initializeFirestore(
+        app,
+        { experimentalAutoDetectLongPolling: true },
+        firebaseConfig.firestoreDatabaseId
+      );
+    }
+  } catch {
+    /* fallback ke getFirestore jika instance Firestore sudah diinisialisasi sebelumnya */
+  }
+  return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+
+export const dbFirestore = createFirestoreDb();
 export const authFirebase = getAuth(app);
 
 export function getFirebaseProjectInfo() {
@@ -75,7 +94,7 @@ export function getFirebaseProjectInfo() {
     projectId: firebaseConfig.projectId,
     firestoreDatabaseId: firebaseConfig.firestoreDatabaseId,
     authDomain: firebaseConfig.authDomain,
-    deploymentEnv: import.meta.env?.VITE_DEPLOYMENT_ENV === 'staging' ? 'staging' : 'default'
+    deploymentEnv: firebaseConfig.projectId !== defaultFirebaseConfig.projectId ? 'staging' : 'default'
   };
 }
 
@@ -113,11 +132,22 @@ export function handleFirestoreError(
 
 async function testConnection() {
   if (typeof window === 'undefined') return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+  const probe = () => getDocFromServer(doc(dbFirestore, 'test', 'connection'));
   try {
-    await getDocFromServer(doc(dbFirestore, 'test', 'connection'));
+    await probe();
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      try {
+        await probe();
+      } catch (retryError) {
+        if (retryError instanceof Error && retryError.message.includes('the client is offline')) {
+          console.error('Please check your Firebase configuration.');
+        }
+      }
     }
   }
 }

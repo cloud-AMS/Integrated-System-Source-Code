@@ -31,6 +31,13 @@ import { ActiveDbDriver, PocketBaseArchiveConfig, ServerDbDriverManager } from '
 import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/services/firebaseConfig';
 import { loadDeploymentEnv, resolveDeploymentEnvironment } from './server/envLoader';
 import { buildWindowsDeploymentGuides } from './server/deploymentGuides';
+import {
+  getFirebaseAdminStatus,
+  initializeFirebaseAdmin,
+  isAiStudioPreviewRuntime,
+  verifyFirebaseAdminFirestoreConnection,
+  verifyIdTokenViaAdmin
+} from './server/firebaseAdmin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +61,7 @@ function readFirebaseClientConfig(): FirebaseClientConfig | null {
     const config = resolveFirebaseClientConfig(
       {
         VITE_DEPLOYMENT_ENV: process.env.VITE_DEPLOYMENT_ENV || process.env.DEPLOYMENT_ENV,
+        VITE_FORCE_STAGING_IN_PREVIEW: process.env.VITE_FORCE_STAGING_IN_PREVIEW,
         VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY,
         VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN,
         VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID,
@@ -70,6 +78,9 @@ function readFirebaseClientConfig(): FirebaseClientConfig | null {
         messagingSenderId: parsed.messagingSenderId || '',
         appId: parsed.appId || '',
         firestoreDatabaseId: parsed.firestoreDatabaseId || '(default)'
+      },
+      {
+        isAiStudioPreview: isAiStudioPreviewRuntime(process.env)
       }
     );
     if (!config.apiKey || !config.projectId) return null;
@@ -83,6 +94,15 @@ async function verifyFirebaseIdToken(idToken: string): Promise<
   | { ok: true; uid: string; email: string; emailVerified: boolean; displayName: string }
   | { ok: false; message: string }
 > {
+  // Prioritaskan verifikasi lokal/resmi via Firebase Admin SDK jika Service Account aktif di server/VPS
+  const adminVerified = await verifyIdTokenViaAdmin(idToken);
+  if (adminVerified.ok) {
+    return adminVerified;
+  }
+  if (!adminVerified.fallbackToRest) {
+    return { ok: false, message: adminVerified.message };
+  }
+
   const cfg = readFirebaseClientConfig();
   if (!cfg?.apiKey) {
     return { ok: false, message: 'Konfigurasi Firebase belum tersedia di server.' };
@@ -172,6 +192,29 @@ async function startServer() {
   const httpServer = http.createServer(app);
   // Dev server di AI Studio harus berjalan di port 3000 (PORT=8080 digunakan nginx internal)
   const PORT = process.env.PORT && process.env.PORT !== '8080' ? Number(process.env.PORT) : 3000;
+
+  // Inisialisasi Firebase Admin SDK untuk koneksi server-to-server aman ke named Firestore database
+  const adminInitStatus = initializeFirebaseAdmin({ rootDir: __dirname });
+  if (adminInitStatus.initialized) {
+    console.log(
+      `[Firebase Admin SDK] Terinisialisasi (project=${adminInitStatus.projectId}, databaseId=${adminInitStatus.databaseId}, sumber=${adminInitStatus.credentialSource})`
+    );
+    void verifyFirebaseAdminFirestoreConnection().then((verified) => {
+      if (verified.connected) {
+        console.log(
+          `[Firebase Admin SDK] Koneksi Firestore "${verified.databaseId}" terverifikasi (${verified.latencyMs} ms, koleksi akar=${verified.collectionCount ?? 0}).`
+        );
+      } else if (verified.lastError) {
+        console.warn(
+          `[Firebase Admin SDK] Verifikasi awal Firestore "${verified.databaseId}" gagal: ${verified.lastError}`
+        );
+      }
+    });
+  } else {
+    console.warn(
+      `[Firebase Admin SDK] Mode fallback aktif (databaseId=${adminInitStatus.databaseId}): ${adminInitStatus.lastError || 'kredensial belum diatur'}`
+    );
+  }
 
   // Bootstrap website_published ke dataSyncStore jika sudah ada snapshot di disk
   if (!dataSyncStore.hasKey('website_published')) {
@@ -461,6 +504,7 @@ async function startServer() {
       databaseDriver: dbDriverManager.getActiveDriver(),
       pocketbaseArchived: true,
       firebaseProjectId: fbCfg?.projectId || null,
+      firebaseAdmin: getFirebaseAdminStatus(),
       rbacAktif: true,
       realtimeSyncAktif: true,
       needsInitialSetup: rbacStore.needsInitialSetup(),
@@ -718,7 +762,17 @@ async function startServer() {
             authDomain: fbCfg.authDomain
           }
         : { configured: false },
+      firebaseAdmin: getFirebaseAdminStatus(),
       ...(req.auth ? { pocketbaseArchive: summary.pocketbaseArchive } : {})
+    });
+  });
+
+  app.post('/api/system/firebase-admin-verify', requirePermission('it-traceability', 'view'), async (_req, res) => {
+    initializeFirebaseAdmin({ rootDir: __dirname });
+    const status = await verifyFirebaseAdminFirestoreConnection();
+    res.set('Cache-Control', 'no-store').json({
+      ok: status.connected,
+      status
     });
   });
 

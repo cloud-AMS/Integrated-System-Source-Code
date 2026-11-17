@@ -14,6 +14,7 @@ param(
   [string]$Domain = "staging-ams.perusahaan-anda.co.id",
   [string]$AppDir = "C:\AMS\App",
   [string]$DataDir = "C:\AMS\Data",
+  [string]$SecretsDir = "C:\AMS\Secrets",
   [string]$LogsDir = "C:\AMS\Logs",
   [string]$BackupDir = "C:\AMS\Backups",
   [string]$CaddyDir = "C:\caddy",
@@ -53,7 +54,7 @@ if (-not (Test-Path $AppDir)) {
 
 Write-Step "2. Menyiapkan direktori persisten Windows di luar folder source..."
 $caddyLogs = Join-Path $CaddyDir "logs"
-New-Item -ItemType Directory -Force -Path $AppDir, $DataDir, $LogsDir, $BackupDir, $CaddyDir, $caddyLogs | Out-Null
+New-Item -ItemType Directory -Force -Path $AppDir, $DataDir, $SecretsDir, $LogsDir, $BackupDir, $CaddyDir, $caddyLogs | Out-Null
 
 $envPath = Join-Path $AppDir $EnvFileName
 $exampleEnvPath = Join-Path $AppDir ".env.staging.example"
@@ -175,8 +176,15 @@ if (-not $SkipServiceRestart) {
     & nssm set $svcName Application $nodeExe
     & nssm set $svcName AppParameters $serverJs
   }
+  $firestoreDbId = if ($envMap["FIREBASE_FIRESTORE_DATABASE_ID"]) { $envMap["FIREBASE_FIRESTORE_DATABASE_ID"] } elseif ($envMap["VITE_FIRESTORE_DATABASE_ID"]) { $envMap["VITE_FIRESTORE_DATABASE_ID"] } else { "ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439" }
+  $defaultSaPath = Join-Path $SecretsDir "firebase-service-account.json"
+  $saPath = if ($envMap["FIREBASE_SERVICE_ACCOUNT_PATH"]) { $envMap["FIREBASE_SERVICE_ACCOUNT_PATH"] } else { $defaultSaPath }
+  if (-not (Test-Path $saPath) -and -not $envMap["FIREBASE_SERVICE_ACCOUNT_JSON"]) {
+    Write-Host "Peringatan: File Service Account Admin SDK belum ditemukan di '$saPath'. Server akan berjalan pada mode fallback hingga file JSON diletakkan." -ForegroundColor Yellow
+  }
+
   & nssm set $svcName AppDirectory $AppDir
-  & nssm set $svcName AppEnvironmentExtra "NODE_ENV=production" "DEPLOYMENT_ENV=staging" "VITE_DEPLOYMENT_ENV=staging" "AMS_DB_DRIVER=firebase" "PORT=$Port" "AMS_DATA_DIR=$DataDir"
+  & nssm set $svcName AppEnvironmentExtra "NODE_ENV=production" "DEPLOYMENT_ENV=staging" "VITE_DEPLOYMENT_ENV=staging" "AMS_DB_DRIVER=firebase" "PORT=$Port" "AMS_DATA_DIR=$DataDir" "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
   & nssm set $svcName AppStdout (Join-Path $LogsDir "service_output.log")
   & nssm set $svcName AppStderr (Join-Path $LogsDir "service_error.log")
   & nssm set $svcName AppRotateFiles 1
@@ -203,7 +211,7 @@ if (-not $SkipServiceRestart) {
   Write-Step "7. Memeriksa endpoint kesehatan lokal http://127.0.0.1:$Port/api/health..."
   $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 15
   $dbCfg = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/system/db-config" -TimeoutSec 15
-  Write-Host "Health OK: status=$($health.status), env=$($health.deploymentEnv), firebaseProjectId=$($dbCfg.firebase.projectId)" -ForegroundColor Green
+  Write-Host "Health OK: status=$($health.status), env=$($health.deploymentEnv), firebaseProjectId=$($dbCfg.firebase.projectId), adminConnected=$($dbCfg.firebaseAdmin.connected), databaseId=$($dbCfg.firebaseAdmin.databaseId)" -ForegroundColor Green
 }
 
 Write-Host "`nDeployment Firebase Staging di Windows Server VPS selesai." -ForegroundColor Green

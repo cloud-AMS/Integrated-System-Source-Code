@@ -8,11 +8,28 @@ export interface FirebaseClientConfig {
   firestoreDatabaseId: string;
 }
 
+export interface ResolveFirebaseClientOptions {
+  hostname?: string;
+  isAiStudioPreview?: boolean;
+}
+
+export function isAiStudioPreviewHost(hostname?: string): boolean {
+  if (!hostname) return false;
+  return /^ais-(?:dev|pre)-[^.]+\.[^.]+\.run\.app$/i.test(hostname.trim());
+}
+
 export function resolveFirebaseClientConfig(
   env: Record<string, string | undefined> | undefined,
-  defaultConfig: FirebaseClientConfig
+  defaultConfig: FirebaseClientConfig,
+  options?: ResolveFirebaseClientOptions
 ): FirebaseClientConfig {
   if (!env || env.VITE_DEPLOYMENT_ENV !== 'staging') {
+    return defaultConfig;
+  }
+
+  const runningInAiStudioPreview =
+    Boolean(options?.isAiStudioPreview) || isAiStudioPreviewHost(options?.hostname);
+  if (runningInAiStudioPreview && env.VITE_FORCE_STAGING_IN_PREVIEW !== 'true') {
     return defaultConfig;
   }
 

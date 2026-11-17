@@ -47,4 +47,20 @@ describe('resolveFirebaseClientConfig', () => {
   it('preserves the bundled Firebase project outside staging', () => {
     expect(resolveFirebaseClientConfig({}, productionConfig)).toBe(productionConfig);
   });
+
+  it('preserves the provisioned AI Studio applet config on *.run.app preview hosts even when staging env vars are set', () => {
+    expect(
+      resolveFirebaseClientConfig(stagingEnv, productionConfig, {
+        hostname: 'ais-dev-5wlp3yc5jxvcxnp4msjgv6-571456223791.asia-east1.run.app'
+      })
+    ).toBe(productionConfig);
+  });
+
+  it('uses staging config on Windows VPS / custom staging domains', () => {
+    expect(
+      resolveFirebaseClientConfig(stagingEnv, productionConfig, {
+        hostname: 'staging-ams.perusahaan-anda.co.id'
+      }).projectId
+    ).toBe('staging-project');
+  });
 });

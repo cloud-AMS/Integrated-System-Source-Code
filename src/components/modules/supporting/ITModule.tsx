@@ -62,6 +62,17 @@ interface DbConfigResponse {
     firestoreDatabaseId?: string;
     authDomain?: string;
   };
+  firebaseAdmin?: {
+    initialized: boolean;
+    connected: boolean;
+    credentialSource: string;
+    projectId?: string | null;
+    databaseId?: string;
+    serviceAccountEmailMasked?: string | null;
+    verifiedAt?: string | null;
+    latencyMs?: number | null;
+    lastError?: string | null;
+  };
   pocketbaseArchive?: {
     archivedAt?: string;
     archivedReason?: string;
@@ -814,6 +825,28 @@ AMS_DATA_DIR=C:\\AMS\\Data`,
                     </span>
                   </div>
                 </div>
+                {dbConfigData?.firebaseAdmin && (
+                  <div className="pt-2 border-t border-blue-200/80 flex flex-wrap items-center justify-between gap-2 text-2xs">
+                    <span className="text-slate-600">
+                      Server Admin SDK (<span className="font-mono">{dbConfigData.firebaseAdmin.databaseId}</span>):
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded font-semibold ${
+                        dbConfigData.firebaseAdmin.connected
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : dbConfigData.firebaseAdmin.initialized
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {dbConfigData.firebaseAdmin.connected
+                        ? `Terhubung (${dbConfigData.firebaseAdmin.credentialSource})`
+                        : dbConfigData.firebaseAdmin.initialized
+                          ? `Siap (${dbConfigData.firebaseAdmin.credentialSource})`
+                          : 'Fallback REST (Kredensial VPS belum diatur)'}
+                    </span>
+                  </div>
+                )}
                 {connStatus.firebaseSyncError && (
                   <p className="text-2xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
                     {connStatus.firebaseSyncError}
