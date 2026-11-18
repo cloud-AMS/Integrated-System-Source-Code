@@ -42,7 +42,7 @@ New-Item -ItemType Directory -Force -Path C:\AMS\App, C:\AMS\Data, C:\AMS\Secret
 Pasang komponen berikut di Windows Server:
 1. **Git for Windows** (`git --version`)
 2. **Node.js v22 LTS** (`node -v` wajib `>= 22`)
-3. **NSSM (Non-Sucking Service Manager)** — ekstrak `nssm.exe` (win64) ke `C:\Windows\System32` atau folder dalam `PATH`.
+3. **NSSM (Non-Sucking Service Manager)** — ekstrak `nssm.exe` (win64) ke `C:\Windows\System32` atau folder dalam `PATH`. Untuk service AMS yang sudah terpasang, skrip juga mencoba membaca lokasi NSSM dari konfigurasi service Windows.
 4. **Caddy Web Server (`caddy.exe`)** — simpan ke `C:\caddy\caddy.exe` untuk HTTPS Let's Encrypt otomatis & reverse proxy WebSocket.
 
 ---

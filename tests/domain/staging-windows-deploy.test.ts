@@ -95,8 +95,13 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(deployScript).toContain(':(exclude)public/website-published.json');
     expect(deployScript).toContain('[Environment]::SetEnvironmentVariable($clientConfigKey, $envMap[$clientConfigKey], "Process")');
     expect(deployScript).toContain('Invoke-CheckedCommand "npm" @("ci", "--include=dev")');
+    expect(deployScript).toContain('Get-ItemProperty -LiteralPath $serviceKey');
+    expect(deployScript).toContain('Invoke-CheckedCommand $nssmExe');
     const stopServiceIndex = deployScript.indexOf('Stop-Service -Name $svcName -Force');
+    const resolveNssmIndex = deployScript.indexOf('$nssmExe = if (-not $SkipServiceRestart) { Resolve-NssmPath $svcName }');
     const npmCiIndex = deployScript.indexOf('Invoke-CheckedCommand "npm" @("ci", "--include=dev")');
+    expect(resolveNssmIndex).toBeGreaterThanOrEqual(0);
+    expect(resolveNssmIndex).toBeLessThan(stopServiceIndex);
     expect(stopServiceIndex).toBeGreaterThanOrEqual(0);
     expect(stopServiceIndex).toBeLessThan(npmCiIndex);
   });

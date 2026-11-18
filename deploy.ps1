@@ -46,6 +46,29 @@ function Invoke-CheckedCommand([string]$cmd, [string[]]$arguments) {
   }
 }
 
+function Resolve-NssmPath([string]$serviceName) {
+  $command = Get-Command "nssm.exe" -ErrorAction SilentlyContinue
+  if ($command -and $command.Source) {
+    return $command.Source
+  }
+
+  $serviceKey = "HKLM:\SYSTEM\CurrentControlSet\Services\$serviceName"
+  if (Test-Path $serviceKey) {
+    $imagePath = [string](Get-ItemProperty -LiteralPath $serviceKey).ImagePath
+    $candidate = $null
+    if ($imagePath -match '^\s*"([^"]*nssm\.exe)"') {
+      $candidate = $Matches[1]
+    } elseif ($imagePath -match '^\s*(.*?nssm\.exe)(?:\s|$)') {
+      $candidate = $Matches[1].Trim('"')
+    }
+    if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+      return (Resolve-Path -LiteralPath $candidate).Path
+    }
+  }
+
+  throw "nssm.exe tidak ditemukan di PATH maupun dari konfigurasi service '$serviceName'."
+}
+
 if ([string]::IsNullOrWhiteSpace($AppDir)) {
   $AppDir = $PSScriptRoot
 }
@@ -143,6 +166,7 @@ foreach ($clientConfigKey in ($requiredKeys | Where-Object { $_ -like "VITE_*" }
 [Environment]::SetEnvironmentVariable("AMS_DATA_DIR", $DataDir, "Process")
 
 $svcName = "AMS_AppService"
+$nssmExe = if (-not $SkipServiceRestart) { Resolve-NssmPath $svcName } else { $null }
 $appService = if (-not $SkipServiceRestart) { Get-Service -Name $svcName -ErrorAction SilentlyContinue } else { $null }
 $appServiceWasRunning = $appService -and $appService.Status -eq "Running"
 $buildSucceeded = $false
@@ -236,16 +260,15 @@ $Domain {
 
 if (-not $SkipServiceRestart) {
   Write-Step "7. Mengatur service Windows via NSSM (1 instance tunggal)..."
-  Assert-Command "nssm" "Pasang NSSM dari https://nssm.cc/download dan masukkan ke PATH Windows."
   $nodeExe = (Get-Command node).Source
   $serverJs = Join-Path $AppDir "server.js"
 
   $svcExists = Get-Service -Name $svcName -ErrorAction SilentlyContinue
   if (-not $svcExists) {
-    Invoke-CheckedCommand "nssm" @("install", $svcName, $nodeExe, $serverJs)
+    Invoke-CheckedCommand $nssmExe @("install", $svcName, $nodeExe, $serverJs)
   } else {
-    Invoke-CheckedCommand "nssm" @("set", $svcName, "Application", $nodeExe)
-    Invoke-CheckedCommand "nssm" @("set", $svcName, "AppParameters", $serverJs)
+    Invoke-CheckedCommand $nssmExe @("set", $svcName, "Application", $nodeExe)
+    Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppParameters", $serverJs)
   }
   $firestoreDbId = if ($envMap["FIRESTORE_DATABASE_ID"]) { $envMap["FIRESTORE_DATABASE_ID"] } elseif ($envMap["FIREBASE_FIRESTORE_DATABASE_ID"]) { $envMap["FIREBASE_FIRESTORE_DATABASE_ID"] } elseif ($envMap["VITE_FIRESTORE_DATABASE_ID"]) { $envMap["VITE_FIRESTORE_DATABASE_ID"] } else { "ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439" }
   $defaultSaPath = Join-Path $SecretsDir "firebase-service-account.json"
@@ -266,26 +289,26 @@ if (-not $SkipServiceRestart) {
     "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId",
     "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
   )
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppDirectory", $AppDir)
-  Invoke-CheckedCommand "nssm" (@("set", $svcName, "AppEnvironmentExtra") + $serviceEnvironment)
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppStdout", (Join-Path $LogsDir "service_output.log"))
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppStderr", (Join-Path $LogsDir "service_error.log"))
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppRotateFiles", "1")
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppRotateBytes", "10485760")
-  Invoke-CheckedCommand "nssm" @("set", $svcName, "Start", "SERVICE_AUTO_START")
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppDirectory", $AppDir)
+  Invoke-CheckedCommand $nssmExe (@("set", $svcName, "AppEnvironmentExtra") + $serviceEnvironment)
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppStdout", (Join-Path $LogsDir "service_output.log"))
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppStderr", (Join-Path $LogsDir "service_error.log"))
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppRotateFiles", "1")
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "AppRotateBytes", "10485760")
+  Invoke-CheckedCommand $nssmExe @("set", $svcName, "Start", "SERVICE_AUTO_START")
 
   $caddyExe = Join-Path $CaddyDir "caddy.exe"
   if (Test-Path $caddyExe) {
     $caddySvc = Get-Service -Name "CaddyWebServer" -ErrorAction SilentlyContinue
     if (-not $caddySvc) {
-      Invoke-CheckedCommand "nssm" @("install", "CaddyWebServer", $caddyExe, "run --config `"$caddyfilePath`"")
+      Invoke-CheckedCommand $nssmExe @("install", "CaddyWebServer", $caddyExe, "run --config `"$caddyfilePath`"")
     }
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "Application", $caddyExe)
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppParameters", "run --config `"$caddyfilePath`"")
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppDirectory", $CaddyDir)
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppStdout", (Join-Path $caddyLogs "caddy_stdout.log"))
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppStderr", (Join-Path $caddyLogs "caddy_stderr.log"))
-    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "Start", "SERVICE_AUTO_START")
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "Application", $caddyExe)
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppParameters", "run --config `"$caddyfilePath`"")
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppDirectory", $CaddyDir)
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppStdout", (Join-Path $caddyLogs "caddy_stdout.log"))
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppStderr", (Join-Path $caddyLogs "caddy_stderr.log"))
+    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "Start", "SERVICE_AUTO_START")
   } else {
     Write-Host "Catatan: $caddyExe belum ditemukan; lewati registrasi CaddyWebServer." -ForegroundColor Yellow
   }
