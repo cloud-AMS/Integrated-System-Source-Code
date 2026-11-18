@@ -16,6 +16,8 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   Copy,
   Mail,
@@ -184,32 +186,102 @@ function GambarSitus({
 
 export function SeksiHero({ cfg, ke }: PropsSeksi) {
   const hero = cfg.hero;
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
+  const banners = Array.isArray(hero.banner)
+    ? hero.banner.filter((banner) => banner.isActive && banner.imageUrl)
+    : [];
+  const [indeksBanner, setIndeksBanner] = useState(0);
+
+  useEffect(() => {
+    setIndeksBanner(0);
+    if (!hero.isActive || banners.length < 2) return;
+    const timer = window.setInterval(() => setIndeksBanner((i) => (i + 1) % banners.length), 6000);
+    return () => window.clearInterval(timer);
+  }, [hero.isActive, banners.length]);
+
   if (!hero.isActive) return null;
+  const banner = banners.length > 0 ? banners[indeksBanner % banners.length] : undefined;
+  const judul = banner?.judul || hero.judul;
+  const subjudul = banner?.subjudul ?? hero.subjudul;
+  const badge = banner?.eyebrow ?? hero.badge;
+  const borderless = hero.bingkaiGambar === 'borderless';
+
   return (
     <section className="situs-hero situs-hero-utama bg-white border-b border-slate-200">
       <div className={`${WADAH} situs-hero-utama__isi py-10 sm:py-14 lg:py-16 grid lg:grid-cols-[1fr_1fr] gap-8 xl:gap-12 items-center`}>
         <div className="min-w-0">
-          {hero.badge && (
+          {badge && (
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] rounded-full px-3 py-1">
               <ShieldCheck className="w-3.5 h-3.5" />
-              {hero.badge}
+              {badge}
             </p>
           )}
-          <h1 className="text-4xl sm:text-5xl xl:text-6xl leading-tight font-bold text-slate-900 mt-4">{hero.judul}</h1>
-          <p className="text-sm sm:text-base text-slate-600 mt-4 leading-relaxed max-w-2xl">{hero.subjudul}</p>
+          <h1 className="text-4xl sm:text-5xl xl:text-6xl leading-tight font-bold text-slate-900 mt-4">{judul}</h1>
+          {subjudul && <p className="text-sm sm:text-base text-slate-600 mt-4 leading-relaxed max-w-2xl">{subjudul}</p>}
           <div className="flex flex-wrap gap-3 mt-6">
-            <TombolSitus teks={hero.teksCtaUtama} tautan={hero.tautanCtaUtama} cfg={cfg} ke={ke} />
-            <TombolSitus teks={hero.teksCtaCadangan} tautan={hero.tautanCtaCadangan} cfg={cfg} ke={ke} varian="garis" />
+            {(banner?.teksCtaUtama || hero.teksCtaUtama) && (
+              <TombolSitus
+                teks={banner?.teksCtaUtama || hero.teksCtaUtama}
+                tautan={banner?.tautanCtaUtama ?? hero.tautanCtaUtama}
+                cfg={cfg}
+                ke={ke}
+              />
+            )}
+            {(banner?.teksCtaCadangan || hero.teksCtaCadangan) && (
+              <TombolSitus
+                teks={banner?.teksCtaCadangan || hero.teksCtaCadangan}
+                tautan={banner?.tautanCtaCadangan ?? hero.tautanCtaCadangan}
+                cfg={cfg}
+                ke={ke}
+                varian="garis"
+              />
+            )}
           </div>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 relative">
           <GambarSitus
-            rujukan={hero.gambarUrl}
-            alt={`Fasilitas dan produk ${hero.judul}`}
-            kelas="w-full rounded-2xl shadow-xl"
+            rujukan={banner?.imageUrl ?? hero.gambarUrl}
+            alt={`Fasilitas dan produk ${judul}`}
+            kelas={`w-full ${borderless ? '' : 'rounded-2xl border border-slate-200 shadow-xl'}`}
             rasio="3 / 2"
+            latar={borderless ? 'bg-transparent' : 'bg-white'}
             prioritas
           />
+          {banners.length > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label={t('Banner sebelumnya')}
+                onClick={() => setIndeksBanner((i) => (i - 1 + banners.length) % banners.length)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('Banner berikutnya')}
+                onClick={() => setIndeksBanner((i) => (i + 1) % banners.length)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full bg-slate-900/50 px-2.5 py-1.5">
+                {banners.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-label={`${t('Tampilkan banner')} ${index + 1}`}
+                    aria-current={index === indeksBanner}
+                    onClick={() => setIndeksBanner(index)}
+                    className={`h-2 rounded-full transition-all cursor-pointer ${
+                      index === indeksBanner ? 'w-6 bg-white' : 'w-2 bg-white/60'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>

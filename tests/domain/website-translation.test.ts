@@ -55,7 +55,11 @@ describe('WebsiteTranslationService', () => {
     const service = await createService();
     const source = {
       identitas: { nama: 'PT REMEDI', tagline: 'Solusi alat kesehatan', metaDeskripsi: 'Distributor alat kesehatan' },
-      hero: { judul: 'Solusi kesehatan terpadu', badge: 'Layanan unggulan' },
+      hero: {
+        judul: 'Solusi kesehatan terpadu',
+        badge: 'Layanan unggulan',
+        banner: [{ judul: 'Perawatan lebih baik', imageUrl: '/site/banner.png' }]
+      },
       produk: {
         item: [
           {
@@ -79,7 +83,8 @@ describe('WebsiteTranslationService', () => {
     });
     expect(first.config.hero).toMatchObject({
       judul: 'EN: Solusi kesehatan terpadu',
-      badge: 'EN: Layanan unggulan'
+      badge: 'EN: Layanan unggulan',
+      banner: [{ judul: 'EN: Perawatan lebih baik', imageUrl: '/site/banner.png' }]
     });
     expect(first.config.produk).toMatchObject({
       item: [

@@ -5,6 +5,8 @@ import {
   BadgeCheck,
   Check,
   ClipboardList,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   FileText,
   Filter,
@@ -29,6 +31,7 @@ import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite } from '../../../../typ
 import { db, KOLEKSI_OPERASIONAL_SITUS } from '../../../../services/pocketbase';
 import {
   cocokKategoriProduk,
+  fotoProdukSitus,
   selaraskanKontenOperasional,
   selesaikanGambar,
   slugifyWebsite
@@ -171,7 +174,7 @@ function VisualProduk({
 }) {
   const [gagalFoto, setGagalFoto] = useState(false);
   const [gagalLogo, setGagalLogo] = useState(false);
-  const fotoUrl = selesaikanGambar(produk.imageUrl);
+  const fotoUrl = selesaikanGambar(fotoProdukSitus(produk)[0]);
   const logoMerekUrl = useMemo(() => cariLogoMerek(cfg, produk.produsen), [cfg, produk.produsen]);
 
   if (fotoUrl && !gagalFoto) {
@@ -1131,9 +1134,7 @@ function ModalDetailProduk({
         {/* Isi Modal */}
         <div className="p-5 sm:p-6 grid md:grid-cols-[0.9fr_1.1fr] gap-6">
           <div className="space-y-4">
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
-              <VisualProduk produk={produk} cfg={cfg} kelasWadah="aspect-square" />
-            </div>
+            <GaleriFotoProduk produk={produk} cfg={cfg} />
 
             {/* Kotak Legalitas & Distribusi CDAKB */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
@@ -1345,6 +1346,83 @@ function ModalDetailProduk({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function GaleriFotoProduk({ produk, cfg }: { produk: ProdukWebsite; cfg: KonfigurasiSitus }) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
+  const foto = fotoProdukSitus(produk)
+    .map((rujukan, sumberIndex) => ({ url: selesaikanGambar(rujukan), sumberIndex }))
+    .filter((item): item is { url: string; sumberIndex: number } => Boolean(item.url));
+  const [indeks, setIndeks] = useState(0);
+  const [fotoGagal, setFotoGagal] = useState<number[]>([]);
+  const fotoTersedia = foto.filter((item) => !fotoGagal.includes(item.sumberIndex));
+  const fotoAktif = fotoTersedia[indeks % Math.max(1, fotoTersedia.length)];
+
+  useEffect(() => {
+    setIndeks(0);
+    setFotoGagal([]);
+  }, [produk.id, foto.length]);
+
+  if (!fotoAktif) {
+    return (
+      <div className="border border-slate-200 rounded-2xl overflow-hidden">
+        <VisualProduk produk={produk} cfg={cfg} kelasWadah="aspect-square" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="relative border border-slate-200 rounded-2xl overflow-hidden bg-white">
+        <img
+          src={fotoAktif.url}
+          alt={`${produk.nama} — ${indeks + 1} dari ${fotoTersedia.length}`}
+          loading="eager"
+          className="w-full aspect-square object-contain p-3"
+          onError={() => setFotoGagal((daftar) => [...new Set([...daftar, fotoAktif.sumberIndex])])}
+        />
+        {fotoTersedia.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label={t('Foto sebelumnya')}
+              onClick={() => setIndeks((i) => (i - 1 + fotoTersedia.length) % fotoTersedia.length)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 cursor-pointer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              aria-label={t('Foto berikutnya')}
+              onClick={() => setIndeks((i) => (i + 1) % fotoTersedia.length)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 cursor-pointer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
+      </div>
+      {fotoTersedia.length > 1 && (
+        <div className="grid grid-cols-5 gap-2">
+          {fotoTersedia.map((item, index) => (
+            <button
+              key={item.sumberIndex}
+              type="button"
+              aria-label={`${t('Tampilkan foto')} ${index + 1}`}
+              aria-current={index === indeks}
+              onClick={() => setIndeks(index)}
+              className={`aspect-square overflow-hidden rounded-lg border cursor-pointer ${
+                index === indeks ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]' : 'border-slate-200'
+              }`}
+            >
+              <img src={item.url} alt="" className="w-full h-full object-contain p-1" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

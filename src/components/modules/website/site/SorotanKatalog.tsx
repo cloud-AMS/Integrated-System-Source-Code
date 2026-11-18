@@ -1,6 +1,6 @@
 import { ArrowRight, BadgeCheck, PackageSearch, Search, ShieldCheck } from 'lucide-react';
 import type { HalamanWebsite, KonfigurasiSitus } from '../../../../types';
-import { selesaikanGambar } from '../../../../utils/website';
+import { fotoProdukSitus, selesaikanGambar } from '../../../../utils/website';
 import { TombolSitus } from './SiteSections';
 import { translateWebsiteUi, useWebsiteLanguage } from './WebsiteLanguage';
 
@@ -17,8 +17,9 @@ export function SorotanKatalog({
   if (!hero.isActive) return null;
 
   const produkUnggulan = cfg.produk.item.find((produk) => produk.isActive);
-  const gambarProduk = selesaikanGambar(produkUnggulan?.imageUrl);
-  const gambarUtama = gambarProduk || selesaikanGambar(hero.gambarUrl);
+  const gambarProduk = produkUnggulan ? selesaikanGambar(fotoProdukSitus(produkUnggulan)[0]) : undefined;
+  const bannerHero = hero.banner?.find((banner) => banner.isActive && banner.imageUrl);
+  const gambarUtama = gambarProduk || selesaikanGambar(bannerHero?.imageUrl ?? hero.gambarUrl);
   const kategori = Array.from(
     new Set(cfg.produk.item.filter((produk) => produk.isActive).map((produk) => produk.kategori).filter(Boolean))
   ).slice(0, 4);

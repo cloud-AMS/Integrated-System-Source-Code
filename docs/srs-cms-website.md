@@ -83,6 +83,11 @@ Setiap FR ditandai dengan status implementasi per 2026-11-09.
 5. **Susunan Beranda** — bila `rute.halaman === 'beranda'`, renderer memakai `tema.berandaUrutan` (hasil normalisasi) alih-alih `PETA_HALAMAN.beranda`; halaman lain tetap baku.
 6. **Favicon** — `useEffect` di `PublicWebsite` menulis/menambah `<link rel="icon" href={faviconUrl}>` pada setiap perubahan `identitas`.
 
+### 3.2 Galeri foto produk & carousel hero
+- CMS katalog menerima beberapa foto untuk satu produk; urutan foto dapat diubah, foto pertama dipakai pada kartu, dan seluruh foto dapat dijelajahi pada detail produk. Data lama dengan `imageUrl` tunggal tetap ditampilkan.
+- CMS Hero Utama menerima daftar banner berurutan. Jika daftar berisi banner bergambar, area hero menampilkan carousel otomatis dengan tombol/dots navigasi; jika kosong, gambar hero lama tetap digunakan.
+- Admin dapat memilih gambar hero berbingkai atau tanpa bingkai. Unggahan PNG banner mempertahankan transparansi agar dapat menyatu dengan latar.
+
 ---
 
 ## 4. Menu & Sub-menu Modul CMS (Website)
@@ -104,11 +109,11 @@ Website (menu utama, badge SEGERA — hanya PJT & IT Admin untuk penerbitan)
 │   ├── Kolom Footer                         — 3–4 kolom tautan
 │   └── Catatan Footer                       — hak cipta & legal
 ├── KONTEN BERANDA
-│   ├── Hero Utama · Banner/Slider · Legalitas & Sertifikat · Solusi per Kategori
+│   ├── Hero Utama (carousel & bingkai) · Banner/Slider · Legalitas & Sertifikat · Solusi per Kategori
 │   ├── Pita Konsultasi · Capaian Terukur · Merek / Prinsipal · Tahap Perjalanan Layanan
 │   └── Institusi yang Dilayani · Kegiatan & Seminar · Promo & Skema Harga
 └── KATALOG & SUMBER DAYA
-    ├── Katalog Produk · Berita & Artikel · Galeri Fasilitas · Testimoni Pelanggan
+    ├── Katalog Produk (galeri multi-foto) · Berita & Artikel · Galeri Fasilitas · Testimoni Pelanggan
     └── Pertanyaan Umum · Tentang Kami · Kantor & Rayon · Kontak & Alamat · Media Sosial
 ```
 Mode tampilan per menu: **Editor** (form) · **Live Preview** (iframe, lihat langsung) · **Jejak** (audit trail).

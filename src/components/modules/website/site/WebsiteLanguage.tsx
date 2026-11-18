@@ -193,7 +193,12 @@ const translations: Record<string, string> = {
   'Grup:': 'Group:',
   'Selengkapnya': 'Learn More',
   'Telusuri grup ini': 'Browse this group',
-  'Tampilkan banner': 'Show banner'
+  'Tampilkan banner': 'Show banner',
+  'Banner sebelumnya': 'Previous banner',
+  'Banner berikutnya': 'Next banner',
+  'Foto sebelumnya': 'Previous photo',
+  'Foto berikutnya': 'Next photo',
+  'Tampilkan foto': 'Show photo'
 };
 
 const WebsiteLanguageContext = createContext<WebsiteLanguage>('id');

@@ -1660,10 +1660,23 @@ export interface HeroSitus {
   judul: string;
   subjudul: string;
   gambarUrl?: string;
+  banner?: BannerHeroSitus[];
+  bingkaiGambar?: 'border' | 'borderless';
   teksCtaUtama: string;
   tautanCtaUtama: TautanWebsite;
   teksCtaCadangan: string;
   tautanCtaCadangan: TautanWebsite;
+}
+
+export interface BannerHeroSitus extends ItemWebsite {
+  eyebrow?: string;
+  judul: string;
+  subjudul?: string;
+  imageUrl?: string;
+  teksCtaUtama?: string;
+  tautanCtaUtama?: TautanWebsite;
+  teksCtaCadangan?: string;
+  tautanCtaCadangan?: TautanWebsite;
 }
 
 /** Banner utama (slider). Rekomendasi gambar 1600 x 900 px. */
@@ -1711,6 +1724,7 @@ export interface ProdukWebsite extends ItemWebsite {
   zonaSuhu?: string;
   hargaTayang?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   badge?: string;
   tanyaJawabTeknis?: { pertanyaan: string; jawaban: string }[];
 }

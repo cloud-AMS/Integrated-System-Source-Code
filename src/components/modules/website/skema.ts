@@ -38,8 +38,16 @@ export type Medan =
   | { kind: 'textarea'; key: string; label: string; rows?: number; petunjuk?: string }
   | { kind: 'daftarTeks'; key: string; label: string; petunjuk?: string }
   | { kind: 'gambar'; key: string; label: string; petunjuk?: string }
+  | { kind: 'gambarBanyak'; key: string; label: string; petunjuk?: string }
   | { kind: 'angka'; key: string; label: string; petunjuk?: string }
-  | { kind: 'pilihan'; key: string; label: string; opsi: string[]; petunjuk?: string }
+  | {
+      kind: 'pilihan';
+      key: string;
+      label: string;
+      opsi: string[];
+      labelOpsi?: Record<string, string>;
+      petunjuk?: string;
+    }
   | { kind: 'tautan'; key: string; label: string; petunjuk?: string }
   | {
       kind: 'bertingkat';
@@ -218,7 +226,12 @@ export const BAGIAN_WEBSITE: BagianDefinisi[] = [
       { kind: 'teks', key: 'hargaTayang', label: 'Harga tayang / referensi' },
       { kind: 'textarea', key: 'spesifikasi', label: 'Spesifikasi ringkas', rows: 3 },
       { kind: 'daftarTeks', key: 'poinJual', label: 'Poin jual' },
-      { kind: 'gambar', key: 'imageUrl', label: 'Foto produk (Rekomendasi: 1000 × 1000 px / Persegi)' },
+      {
+        kind: 'gambarBanyak',
+        key: 'imageUrls',
+        label: 'Foto produk (bisa lebih dari satu; rekomendasi: 1000 × 1000 px / persegi)',
+        petunjuk: 'Foto pertama menjadi gambar kartu. Tambahkan tampak, detail, atau sudut produk lainnya.'
+      },
       { kind: 'teks', key: 'tautanBrosur', label: 'Tautan brosur' },
       { kind: 'teks', key: 'tautanVideo', label: 'Tautan video demo' },
       { kind: 'angka', key: 'stokTersedia', label: 'Stok siap kirim (FEFO)' },
@@ -242,6 +255,7 @@ export const BAGIAN_WEBSITE: BagianDefinisi[] = [
       hargaTayang: '',
       spesifikasi: '',
       poinJual: [],
+      imageUrls: [],
       badge: ''
     })
   },
@@ -455,7 +469,7 @@ export const OBJEK_WEBSITE: ObjekDefinisi[] = [
   {
     kunci: 'hero',
     label: 'Hero Utama',
-    petunjuk: 'Judul H1, sub-judul, gambar, dan dua tombol pada bagian paling atas beranda.',
+    petunjuk: 'Judul H1, gambar utama atau carousel banner, dan tombol pada bagian paling atas beranda.',
     ikon: Sparkles,
     punyaAktif: true,
     medan: [
@@ -463,6 +477,42 @@ export const OBJEK_WEBSITE: ObjekDefinisi[] = [
       { kind: 'textarea', key: 'judul', label: 'Judul H1', rows: 2 },
       { kind: 'textarea', key: 'subjudul', label: 'Paragraf pembuka', rows: 4 },
       { kind: 'gambar', key: 'gambarUrl', label: 'Gambar hero utama (Rekomendasi: 1200 × 800 px)' },
+      {
+        kind: 'pilihan',
+        key: 'bingkaiGambar',
+        label: 'Bingkai gambar hero',
+        opsi: ['border', 'borderless'],
+        labelOpsi: { border: 'Dengan border', borderless: 'Tanpa border (PNG menyatu dengan latar)' },
+        petunjuk: 'Pilih tanpa border untuk gambar PNG transparan yang menyatu dengan latar hero.'
+      },
+      {
+        kind: 'bertingkat',
+        key: 'banner',
+        label: 'Banner carousel hero',
+        petunjuk: 'Jika ditambahkan, banner ini tampil sebagai carousel di area gambar hero. Kosongkan untuk memakai gambar hero utama.',
+        medan: [
+          { kind: 'teks', key: 'eyebrow', label: 'Label kecil' },
+          { kind: 'textarea', key: 'judul', label: 'Judul banner', rows: 2 },
+          { kind: 'textarea', key: 'subjudul', label: 'Deskripsi banner', rows: 3 },
+          { kind: 'gambar', key: 'imageUrl', label: 'Gambar banner (Rekomendasi: 1200 × 800 px)' },
+          { kind: 'teks', key: 'teksCtaUtama', label: 'Teks tombol utama' },
+          { kind: 'tautan', key: 'tautanCtaUtama', label: 'Tujuan tombol utama' },
+          { kind: 'teks', key: 'teksCtaCadangan', label: 'Teks tombol cadangan' },
+          { kind: 'tautan', key: 'tautanCtaCadangan', label: 'Tujuan tombol cadangan' }
+        ],
+        judulItem: (i) => String(i.judul || i.id),
+        pabrik: () => ({
+          id: idBaru('hero-banner'),
+          isActive: true,
+          eyebrow: '',
+          judul: 'Banner hero baru',
+          subjudul: '',
+          teksCtaUtama: 'Selengkapnya',
+          tautanCtaUtama: { tipe: 'halaman', nilai: 'produk' },
+          teksCtaCadangan: '',
+          tautanCtaCadangan: { tipe: 'halaman', nilai: 'kontak' }
+        })
+      },
       { kind: 'teks', key: 'teksCtaUtama', label: 'Teks tombol utama' },
       { kind: 'tautan', key: 'tautanCtaUtama', label: 'Tujuan tombol utama' },
       { kind: 'teks', key: 'teksCtaCadangan', label: 'Teks tombol cadangan' },

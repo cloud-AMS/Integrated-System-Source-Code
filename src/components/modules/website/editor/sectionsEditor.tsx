@@ -47,10 +47,14 @@ function Petunjuk({ children }: { children: ReactNode }) {
 }
 
 function KartuMedan({ medan, item, onGanti }: { medan: Medan; item: ItemLoose; onGanti: (i: ItemLoose) => void }) {
+  const nilai =
+    medan.key === 'imageUrls' && !Array.isArray(item.imageUrls) && typeof item.imageUrl === 'string'
+      ? [item.imageUrl]
+      : ambilJalur(item, medan.key);
   return (
     <MedanEditor
       medan={medan}
-      nilai={ambilJalur(item, medan.key)}
+      nilai={nilai}
       onChange={(v) => onGanti(setJalur(item, medan.key, v) as ItemLoose)}
     />
   );
@@ -276,7 +280,7 @@ export function EditorSeksiDaftar({
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Judul seksi</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {MEDAN_KEPALA.map((m) => {
-            const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
+            const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'gambarBanyak' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
             return (
               <div key={m.key} className={lebarPenuh ? 'md:col-span-2' : ''}>
                 <BarisMedan
@@ -337,7 +341,7 @@ export function EditorSeksiDaftar({
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {def.medan.map((m) => {
-                const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
+                const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'gambarBanyak' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
                 return (
                   <div key={m.key} className={lebarPenuh ? 'md:col-span-2' : ''}>
                     <KartuMedan medan={m} item={item} onGanti={(baru) => gantiItem(indeks, baru)} />
@@ -392,7 +396,7 @@ export function EditorObjek({
       </div>
       <div className="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         {medan.map((m) => {
-          const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
+          const lebarPenuh = m.kind === 'textarea' || m.kind === 'gambar' || m.kind === 'gambarBanyak' || m.kind === 'daftarTeks' || m.kind === 'bertingkat' || m.kind === 'tautan';
           return (
             <div key={m.key} className={lebarPenuh ? 'md:col-span-2' : ''}>
               <BarisMedan medan={m} nilai={ambilJalur(objek, m.key)} onGanti={(v) => onGanti(setJalur(objek, m.key, v) as Record<string, unknown>)} />

@@ -251,10 +251,19 @@ function MedanGambar({
     setSedangOlah(true);
     setGagal('');
     try {
-      const adalahLogoAtauIkon = kunciLower.includes('logo') || labelLower.includes('logo') || kunciLower.includes('favicon') || labelLower.includes('favicon');
+      const adalahLogoAtauIkon =
+        kunciLower.includes('logo') ||
+        labelLower.includes('logo') ||
+        kunciLower.includes('favicon') ||
+        labelLower.includes('favicon') ||
+        labelLower.includes('banner') ||
+        labelLower.includes('hero');
       const dataUrl = await kompresGambarWebsite(berkas, 1280, 0.82, adalahLogoAtauIkon);
       const id = `img-${Math.random().toString(36).slice(2, 9)}`;
-      simpanMediaWebsite({ id, nama: berkas.name, dataUrl, ukuran: berkas.size });
+      const mediaTersimpan = simpanMediaWebsite({ id, nama: berkas.name, dataUrl, ukuran: berkas.size });
+      if (!mediaTersimpan.some((media) => media.id === id)) {
+        throw new Error('Penyimpanan media website penuh.');
+      }
       onChange(`media:${id}`);
     } catch {
       setGagal('Gambar gagal diolah. Gunakan PNG/JPG di bawah 8 MB.');
@@ -336,6 +345,170 @@ function MedanGambar({
         onChange={(e) => onChange(e.target.value || undefined)}
         className={KELAS_INPUT}
       />
+      {petunjuk && <Bacaan petunjuk={petunjuk} />}
+      {gagal && <p className="text-3xs font-semibold text-rose-700">{gagal}</p>}
+    </div>
+  );
+}
+
+function MedanGambarBanyak({
+  nilai,
+  onChange,
+  petunjuk
+}: {
+  nilai: unknown;
+  onChange: (v: string[]) => void;
+  petunjuk?: string;
+}) {
+  const daftar = Array.isArray(nilai) ? nilai.filter((foto): foto is string => typeof foto === 'string') : [];
+  const [sedangOlah, setSedangOlah] = useState(false);
+  const [urlBaru, setUrlBaru] = useState('');
+  const [gagal, setGagal] = useState('');
+
+  const pilihBerkas = async (berkasTerpilih: FileList | null) => {
+    const berkas = Array.from(berkasTerpilih ?? []);
+    if (berkas.length === 0) return;
+    if (berkas.some((file) => file.size > 8 * 1024 * 1024)) {
+      setGagal('Ukuran maksimal 8 MB per foto.');
+      return;
+    }
+    setSedangOlah(true);
+    setGagal('');
+    try {
+      const referensiBaru = await Promise.all(
+        berkas.map(async (file) => {
+          const dataUrl = await kompresGambarWebsite(file, 1280, 0.82, true);
+          const id = `img-${Math.random().toString(36).slice(2, 9)}`;
+          const mediaTersimpan = simpanMediaWebsite({ id, nama: file.name, dataUrl, ukuran: file.size });
+          if (!mediaTersimpan.some((media) => media.id === id)) {
+            throw new Error('Penyimpanan media website penuh.');
+          }
+          return `media:${id}`;
+        })
+      );
+      onChange([...daftar, ...referensiBaru]);
+    } catch {
+      setGagal('Foto gagal diolah. Gunakan PNG atau JPG yang valid.');
+    } finally {
+      setSedangOlah(false);
+    }
+  };
+
+  const pindahFoto = (indeks: number, arah: -1 | 1) => {
+    const tujuan = indeks + arah;
+    if (tujuan < 0 || tujuan >= daftar.length) return;
+    const baru = [...daftar];
+    [baru[indeks], baru[tujuan]] = [baru[tujuan], baru[indeks]];
+    onChange(baru);
+  };
+
+  const tambahUrl = () => {
+    const url = urlBaru.trim();
+    if (!url) return;
+    onChange([...daftar, url]);
+    setUrlBaru('');
+    setGagal('');
+  };
+
+  return (
+    <div className="space-y-3">
+      {daftar.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {daftar.map((rujukan, indeks) => {
+            const pratinjau = selesaikanGambar(rujukan || undefined);
+            return (
+              <div key={`${indeks}-${rujukan}`} className="space-y-1.5">
+                <div className="relative aspect-square rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+                  {pratinjau ? (
+                    <img src={pratinjau} alt={`Foto ${indeks + 1}`} className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageOff className="w-5 h-5 text-slate-400" />
+                    </div>
+                  )}
+                  {indeks === 0 && (
+                    <span className="absolute left-1 top-1 rounded bg-slate-900/75 text-white text-3xs px-1.5 py-0.5">
+                      Utama
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => pindahFoto(indeks, -1)}
+                      disabled={sedangOlah || indeks === 0}
+                      aria-label={`Pindahkan foto ${indeks + 1} ke atas`}
+                      className="p-1 rounded text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => pindahFoto(indeks, 1)}
+                      disabled={sedangOlah || indeks === daftar.length - 1}
+                      aria-label={`Pindahkan foto ${indeks + 1} ke bawah`}
+                      className="p-1 rounded text-slate-500 hover:bg-slate-100 disabled:opacity-30 cursor-pointer"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onChange(daftar.filter((_, i) => i !== indeks))}
+                    disabled={sedangOlah}
+                    aria-label={`Hapus foto ${indeks + 1}`}
+                    className="p-1 rounded text-rose-600 hover:bg-rose-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <label className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">
+        <Plus className="w-4 h-4" />
+        {sedangOlah ? 'Mengolah foto…' : 'Unggah satu atau beberapa foto'}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          disabled={sedangOlah}
+          onChange={(e) => {
+            void pilihBerkas(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      </label>
+
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={urlBaru}
+          placeholder="atau tambahkan URL gambar https://…"
+          disabled={sedangOlah}
+          onChange={(e) => setUrlBaru(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              tambahUrl();
+            }
+          }}
+          className={KELAS_INPUT}
+        />
+        <button
+          type="button"
+          onClick={tambahUrl}
+          disabled={sedangOlah || !urlBaru.trim()}
+          className="px-3 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
+        >
+          Tambah URL
+        </button>
+      </div>
       {petunjuk && <Bacaan petunjuk={petunjuk} />}
       {gagal && <p className="text-3xs font-semibold text-rose-700">{gagal}</p>}
     </div>
@@ -449,15 +622,16 @@ export function MedanEditor({
           nilai={nilai}
           opsi={medan.opsi}
           onChange={onChange}
-          labelOpsi={(o) => LABEL_HALAMAN[o as HalamanWebsite] ?? o}
+          labelOpsi={(o) => medan.labelOpsi?.[o] ?? LABEL_HALAMAN[o as HalamanWebsite] ?? o}
         />
       )}
       {medan.kind === 'tautan' && <MedanTautan nilai={nilai} onChange={onChange} />}
       {medan.kind === 'gambar' && <MedanGambar nilai={nilai} onChange={onChange} petunjuk={medan.petunjuk} keyMedan={medan.key} label={medan.label} />}
+      {medan.kind === 'gambarBanyak' && <MedanGambarBanyak nilai={nilai} onChange={onChange} petunjuk={medan.petunjuk} />}
       {medan.kind === 'bertingkat' && (
         <MedanBertingkat medan={medan} nilai={nilai} onChange={onChange} petunjuk={medan.petunjuk} />
       )}
-      {medan.petunjuk && medan.kind !== 'gambar' && medan.kind !== 'bertingkat' && (
+      {medan.petunjuk && medan.kind !== 'gambar' && medan.kind !== 'gambarBanyak' && medan.kind !== 'bertingkat' && (
         <Bacaan petunjuk={medan.petunjuk} />
       )}
     </div>

@@ -101,6 +101,16 @@ export function cocokKategoriProduk(
   return kandidat.some((nilai) => nilai.trim().toLowerCase() === target || slugifyWebsite(nilai) === targetSlug);
 }
 
+/** Daftar foto produk dengan fallback ke properti tunggal pada konten lama. */
+export function fotoProdukSitus(
+  produk: Pick<ProdukWebsite, 'imageUrl' | 'imageUrls'>
+): string[] {
+  const sumber = Array.isArray(produk.imageUrls) ? produk.imageUrls : [produk.imageUrl];
+  return sumber
+    .filter((rujukan): rujukan is string => typeof rujukan === 'string' && Boolean(rujukan.trim()))
+    .map((rujukan) => rujukan.trim());
+}
+
 /** Data mentah yang dibaca pembangun konten. Diterima sebagai argumen agar util ini
  *  tidak mengimpor layanan db (db yang mengimpor util ini, bukan sebaliknya). */
 export interface SumberKontenWebsite {
@@ -585,6 +595,8 @@ export function bangunKontenDefault(sumber: SumberKontenWebsite): KonfigurasiSit
       subjudul:
         'Kami adalah produsen, agen, dan distributor produk peralatan kesehatan, instrument set, dan barang habis pakai untuk kebutuhan fasilitas pelayanan kesehatan di seluruh Indonesia — bermerek dagang Remedi dengan dukungan 15 merek prinsipal.',
       gambarUrl: '/site/banner-hero-remedi.jpg',
+      banner: [],
+      bingkaiGambar: 'border',
       teksCtaUtama: 'Request for Quotation',
       tautanCtaUtama: { tipe: 'halaman', nilai: 'kontak' },
       teksCtaCadangan: 'Lihat Katalog Produk',
