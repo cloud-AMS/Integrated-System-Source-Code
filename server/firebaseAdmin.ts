@@ -238,7 +238,11 @@ export function resolveFirestoreDatabaseId(opts?: {
 }): FirestoreDatabaseIdResolution {
   const rootDir = opts?.rootDir || process.cwd();
   const env = opts?.env || process.env;
-  const expected = (opts?.expectedDatabaseId || DEFAULT_FIRESTORE_DATABASE_ID).trim();
+  const expected = (
+    opts?.expectedDatabaseId ||
+    env.FIRESTORE_EXPECTED_DATABASE_ID ||
+    DEFAULT_FIRESTORE_DATABASE_ID
+  ).trim();
   const appletCfg = readAppletConfigFile(rootDir);
   const inAiStudioPreview = isAiStudioPreviewRuntime(env);
 
@@ -420,7 +424,11 @@ export function validateVpsFirebaseConfig(opts?: {
 }): VpsFirebaseValidationResult {
   const rootDir = opts?.rootDir || process.cwd();
   const env = opts?.env || process.env;
-  const expectedDb = (opts?.expectedDatabaseId || DEFAULT_FIRESTORE_DATABASE_ID).trim();
+  const expectedDb = (
+    opts?.expectedDatabaseId ||
+    env.FIRESTORE_EXPECTED_DATABASE_ID ||
+    DEFAULT_FIRESTORE_DATABASE_ID
+  ).trim();
   const isVpsRuntime = !isAiStudioPreviewRuntime(env);
 
   const dbResolution = resolveFirestoreDatabaseId({

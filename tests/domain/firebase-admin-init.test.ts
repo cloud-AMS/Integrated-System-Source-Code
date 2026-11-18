@@ -252,6 +252,28 @@ describe('Firebase Admin SDK & Named Firestore Database (Windows VPS)', () => {
     expect(validation.errors).toEqual([]);
   });
 
+  it('menerima target database staging eksplisit yang berbeda dari default AI Studio', () => {
+    const privateKey = generateEphemeralRsaPrivateKeyPem();
+    const validation = validateVpsFirebaseConfig({
+      rootDir: os.tmpdir(),
+      env: {
+        DEPLOYMENT_ENV: 'staging',
+        FIREBASE_SERVICE_ACCOUNT_JSON: JSON.stringify({
+          project_id: 'ams-integrated-staging',
+          client_email: 'vps-runner@ams-integrated-staging.iam.gserviceaccount.com',
+          private_key: privateKey
+        }),
+        FIRESTORE_DATABASE_ID: '(default)',
+        FIRESTORE_EXPECTED_DATABASE_ID: '(default)'
+      }
+    });
+
+    expect(validation.firestoreDatabaseId).toBe('(default)');
+    expect(validation.databaseIdMatchesTarget).toBe(true);
+    expect(validation.warnings.some((warning) => warning.includes('berbeda dari target'))).toBe(false);
+    expect(validation.readyForStableConnection).toBe(true);
+  });
+
   it('melaporkan error saat FIREBASE_SERVICE_ACCOUNT_JSON tidak valid atau hilang tanpa fallback di VPS', () => {
     const invalidRes = validateVpsFirebaseConfig({
       rootDir: os.tmpdir(),

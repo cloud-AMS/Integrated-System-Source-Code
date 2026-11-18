@@ -73,11 +73,13 @@ VITE_FIREBASE_PROJECT_ID=...
 VITE_FIREBASE_STORAGE_BUCKET=...firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
-VITE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
+VITE_FIRESTORE_DATABASE_ID=(default)
 VITE_FIREBASE_ADMIN_EMAIL=cloud.ams2026@gmail.com
 
 # Firebase Admin SDK (Server-to-Server Firestore)
-FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
+FIRESTORE_DATABASE_ID=(default)
+FIREBASE_FIRESTORE_DATABASE_ID=(default)
+FIRESTORE_EXPECTED_DATABASE_ID=(default)
 FIREBASE_SERVICE_ACCOUNT_PATH=C:\AMS\Secrets\firebase-service-account.json
 
 SESSION_SECRET=<64-karakter-hex-acak>
@@ -89,7 +91,7 @@ FIREBASE_ADMIN_EMAILS=cloud.ams2026@gmail.com,antraderyll@gmail.com
 > **Konfigurasi Service Account Firebase Admin SDK (Wajib untuk koneksi server VPS → Firestore)**:
 > 1. Buka Firebase Console → **Project Settings (ikon roda gigi) → Service accounts → Generate new private key**.
 > 2. Simpan file JSON yang diunduh ke `C:\AMS\Secrets\firebase-service-account.json` (jangan taruh di dalam `C:\AMS\App` agar tidak pernah ikut ter-commit ke Git).
-> 3. Server Express otomatis menghubungkan Admin SDK ke database Firestore bernama `ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439` sesuai `FIREBASE_FIRESTORE_DATABASE_ID`.
+> 3. Untuk project staging saat ini, Server Express menghubungkan Admin SDK ke database Firestore `(default)`. Nilai koneksi dan target validasi harus sama di `FIRESTORE_DATABASE_ID`, `FIREBASE_FIRESTORE_DATABASE_ID`, `FIRESTORE_EXPECTED_DATABASE_ID`, dan `VITE_FIRESTORE_DATABASE_ID`.
 
 > **Tip Membuat `SESSION_SECRET` Acak di PowerShell**:
 > ```powershell

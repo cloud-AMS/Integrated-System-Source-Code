@@ -66,7 +66,7 @@ ${domain} {
     '# ===== 2. PASANG NODE EXPRESS SERVICE (WAJIB 1 INSTANCE TUNGGAL) =====',
     'nssm install AMS_AppService "C:\\Program Files\\nodejs\\node.exe" "C:\\AMS\\App\\server.js"',
     'nssm set AMS_AppService AppDirectory "C:\\AMS\\App"',
-    'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production DEPLOYMENT_ENV=staging VITE_DEPLOYMENT_ENV=staging AMS_DB_DRIVER=firebase PORT=3000 AMS_DATA_DIR=C:\\AMS\\Data FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439 FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439 FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json',
+    'nssm set AMS_AppService AppEnvironmentExtra NODE_ENV=production DEPLOYMENT_ENV=staging VITE_DEPLOYMENT_ENV=staging AMS_DB_DRIVER=firebase PORT=3000 AMS_DATA_DIR=C:\\AMS\\Data "FIRESTORE_DATABASE_ID=(default)" "FIREBASE_FIRESTORE_DATABASE_ID=(default)" "FIRESTORE_EXPECTED_DATABASE_ID=(default)" FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json',
     'nssm set AMS_AppService AppStdout "C:\\AMS\\Logs\\service_output.log"',
     'nssm set AMS_AppService AppStderr "C:\\AMS\\Logs\\service_error.log"',
     'nssm set AMS_AppService Start SERVICE_AUTO_START',
@@ -100,12 +100,13 @@ VITE_FIREBASE_PROJECT_ID=GANTI_PROJECT_STAGING
 VITE_FIREBASE_STORAGE_BUCKET=GANTI_PROJECT_STAGING.firebasestorage.app
 VITE_FIREBASE_MESSAGING_SENDER_ID=GANTI_SENDER_ID_STAGING
 VITE_FIREBASE_APP_ID=1:GANTI:web:STAGING
-VITE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
+VITE_FIRESTORE_DATABASE_ID=(default)
 VITE_FIREBASE_ADMIN_EMAIL=cloud.ams2026@gmail.com
 
 # Firebase Admin SDK Server-to-Server (simpan JSON di C:\\AMS\\Secrets)
-FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
-FIREBASE_FIRESTORE_DATABASE_ID=ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439
+FIRESTORE_DATABASE_ID=(default)
+FIREBASE_FIRESTORE_DATABASE_ID=(default)
+FIRESTORE_EXPECTED_DATABASE_ID=(default)
 FIREBASE_SERVICE_ACCOUNT_PATH=C:\\AMS\\Secrets\\firebase-service-account.json
 
 # Rahasia Server (Buat minimal 48 karakter acak di PowerShell)

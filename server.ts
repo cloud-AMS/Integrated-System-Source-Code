@@ -33,7 +33,6 @@ import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/se
 import { loadDeploymentEnv, resolveDeploymentEnvironment } from './server/envLoader';
 import { buildWindowsDeploymentGuides } from './server/deploymentGuides';
 import {
-  DEFAULT_FIRESTORE_DATABASE_ID,
   getFirebaseAdminStatus,
   initializeFirebaseAdmin,
   isAiStudioPreviewRuntime,
@@ -97,13 +96,11 @@ function readFirebaseClientConfig(): FirebaseClientConfig | null {
 /**
  * Memvalidasi keberadaan FIREBASE_SERVICE_ACCOUNT_JSON (dan sumber kredensial VPS lainnya)
  * serta memuat FIRESTORE_DATABASE_ID secara konsisten ke environment runtime agar koneksi
- * ke database Firestore bernama (ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439)
- * tetap stabil saat dijalankan di VPS.
+ * ke database Firestore yang dipilih oleh konfigurasi deployment tetap stabil di VPS.
  */
 function validasiDanMuatFirebaseVps(emitLog = false): VpsFirebaseValidationResult {
   const hasil = validateVpsFirebaseConfig({
-    rootDir: __dirname,
-    expectedDatabaseId: DEFAULT_FIRESTORE_DATABASE_ID
+    rootDir: __dirname
   });
 
   if (!process.env.FIRESTORE_DATABASE_ID?.trim()) {
