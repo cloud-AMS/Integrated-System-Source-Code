@@ -3,6 +3,8 @@ Dibuat oleh Langgo Bramandityo.
 Dokumen ini memandu langkah lengkap untuk menjalankan **AMS Integrated System** dengan mode **Firebase Staging** (`DEPLOYMENT_ENV=staging` + `AMS_DB_DRIVER=firebase`) di **Windows Server VPS (2019 / 2022 / 2025)**.
 
 > Untuk deployment staging di Render gunakan [panduan Render](./deployment-render-staging.md), sedangkan untuk Linux Ubuntu gunakan [panduan VPS Linux](./panduan-deploy-vps.md).
+>
+> **Target VPS aktif yang sudah diprovisikan:** `C:\Apps\AMS`, domain `ams.bejodigitalprint.com`, port Node `3100`, service `AMS_AppService`, data `C:\AMS\Data`. Server ini dipakai bersama aplikasi lain. Untuk alur lokal → commit/push → deploy rutin dan pemulihan snapshot, ikuti bagian Windows pada [panduan deployment VPS utama](./panduan-deploy-vps.md). Jangan memakai contoh `C:\AMS\App` atau port `3000` dari panduan lama.
 
 ---
 
@@ -36,7 +38,7 @@ Jangan memakai kredensial production atau `firebase-applet-config.json` secara l
 Buka **PowerShell (Run as Administrator)** dan siapkan direktori terpisah antara kode aplikasi dan data persisten:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path C:\AMS\App, C:\AMS\Data, C:\AMS\Secrets, C:\AMS\Backups, C:\AMS\Logs, C:\caddy\logs | Out-Null
+New-Item -ItemType Directory -Force -Path C:\Apps\AMS, C:\AMS\Data, C:\AMS\Secrets, C:\AMS\Backups, C:\AMS\Logs, C:\caddy\logs | Out-Null
 ```
 
 Pasang komponen berikut di Windows Server:
@@ -45,59 +47,67 @@ Pasang komponen berikut di Windows Server:
 3. **NSSM (Non-Sucking Service Manager)** — ekstrak `nssm.exe` (win64) ke `C:\Windows\System32` atau folder dalam `PATH`. Untuk service AMS yang sudah terpasang, skrip juga mencoba membaca lokasi NSSM dari konfigurasi service Windows.
 4. **Caddy Web Server (`caddy.exe`)** — simpan ke `C:\caddy\caddy.exe` untuk HTTPS Let's Encrypt otomatis & reverse proxy WebSocket.
 
+> Pada VPS aktif, direktori dan service ini sudah dibuat. Jangan meng-clone ulang ke `C:\Apps\AMS`, menginstal service kedua, atau mengubah Caddy/firewall sebagai bagian dari deploy rutin.
+
 ---
 
-## 3. Clone Repositori & Isi `.env.staging`
+## 3. Clone awal (hanya instalasi baru) & isi `.env.staging`
 
+**Lewati bagian clone bila `C:\Apps\AMS` sudah berisi aplikasi yang berjalan.** Pada VPS aktif, gunakan direktori yang sudah ada:
 ```powershell
-cd C:\AMS\App
-git clone https://github.com/cloud-AMS/Integrated-System-Source-Code.git .
-Copy-Item .env.staging.example .env.staging
-notepad .env.staging
+Set-Location C:\Apps\AMS
+Test-Path .\deploy.ps1
+Test-Path .\.env.staging
 ```
 
-Pastikan minimal variabel berikut di `C:\AMS\App\.env.staging` terisi lengkap:
+Hanya saat membuat instalasi baru, clone ke direktori aplikasi yang kosong lalu salin template environment:
+```powershell
+git clone https://github.com/cloud-AMS/Integrated-System-Source-Code.git C:\Apps\AMS
+Copy-Item C:\Apps\AMS\.env.staging.example C:\Apps\AMS\.env.staging
+```
+
+Pastikan variabel berikut di `C:\Apps\AMS\.env.staging` cocok dengan proyek Firebase staging dan server aktif:
 
 ```env
-NODE_ENV=production
-PORT=3000
-APP_URL=https://ams.bejodigitalprint.com
-DEPLOYMENT_ENV=staging
-VITE_DEPLOYMENT_ENV=staging
-AMS_DB_DRIVER=firebase
-AMS_DATA_DIR=C:\AMS\Data
+NODE_ENV="production"
+PORT="3100"
+APP_URL="https://ams.bejodigitalprint.com"
+DEPLOYMENT_ENV="staging"
+VITE_DEPLOYMENT_ENV="staging"
+AMS_DB_DRIVER="firebase"
+AMS_DATA_DIR="C:\\AMS\\Data"
 
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-VITE_FIRESTORE_DATABASE_ID=(default)
-VITE_FIREBASE_ADMIN_EMAIL=cloud.ams2026@gmail.com
+VITE_FIREBASE_API_KEY="<dari Firebase Web App staging>"
+VITE_FIREBASE_AUTH_DOMAIN="ams-integrated-staging.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="ams-integrated-staging"
+VITE_FIREBASE_STORAGE_BUCKET="ams-integrated-staging.firebasestorage.app"
+VITE_FIREBASE_MESSAGING_SENDER_ID="<dari Firebase Web App staging>"
+VITE_FIREBASE_APP_ID="<dari Firebase Web App staging>"
+VITE_FIRESTORE_DATABASE_ID="(default)"
+VITE_FIREBASE_ADMIN_EMAIL="cloud.ams2026@gmail.com"
 
 # Firebase Admin SDK (Server-to-Server Firestore)
-FIRESTORE_DATABASE_ID=(default)
-FIREBASE_FIRESTORE_DATABASE_ID=(default)
-FIRESTORE_EXPECTED_DATABASE_ID=(default)
-FIREBASE_SERVICE_ACCOUNT_PATH=C:\AMS\Secrets\firebase-service-account.json
+FIRESTORE_DATABASE_ID="(default)"
+FIREBASE_FIRESTORE_DATABASE_ID="(default)"
+FIRESTORE_EXPECTED_DATABASE_ID="(default)"
+FIREBASE_SERVICE_ACCOUNT_PATH="C:\\AMS\\Secrets\\ams-integrated-staging-firebase-adminsdk-fbsvc-9d434aa089.json"
 
 # Terjemahan situs publik (opsional; kunci digunakan server saja)
-DEEPL_AUTH_KEY=<API-key-DeepL>
-DEEPL_API_URL=https://api-free.deepl.com
+DEEPL_AUTH_KEY="<DeepL API key, simpan hanya di VPS>"
+DEEPL_API_URL="https://api-free.deepl.com"
 
-SESSION_SECRET=<64-karakter-hex-acak>
-INITIAL_SETUP_TOKEN=<token-setup-awal>
-BOOTSTRAP_DEV_EMAIL=cloud.ams2026@gmail.com
-FIREBASE_ADMIN_EMAILS=cloud.ams2026@gmail.com,antraderyll@gmail.com
+SESSION_SECRET="<64-karakter-hex-acak>"
+INITIAL_SETUP_TOKEN="<token acak setup awal>"
+BOOTSTRAP_DEV_EMAIL="cloud.ams2026@gmail.com"
+FIREBASE_ADMIN_EMAILS="cloud.ams2026@gmail.com,antraderyll@gmail.com"
 ```
 
 Fitur tombol **ID / EN** menerjemahkan teks CMS situs terbit menggunakan DeepL. Untuk mengaktifkannya, isi `DEEPL_AUTH_KEY` pada `.env.staging` di VPS dengan API key akun DeepL Anda. Gunakan `https://api-free.deepl.com` untuk paket Free atau `https://api.deepl.com` untuk Pro. Jangan gunakan awalan `VITE_` dan jangan kirim API key ke browser, Git, atau chat. Cache terjemahan disimpan di `AMS_DATA_DIR\website-translation-en.json`; setelah memperbarui environment, jalankan ulang deployment agar service membaca konfigurasi terbaru.
 
 > **Konfigurasi Service Account Firebase Admin SDK (Wajib untuk koneksi server VPS → Firestore)**:
 > 1. Buka Firebase Console → **Project Settings (ikon roda gigi) → Service accounts → Generate new private key**.
-> 2. Simpan file JSON yang diunduh ke `C:\AMS\Secrets\firebase-service-account.json` (jangan taruh di dalam `C:\AMS\App` agar tidak pernah ikut ter-commit ke Git).
-> 3. Untuk project staging saat ini, Server Express menghubungkan Admin SDK ke database Firestore `(default)`. Nilai koneksi dan target validasi harus sama di `FIRESTORE_DATABASE_ID`, `FIREBASE_FIRESTORE_DATABASE_ID`, `FIRESTORE_EXPECTED_DATABASE_ID`, dan `VITE_FIRESTORE_DATABASE_ID`.
+> 2. Simpan file JSON di luar repo, pada lokasi yang sesuai dengan `FIREBASE_SERVICE_ACCOUNT_PATH` (saat ini `C:\AMS\Secrets\ams-integrated-staging-firebase-adminsdk-fbsvc-9d434aa089.json`).
+> 3. Server Express menggunakan Firestore database `(default)`. Nilai `FIRESTORE_DATABASE_ID`, `FIREBASE_FIRESTORE_DATABASE_ID`, `FIRESTORE_EXPECTED_DATABASE_ID`, dan `VITE_FIRESTORE_DATABASE_ID` harus sama; jangan memakai ID database lain sebelum diverifikasi di proyek staging.
 
 > **Tip Membuat `SESSION_SECRET` Acak di PowerShell**:
 > ```powershell
@@ -108,7 +118,7 @@ Fitur tombol **ID / EN** menerjemahkan teks CMS situs terbit menggunakan DeepL. 
 
 Jangan menyimpan username/password developer di source code, Git, atau `BOOTSTRAP_DEV_PASSWORD`. Buat atau perbarui akun satu kali lewat CLI pada VPS. CLI meminta password tanpa menampilkannya, menyimpan hash scrypt ke `C:\AMS\Data\rbac-db.json`, dan menandai akun sebagai developer tersembunyi. Password maupun hash tidak dikirim ke browser; akun developer tidak muncul pada daftar pengguna RBAC biasa.
 
-Untuk instalasi yang berada di `C:\Apps\AMS`, buka PowerShell sebagai Administrator:
+Untuk instalasi aktif di `C:\Apps\AMS`, buka PowerShell sebagai Administrator:
 
 ```powershell
 $ErrorActionPreference = "Stop"
@@ -144,35 +154,36 @@ Ganti `USERNAME_DEVELOPER` dengan username yang diinginkan. Masukkan password ba
 
 ---
 
-## 4. Jalankan Build Staging & Pasang Windows Service
+## 4. Deploy/update Windows Service (NSSM)
 
-Gunakan skrip otomasi resmi dari repositori:
+Setelah source di-push ke `origin/main`, jalankan PowerShell sebagai Administrator pada VPS. Untuk rilis rutin, gunakan skrip di folder aplikasi yang sudah ada:
 
 ```powershell
-cd C:\AMS\App
-powershell -ExecutionPolicy Bypass -File .\deploy.ps1 `
+Set-Location C:\Apps\AMS
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Apps\AMS\deploy.ps1 `
+  -AppDir "C:\Apps\AMS" `
   -Domain "ams.bejodigitalprint.com" `
-  -Port 3100 `
-  -ConfigureFirewall
+  -Port 3100
+if ($LASTEXITCODE -ne 0) {
+  throw "Deploy AMS gagal. Jangan menghentikan atau mengubah service aplikasi lain."
+}
 ```
 
-Skrip tunggal `C:\AMS\App\deploy.ps1` akan memperbarui branch Git `main` secara fast-forward-only. Jika snapshot situs `public/website-published.json` berubah secara lokal, skrip membuat backup di `C:\AMS\Backups`, menormalkan file itu sementara agar fast-forward dapat berjalan, lalu memulihkan snapshot lokal setelah pull (juga bila pull gagal). Backup tetap tersedia untuk pemulihan manual. Akibatnya snapshot yang dipulihkan tetap menjadi perubahan lokal dan tidak ikut ter-commit; perubahan source tracked lainnya tetap menghentikan deploy. Jika service `AMS_AppService` sedang berjalan, skrip menghentikannya sementara selama `npm ci` agar file dependensi native tidak terkunci, lalu menjalankannya kembali setelah build. Jika build gagal, skrip mencoba memulihkan service ke status sebelumnya:
-- Menjalankan `npm ci`, `npm run lint`, `npm test`, dan `npm run build:staging` (sehingga Vite mengompilasi aset `dist/` menggunakan `.env.staging`).
-- Membuka port `80` & `443` di Windows Defender Firewall serta menutup akses langsung dari internet ke port internal yang ditentukan oleh `-Port` (3100 pada contoh). Port `8091` **hanya** diblokir bila flag `-BlockPocketBasePort` diberikan, karena aplikasi lain di VPS yang sama (mis. Bejo Stiker POS) mungkin memakai port tersebut.
-- Membuat `C:\caddy\Caddyfile` dengan dukungan HTTPS otomatis + WebSocket `/api/sync/ws` **hanya bila belum ada**; konfigurasi yang sudah ada (termasuk situs aplikasi lain) tidak ditimpa.
-- Mendaftarkan `AMS_AppService` (**1 instance tunggal**) dan memperbarui service Caddy yang sudah terpasang, atau mendaftarkan `CaddyWebServer` bila belum ada.
+Skrip `C:\Apps\AMS\deploy.ps1` mengambil `origin/main` dengan fast-forward-only, menjalankan `npm ci`, lint, tes, dan `build:staging`, lalu memperbarui `AMS_AppService` dan health-check `127.0.0.1:3100`. Jika snapshot `public/website-published.json` berubah lokal, skrip membackupnya ke `C:\AMS\Backups`, menormalkan file sementara untuk pull, lalu memulihkan snapshot walaupun pull gagal. Perubahan tracked lainnya menghentikan proses dengan aman. Jika build gagal, skrip mencoba menjalankan kembali service AMS yang sebelumnya aktif.
 
-> **Penting (VPS bersama aplikasi lain)**: VPS ini juga menjalankan aplikasi utama **Bejo Stiker POS**. Skrip deploy hanya me-restart `AMS_AppService`; service Caddy **tidak di-stop/start** bila sudah berjalan — konfigurasi baru di-reload secara graceful (`caddy reload`) hanya saat Caddyfile baru dibuat, dan bila konfigurasi tidak berubah Caddy dibiarkan apa adanya agar situs lain tidak mengalami downtime. Jangan menjalankan deploy dengan port yang sedang dipakai aplikasi lain; pastikan `-Port` sesuai port khusus AMS di VPS.
+> **Jangan menambahkan `-ConfigureFirewall` atau `-BlockPocketBasePort` pada rilis rutin.** Port 80/443 dan Caddy dipakai bersama oleh aplikasi lain. Jangan stop/restart Caddy, jangan mengubah port 3100, dan jangan menjalankan deploy bila `C:\caddy\Caddyfile` hilang atau konfigurasi domain bersama belum diverifikasi.
+
+Untuk recovery jika VPS masih memakai deploy script lama yang gagal menarik update karena snapshot lokal, ikuti skrip pemulihan aman di [panduan deployment VPS utama](./panduan-deploy-vps.md#5-jika-deploy-lama-gagal-karena-snapshot-lokal). Setelah deploy, pastikan health menyatakan status aktif dan database staging yang benar:
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:3100/api/health" -TimeoutSec 15
+Invoke-RestMethod -Uri "http://127.0.0.1:3100/api/system/db-config" -TimeoutSec 15
+Invoke-RestMethod -Uri "https://ams.bejodigitalprint.com/api/health" -TimeoutSec 15
+```
 
 > **Penting (Arsitektur Single Instance)**: Jangan menjalankan dua proses `server.js` secara bersamaan karena hub WebSocket (`/api/sync/ws`) dan store JSON persisten di `C:\AMS\Data` membutuhkan satu proses Express tunggal (`instances: 1`, `exec_mode: 'fork'`).
 
-Jika Anda memilih **PM2 di Windows** alih-alih NSSM:
-```powershell
-npm install -g pm2
-cd C:\AMS\App
-npm run build:staging
-pm2 start ecosystem.config.cjs --env staging
-```
+Jangan mencampur NSSM dan PM2 untuk service aktif ini; gunakan satu pengelola proses, yaitu `AMS_AppService` via NSSM.
 
 ---
 
@@ -200,7 +211,7 @@ pm2 start ecosystem.config.cjs --env staging
 Daftarkan tugas backup harian `C:\AMS\Data` ke `C:\AMS\Backups` setiap pukul 02:00 WIB:
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\AMS\App\scripts\backup-windows-vps.ps1"
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\Apps\AMS\scripts\backup-windows-vps.ps1"
 $trigger = New-ScheduledTaskTrigger -Daily -At 2:00AM
 Register-ScheduledTask -TaskName "AMS_Daily_Backup" -Action $action -Trigger $trigger -User "SYSTEM" -RunLevel Highest -Force
 ```
