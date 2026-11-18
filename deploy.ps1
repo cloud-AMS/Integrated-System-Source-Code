@@ -133,6 +133,10 @@ foreach ($rk in $requiredKeys) {
   }
 }
 
+foreach ($envEntry in $envMap.GetEnumerator()) {
+  [Environment]::SetEnvironmentVariable($envEntry.Key, $envEntry.Value, "Process")
+}
+
 [Environment]::SetEnvironmentVariable("DEPLOYMENT_ENV", "staging", "Process")
 [Environment]::SetEnvironmentVariable("VITE_DEPLOYMENT_ENV", "staging", "Process")
 [Environment]::SetEnvironmentVariable("AMS_DB_DRIVER", "firebase", "Process")
