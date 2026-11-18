@@ -152,9 +152,11 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1 `
 
 Skrip tunggal `C:\AMS\App\deploy.ps1` akan memperbarui branch Git `main` secara fast-forward-only, lalu otomatis. Snapshot situs hasil publikasi `public/website-published.json` dipertahankan saat pemeriksaan perubahan; perubahan source tracked lainnya tetap menghentikan deploy. Jika service `AMS_AppService` sedang berjalan, skrip menghentikannya sementara selama `npm ci` agar file dependensi native tidak terkunci, lalu menjalankannya kembali setelah build. Jika build gagal, skrip mencoba memulihkan service ke status sebelumnya:
 - Menjalankan `npm ci`, `npm run lint`, `npm test`, dan `npm run build:staging` (sehingga Vite mengompilasi aset `dist/` menggunakan `.env.staging`).
-- Membuka port `80` & `443` di Windows Defender Firewall serta menutup akses langsung dari internet ke port internal yang ditentukan oleh `-Port` (3100 pada contoh) & `8091`.
-- Membuat `C:\caddy\Caddyfile` dengan dukungan HTTPS otomatis + WebSocket `/api/sync/ws`.
+- Membuka port `80` & `443` di Windows Defender Firewall serta menutup akses langsung dari internet ke port internal yang ditentukan oleh `-Port` (3100 pada contoh). Port `8091` **hanya** diblokir bila flag `-BlockPocketBasePort` diberikan, karena aplikasi lain di VPS yang sama (mis. Bejo Stiker POS) mungkin memakai port tersebut.
+- Membuat `C:\caddy\Caddyfile` dengan dukungan HTTPS otomatis + WebSocket `/api/sync/ws` **hanya bila belum ada**; konfigurasi yang sudah ada (termasuk situs aplikasi lain) tidak ditimpa.
 - Mendaftarkan `AMS_AppService` (**1 instance tunggal**) dan memperbarui service Caddy yang sudah terpasang, atau mendaftarkan `CaddyWebServer` bila belum ada.
+
+> **Penting (VPS bersama aplikasi lain)**: VPS ini juga menjalankan aplikasi utama **Bejo Stiker POS**. Skrip deploy hanya me-restart `AMS_AppService`; service Caddy **tidak di-stop/start** bila sudah berjalan — konfigurasi baru di-reload secara graceful (`caddy reload`) hanya saat Caddyfile baru dibuat, dan bila konfigurasi tidak berubah Caddy dibiarkan apa adanya agar situs lain tidak mengalami downtime. Jangan menjalankan deploy dengan port yang sedang dipakai aplikasi lain; pastikan `-Port` sesuai port khusus AMS di VPS.
 
 > **Penting (Arsitektur Single Instance)**: Jangan menjalankan dua proses `server.js` secara bersamaan karena hub WebSocket (`/api/sync/ws`) dan store JSON persisten di `C:\AMS\Data` membutuhkan satu proses Express tunggal (`instances: 1`, `exec_mode: 'fork'`).
 

@@ -24,6 +24,7 @@ param(
   [switch]$SkipGitUpdate,
   [switch]$SkipTests,
   [switch]$ConfigureFirewall,
+  [switch]$BlockPocketBasePort,
   [switch]$SkipServiceRestart
 )
 
@@ -217,9 +218,13 @@ if ($ConfigureFirewall) {
   $rulesToEnsure = @(
     @{ Name = "AMS-HTTP-80"; Port = 80; Action = "Allow" },
     @{ Name = "AMS-HTTPS-443"; Port = 443; Action = "Allow" },
-    @{ Name = "AMS-Block-Direct-Node-$Port"; Port = $Port; Action = "Block" },
-    @{ Name = "AMS-Block-Direct-PocketBase-8091"; Port = 8091; Action = "Block" }
+    @{ Name = "AMS-Block-Direct-Node-$Port"; Port = $Port; Action = "Block" }
   )
+  # Port 8091 hanya diblokir bila diminta eksplisit; aplikasi lain di VPS ini
+  # (mis. Bejo Stiker POS) mungkin memakai port tersebut.
+  if ($BlockPocketBasePort) {
+    $rulesToEnsure += @{ Name = "AMS-Block-Direct-PocketBase-8091"; Port = 8091; Action = "Block" }
+  }
   foreach ($rule in $rulesToEnsure) {
     $existing = Get-NetFirewallRule -DisplayName $rule.Name -ErrorAction SilentlyContinue
     if ($existing) { Remove-NetFirewallRule -DisplayName $rule.Name }
@@ -228,6 +233,7 @@ if ($ConfigureFirewall) {
 }
 
 $caddyfilePath = Join-Path $CaddyDir "Caddyfile"
+$caddyfileChanged = $false
 if (-not (Test-Path $caddyfilePath)) {
   Write-Step "Menulis Caddyfile awal ke $caddyfilePath..."
   $caddyContent = @"
@@ -257,6 +263,7 @@ $Domain {
 }
 "@
   Set-Content -Path $caddyfilePath -Value $caddyContent -Encoding UTF8
+  $caddyfileChanged = $true
 }
 
 if (-not $SkipServiceRestart) {
@@ -314,20 +321,33 @@ if (-not $SkipServiceRestart) {
     Write-Host "Catatan: $caddyExe belum ditemukan; lewati registrasi CaddyWebServer." -ForegroundColor Yellow
   }
 
-  $servicesToStart = @("AMS_AppService")
-  if (Test-Path $caddyExe) {
-    $servicesToStart += $caddyServiceName
+  # Hanya AMS_AppService yang di-restart penuh. Caddy dipakai bersama aplikasi
+  # lain di VPS ini (mis. Bejo Stiker POS), jadi jangan di-stop/start sembarangan:
+  # reload graceful bila konfigurasi berubah, biarkan bila tidak.
+  $appSvc = Get-Service -Name "AMS_AppService" -ErrorAction SilentlyContinue
+  if ($appSvc -and $appSvc.Status -eq "Running") {
+    Stop-Service -Name "AMS_AppService" -Force
+    $appSvc.WaitForStatus(
+      [System.ServiceProcess.ServiceControllerStatus]::Stopped,
+      [TimeSpan]::FromSeconds(30)
+    )
   }
-  foreach ($service in $servicesToStart) {
-    $currentService = Get-Service -Name $service -ErrorAction SilentlyContinue
-    if ($currentService -and $currentService.Status -eq "Running") {
-      Stop-Service -Name $service -Force
-      $currentService.WaitForStatus(
-        [System.ServiceProcess.ServiceControllerStatus]::Stopped,
-        [TimeSpan]::FromSeconds(30)
-      )
+  Start-Service -Name "AMS_AppService"
+
+  if (Test-Path $caddyExe) {
+    $caddySvc = Get-Service -Name $caddyServiceName -ErrorAction SilentlyContinue
+    if ($caddySvc -and $caddySvc.Status -eq "Running") {
+      if ($caddyfileChanged) {
+        & $caddyExe reload --config $caddyfilePath
+        if ($LASTEXITCODE -ne 0) {
+          Write-Warning "caddy reload gagal (exit $LASTEXITCODE). Konfigurasi baru belum aktif; periksa Caddy secara manual tanpa me-restart service agar situs lain tidak terganggu."
+        }
+      } else {
+        Write-Host "Caddy sudah berjalan dengan konfigurasi yang sama; tidak di-restart agar situs lain di VPS tidak terganggu." -ForegroundColor Green
+      }
+    } else {
+      Start-Service -Name $caddyServiceName
     }
-    Start-Service -Name $service
   }
 
   Write-Step "8. Memeriksa endpoint kesehatan lokal http://127.0.0.1:$Port/api/health..."
