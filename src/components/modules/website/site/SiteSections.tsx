@@ -56,7 +56,7 @@ export interface PropsSeksi {
 /*  Primitif tampilan situs                                                     */
 /* -------------------------------------------------------------------------- */
 
-const WADAH = 'mx-auto w-full max-w-[1200px] px-4 sm:px-6';
+const WADAH = 'mx-auto w-full max-w-[1440px] px-4 sm:px-6';
 
 function KepalaSeksiTampil({
   kepala,
@@ -183,35 +183,30 @@ export function SeksiHero({ cfg, ke }: PropsSeksi) {
   const hero = cfg.hero;
   if (!hero.isActive) return null;
   return (
-    <section className="situs-hero bg-white border-b border-slate-200">
-      <div className={`${WADAH} py-10 sm:py-14 grid lg:grid-cols-[1.05fr_0.95fr] gap-8 items-center`}>
-        <div>
+    <section className="situs-hero situs-hero-utama bg-white border-b border-slate-200">
+      <div className={`${WADAH} situs-hero-utama__isi py-10 sm:py-14 lg:py-16 grid lg:grid-cols-[1fr_1fr] gap-8 xl:gap-12 items-center`}>
+        <div className="min-w-0">
           {hero.badge && (
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] rounded-full px-3 py-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               {hero.badge}
             </p>
           )}
-          <h1 className="text-4xl sm:text-5xl leading-tight font-bold text-slate-900 mt-4">{hero.judul}</h1>
+          <h1 className="text-4xl sm:text-5xl xl:text-6xl leading-tight font-bold text-slate-900 mt-4">{hero.judul}</h1>
           <p className="text-sm sm:text-base text-slate-600 mt-4 leading-relaxed max-w-2xl">{hero.subjudul}</p>
           <div className="flex flex-wrap gap-3 mt-6">
             <TombolSitus teks={hero.teksCtaUtama} tautan={hero.tautanCtaUtama} cfg={cfg} ke={ke} />
             <TombolSitus teks={hero.teksCtaCadangan} tautan={hero.tautanCtaCadangan} cfg={cfg} ke={ke} varian="garis" />
           </div>
         </div>
-        <div className="relative">
-          <GambarSitus rujukan={hero.gambarUrl} alt="Foto produk atau fasilitas" kelas="w-full rounded-2xl" rasio="3 / 2" prioritas />
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {cfg.kepercayaan.item
-              .filter((l) => l.isActive)
-              .slice(0, 4)
-              .map((l) => (
-                <div key={l.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                  <p className="text-xs font-bold text-slate-800 leading-snug">{l.teks}</p>
-                  <p className="text-2xs text-slate-500 mt-1 leading-snug">{l.keterangan}</p>
-                </div>
-              ))}
-          </div>
+        <div className="min-w-0">
+          <GambarSitus
+            rujukan={hero.gambarUrl}
+            alt={`Fasilitas dan produk ${hero.judul}`}
+            kelas="w-full rounded-2xl shadow-xl"
+            rasio="3 / 2"
+            prioritas
+          />
         </div>
       </div>
     </section>

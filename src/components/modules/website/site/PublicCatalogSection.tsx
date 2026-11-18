@@ -70,7 +70,7 @@ type FilterKetersediaan = 'semua' | 'stok_tersedia' | 'nie_aktif' | 'harga_terca
 type UrutanProduk = 'unggulan' | 'stok_terbanyak' | 'nama_az' | 'merek_az';
 type ModeTampilan = 'grid' | 'tabel';
 
-const WADAH = 'mx-auto w-full max-w-[1200px] px-4 sm:px-6';
+const WADAH = 'mx-auto w-full max-w-[1440px] px-4 sm:px-6';
 
 function adalahUrlEksternal(tautan?: string): boolean {
   return Boolean(tautan && /^https?:\/\//i.test(tautan.trim()));

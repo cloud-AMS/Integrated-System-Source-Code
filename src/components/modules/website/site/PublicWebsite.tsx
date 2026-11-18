@@ -316,7 +316,7 @@ export default function PublicWebsite({
     >
       {/* Header: identitas + navigasi + CTA (meniru advisains.id) */}
       <header className="situs-header sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
+        <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6">
           <div className="flex items-center gap-4 py-3">
             <button type="button" onClick={() => ke('beranda')} className="flex items-center gap-3 cursor-pointer">
               {selesaikanGambar(konfigurasi.identitas.logoUrl) ? (
@@ -506,7 +506,7 @@ export default function PublicWebsite({
       <main>
         {rute.halaman !== 'beranda' && (
           <div className="bg-white border-b border-slate-200">
-            <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2.5">
+            <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => ke('beranda')}
@@ -549,7 +549,7 @@ export default function PublicWebsite({
 
       {/* Footer multi-kolom */}
       <footer className="situs-footer bg-slate-900 text-slate-300">
-        <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-12">
+        <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 py-12">
           <div className="grid lg:grid-cols-[1.3fr_repeat(3,0.9fr)] gap-8">
             <div>
               <p className="text-base font-bold text-white">{konfigurasi.identitas.nama}</p>
@@ -658,7 +658,7 @@ function SeksiSosial({ cfg, ke }: PropsSeksi) {
   if (!cfg.sosial.isActive || daftar.length === 0) return null;
   return (
     <section className="bg-white border-b border-slate-200">
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-8 flex flex-wrap items-center gap-3">
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 py-8 flex flex-wrap items-center gap-3">
         <p className="text-sm font-bold text-slate-800">{cfg.sosial.kepala.judul}</p>
         {daftar.map((s) => (
           <a

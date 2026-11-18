@@ -224,6 +224,14 @@
    ========================================================================= */
 
 /* REMEDI Klasik: bawaan — tidak ada override. */
+.situs-hero-utama > .situs-hero-utama__isi {
+  min-height: clamp(34rem, 76svh, 48rem);
+}
+@media (max-width: 1023px) {
+  .situs-hero-utama > .situs-hero-utama__isi {
+    min-height: 0;
+  }
+}
 
 /* REMEDI Premium Gelap: header/hero/footer gelap, aksen merek menyala. */
 .template-remedi-gelap .situs-header {

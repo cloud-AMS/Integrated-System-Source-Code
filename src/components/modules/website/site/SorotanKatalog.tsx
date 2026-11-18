@@ -22,7 +22,7 @@ export function SorotanKatalog({
 
   return (
     <section className="situs-hero katalog-hero border-b border-slate-200">
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-10 sm:py-14 lg:py-16 grid lg:grid-cols-[1fr_0.92fr] gap-10 lg:gap-14 items-center">
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 py-10 sm:py-14 lg:py-16 grid lg:grid-cols-[1fr_0.92fr] gap-10 lg:gap-14 items-center">
         <div className="katalog-intro min-w-0">
           {hero.badge && (
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--brand)] bg-white border border-[color-mix(in_srgb,var(--brand)_24%,white)] rounded-full px-3 py-1.5 shadow-sm">
