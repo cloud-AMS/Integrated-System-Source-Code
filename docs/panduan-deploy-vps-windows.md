@@ -147,7 +147,7 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1 `
   -ConfigureFirewall
 ```
 
-Skrip tunggal `C:\AMS\App\deploy.ps1` akan memperbarui branch Git `main` secara fast-forward-only, lalu otomatis. Snapshot situs hasil publikasi `public/website-published.json` dipertahankan saat pemeriksaan perubahan; perubahan source tracked lainnya tetap menghentikan deploy:
+Skrip tunggal `C:\AMS\App\deploy.ps1` akan memperbarui branch Git `main` secara fast-forward-only, lalu otomatis. Snapshot situs hasil publikasi `public/website-published.json` dipertahankan saat pemeriksaan perubahan; perubahan source tracked lainnya tetap menghentikan deploy. Jika service `AMS_AppService` sedang berjalan, skrip menghentikannya sementara selama `npm ci` agar file dependensi native tidak terkunci, lalu menjalankannya kembali setelah build. Jika build gagal, skrip mencoba memulihkan service ke status sebelumnya:
 - Menjalankan `npm ci`, `npm run lint`, `npm test`, dan `npm run build:staging` (sehingga Vite mengompilasi aset `dist/` menggunakan `.env.staging`).
 - Membuka port `80` & `443` di Windows Defender Firewall serta menutup akses langsung dari internet ke port internal `3000` & `8091`.
 - Membuat `C:\caddy\Caddyfile` dengan dukungan HTTPS otomatis + WebSocket `/api/sync/ws`.

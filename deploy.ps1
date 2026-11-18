@@ -138,17 +138,49 @@ foreach ($rk in $requiredKeys) {
 [Environment]::SetEnvironmentVariable("AMS_DB_DRIVER", "firebase", "Process")
 [Environment]::SetEnvironmentVariable("AMS_DATA_DIR", $DataDir, "Process")
 
+$svcName = "AMS_AppService"
+$appService = if (-not $SkipServiceRestart) { Get-Service -Name $svcName -ErrorAction SilentlyContinue } else { $null }
+$appServiceWasRunning = $appService -and $appService.Status -eq "Running"
+$buildSucceeded = $false
+$locationPushed = $false
+
 Write-Step "5. Menginstal dependensi, menjalankan pemeriksaan, dan membangun aplikasi..."
-Push-Location $AppDir
 try {
+  if ($appServiceWasRunning) {
+    Write-Host "Menghentikan $svcName sementara agar npm ci dapat memperbarui dependensi..." -ForegroundColor Yellow
+    Stop-Service -Name $svcName -Force
+    $appService.WaitForStatus(
+      [System.ServiceProcess.ServiceControllerStatus]::Stopped,
+      [TimeSpan]::FromSeconds(30)
+    )
+  }
+  Push-Location $AppDir
+  $locationPushed = $true
   Invoke-CheckedCommand "npm" @("ci")
   if (-not $SkipTests) {
     Invoke-CheckedCommand "npm" @("run", "lint")
     Invoke-CheckedCommand "npm" @("test")
   }
   Invoke-CheckedCommand "npm" @("run", "build:staging")
+  $buildSucceeded = $true
 } finally {
-  Pop-Location
+  if ($locationPushed) {
+    Pop-Location
+  }
+  if (-not $buildSucceeded -and $appServiceWasRunning) {
+    try {
+      $currentAppService = Get-Service -Name $svcName
+      if ($currentAppService.Status -ne "Running") {
+        Start-Service -Name $svcName
+        $currentAppService.WaitForStatus(
+          [System.ServiceProcess.ServiceControllerStatus]::Running,
+          [TimeSpan]::FromSeconds(30)
+        )
+      }
+    } catch {
+      Write-Warning "Deploy gagal dan service '$svcName' tidak berhasil dinyalakan kembali: $($_.Exception.Message)"
+    }
+  }
 }
 
 if ($ConfigureFirewall) {
@@ -203,7 +235,6 @@ if (-not $SkipServiceRestart) {
   Assert-Command "nssm" "Pasang NSSM dari https://nssm.cc/download dan masukkan ke PATH Windows."
   $nodeExe = (Get-Command node).Source
   $serverJs = Join-Path $AppDir "server.js"
-  $svcName = "AMS_AppService"
 
   $svcExists = Get-Service -Name $svcName -ErrorAction SilentlyContinue
   if (-not $svcExists) {

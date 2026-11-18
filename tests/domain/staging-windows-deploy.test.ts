@@ -93,6 +93,10 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(deployScript).toContain('"--ff-only"');
     expect(deployScript).toContain('"build:staging"');
     expect(deployScript).toContain(':(exclude)public/website-published.json');
+    const stopServiceIndex = deployScript.indexOf('Stop-Service -Name $svcName -Force');
+    const npmCiIndex = deployScript.indexOf('Invoke-CheckedCommand "npm" @("ci")');
+    expect(stopServiceIndex).toBeGreaterThanOrEqual(0);
+    expect(stopServiceIndex).toBeLessThan(npmCiIndex);
   });
 
   it('mengizinkan admin Firebase staging (cloud.ams2026@gmail.com) login tanpa menimpa email developer utama', () => {
