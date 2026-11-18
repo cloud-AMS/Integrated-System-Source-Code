@@ -166,6 +166,7 @@ foreach ($clientConfigKey in ($requiredKeys | Where-Object { $_ -like "VITE_*" }
 [Environment]::SetEnvironmentVariable("AMS_DATA_DIR", $DataDir, "Process")
 
 $svcName = "AMS_AppService"
+$caddyServiceName = if (Get-Service -Name "Caddy" -ErrorAction SilentlyContinue) { "Caddy" } else { "CaddyWebServer" }
 $nssmExe = if (-not $SkipServiceRestart) { Resolve-NssmPath $svcName } else { $null }
 $appService = if (-not $SkipServiceRestart) { Get-Service -Name $svcName -ErrorAction SilentlyContinue } else { $null }
 $appServiceWasRunning = $appService -and $appService.Status -eq "Running"
@@ -299,23 +300,23 @@ if (-not $SkipServiceRestart) {
 
   $caddyExe = Join-Path $CaddyDir "caddy.exe"
   if (Test-Path $caddyExe) {
-    $caddySvc = Get-Service -Name "CaddyWebServer" -ErrorAction SilentlyContinue
+    $caddySvc = Get-Service -Name $caddyServiceName -ErrorAction SilentlyContinue
     if (-not $caddySvc) {
-      Invoke-CheckedCommand $nssmExe @("install", "CaddyWebServer", $caddyExe, "run --config `"$caddyfilePath`"")
+      Invoke-CheckedCommand $nssmExe @("install", $caddyServiceName, $caddyExe, "run --config `"$caddyfilePath`"")
     }
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "Application", $caddyExe)
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppParameters", "run --config `"$caddyfilePath`"")
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppDirectory", $CaddyDir)
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppStdout", (Join-Path $caddyLogs "caddy_stdout.log"))
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "AppStderr", (Join-Path $caddyLogs "caddy_stderr.log"))
-    Invoke-CheckedCommand $nssmExe @("set", "CaddyWebServer", "Start", "SERVICE_AUTO_START")
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "Application", $caddyExe)
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "AppParameters", "run --config `"$caddyfilePath`"")
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "AppDirectory", $CaddyDir)
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "AppStdout", (Join-Path $caddyLogs "caddy_stdout.log"))
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "AppStderr", (Join-Path $caddyLogs "caddy_stderr.log"))
+    Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "Start", "SERVICE_AUTO_START")
   } else {
     Write-Host "Catatan: $caddyExe belum ditemukan; lewati registrasi CaddyWebServer." -ForegroundColor Yellow
   }
 
   $servicesToStart = @("AMS_AppService")
   if (Test-Path $caddyExe) {
-    $servicesToStart += "CaddyWebServer"
+    $servicesToStart += $caddyServiceName
   }
   foreach ($service in $servicesToStart) {
     $currentService = Get-Service -Name $service -ErrorAction SilentlyContinue

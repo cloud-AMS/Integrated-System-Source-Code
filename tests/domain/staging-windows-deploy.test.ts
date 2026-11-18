@@ -97,6 +97,8 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(deployScript).toContain('Invoke-CheckedCommand "npm" @("ci", "--include=dev")');
     expect(deployScript).toContain('Get-ItemProperty -LiteralPath $serviceKey');
     expect(deployScript).toContain('Invoke-CheckedCommand $nssmExe');
+    expect(deployScript).toContain('$caddyServiceName = if (Get-Service -Name "Caddy" -ErrorAction SilentlyContinue) { "Caddy" } else { "CaddyWebServer" }');
+    expect(deployScript).toContain('Invoke-CheckedCommand $nssmExe @("set", $caddyServiceName, "Application", $caddyExe)');
     const stopServiceIndex = deployScript.indexOf('Stop-Service -Name $svcName -Force');
     const resolveNssmIndex = deployScript.indexOf('$nssmExe = if (-not $SkipServiceRestart) { Resolve-NssmPath $svcName }');
     const npmCiIndex = deployScript.indexOf('Invoke-CheckedCommand "npm" @("ci", "--include=dev")');
