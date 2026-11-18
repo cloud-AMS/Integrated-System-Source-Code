@@ -133,8 +133,8 @@ foreach ($rk in $requiredKeys) {
   }
 }
 
-foreach ($envEntry in $envMap.GetEnumerator()) {
-  [Environment]::SetEnvironmentVariable($envEntry.Key, $envEntry.Value, "Process")
+foreach ($clientConfigKey in ($requiredKeys | Where-Object { $_ -like "VITE_*" })) {
+  [Environment]::SetEnvironmentVariable($clientConfigKey, $envMap[$clientConfigKey], "Process")
 }
 
 [Environment]::SetEnvironmentVariable("DEPLOYMENT_ENV", "staging", "Process")
@@ -160,7 +160,7 @@ try {
   }
   Push-Location $AppDir
   $locationPushed = $true
-  Invoke-CheckedCommand "npm" @("ci")
+  Invoke-CheckedCommand "npm" @("ci", "--include=dev")
   if (-not $SkipTests) {
     Invoke-CheckedCommand "npm" @("run", "lint")
     Invoke-CheckedCommand "npm" @("test")
