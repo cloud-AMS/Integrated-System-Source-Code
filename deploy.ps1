@@ -108,8 +108,42 @@ if (-not $SkipGitUpdate) {
   if ($LASTEXITCODE -ne 0) {
     throw "Ada perubahan staged yang belum di-commit di '$AppDir'. Commit atau simpan perubahan sebelum deploy."
   }
-  Invoke-CheckedCommand "git" @("-C", $AppDir, "fetch", "--prune", $Remote, $Branch)
-  Invoke-CheckedCommand "git" @("-C", $AppDir, "pull", "--ff-only", $Remote, $Branch)
+  $snapshotRelativePath = "public/website-published.json"
+  $snapshotPath = Join-Path $AppDir $snapshotRelativePath
+  $snapshotChanged = $false
+  $snapshotWasPresent = Test-Path -LiteralPath $snapshotPath -PathType Leaf
+  $snapshotBackupPath = $null
+  & git -C $AppDir diff --quiet HEAD -- $snapshotRelativePath
+  if ($LASTEXITCODE -gt 1) {
+    throw "Gagal memeriksa perubahan snapshot '$snapshotPath'."
+  }
+  $snapshotChanged = $LASTEXITCODE -eq 1
+  if ($snapshotChanged) {
+    if ($snapshotWasPresent) {
+      New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+      $snapshotBackupPath = Join-Path $BackupDir (
+        "website-published-before-deploy-{0}.json" -f [guid]::NewGuid().ToString("N")
+      )
+      Copy-Item -LiteralPath $snapshotPath -Destination $snapshotBackupPath
+    }
+
+    Invoke-CheckedCommand "git" @(
+      "-C", $AppDir, "restore", "--source=HEAD", "--staged", "--worktree", "--", $snapshotRelativePath
+    )
+  }
+  try {
+    Invoke-CheckedCommand "git" @("-C", $AppDir, "fetch", "--prune", $Remote, $Branch)
+    Invoke-CheckedCommand "git" @("-C", $AppDir, "pull", "--ff-only", $Remote, $Branch)
+  } finally {
+    if ($snapshotChanged) {
+      if ($snapshotWasPresent) {
+        Copy-Item -LiteralPath $snapshotBackupPath -Destination $snapshotPath -Force
+        Write-Host "Snapshot lokal dipulihkan dari backup: $snapshotBackupPath" -ForegroundColor Yellow
+      } elseif (Test-Path -LiteralPath $snapshotPath) {
+        Remove-Item -LiteralPath $snapshotPath
+      }
+    }
+  }
 }
 
 Write-Step "3. Menyiapkan direktori persisten Windows di luar folder source..."

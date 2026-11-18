@@ -93,6 +93,12 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(deployScript).toContain('"--ff-only"');
     expect(deployScript).toContain('"build:staging"');
     expect(deployScript).toContain(':(exclude)public/website-published.json');
+    expect(deployScript).toContain('"website-published-before-deploy-{0}.json"');
+    expect(deployScript).toContain('"restore", "--source=HEAD", "--staged", "--worktree"');
+    expect(deployScript).toContain('Copy-Item -LiteralPath $snapshotBackupPath -Destination $snapshotPath -Force');
+    expect(deployScript.indexOf('"restore", "--source=HEAD"')).toBeLessThan(
+      deployScript.indexOf('"pull", "--ff-only"')
+    );
     expect(deployScript).toContain('[Environment]::SetEnvironmentVariable($clientConfigKey, $envMap[$clientConfigKey], "Process")');
     expect(deployScript).toContain('Invoke-CheckedCommand "npm" @("ci", "--include=dev")');
     expect(deployScript).toContain('Get-ItemProperty -LiteralPath $serviceKey');
