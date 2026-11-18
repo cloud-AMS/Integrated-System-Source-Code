@@ -394,8 +394,6 @@ function Dasbor({
               <ITModule
                 currentRole={currentRole}
                 currentUserName={namaPelakuAktif}
-                aksesAktif={aksesAktif}
-                akunAktifId={sesi.userId}
                 activeTab={itSubTab}
                 onTabChange={setItSubTab}
                 sesi={sesi}

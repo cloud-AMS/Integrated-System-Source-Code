@@ -34,7 +34,7 @@ import {
   FileText,
   Smartphone
 } from 'lucide-react';
-import { AksesEfektif, AkunPengguna, ModuleId, RoleSistem, UserRole } from '../../types';
+import { AksesEfektif, ModuleId, UserRole } from '../../types';
 import LogoAplikasi from '../common/LogoAplikasi';
 import { db } from '../../services/pocketbase';
 import { gantiKataSandiServer, punyaIzin, type SesiLogin } from '../../utils/autentikasi';
@@ -212,10 +212,6 @@ interface NavbarProps {
   onOpenTraceability: () => void;
   onKeluar: () => void;
   aksesAktif?: AksesEfektif;
-  daftarAkun?: AkunPengguna[];
-  daftarRole?: RoleSistem[];
-  akunAktifId?: string;
-  onAccountChange?: (akun: AkunPengguna) => void;
   itSubTab?: ITSubTabId;
   onITNavigate?: (sub: ITSubTabId) => void;
   salesSubTab?: SalesTab;
@@ -231,10 +227,6 @@ export default function Navbar({
   onOpenTraceability,
   onKeluar,
   aksesAktif,
-  daftarAkun,
-  daftarRole,
-  akunAktifId,
-  onAccountChange,
   itSubTab = 'traceability',
   onITNavigate,
   salesSubTab = 'order',
@@ -318,15 +310,6 @@ export default function Navbar({
         sumber: 'akses-penuh'
       },
     [aksesAktif]
-  );
-
-  const akunAktif = useMemo(
-    () => daftarAkun?.find((a) => a.id === akunAktifId),
-    [daftarAkun, akunAktifId]
-  );
-  const roleAktifObj = useMemo(
-    () => daftarRole?.find((r) => r.id === (akunAktif?.roleId || currentRole)),
-    [daftarRole, akunAktif, currentRole]
   );
 
   const activeTabDef = ALL_TABS.find((t) => t.id === currentTab);
@@ -472,10 +455,10 @@ export default function Navbar({
             <RoleAvatar peran={currentRole} />
             <div className="text-left hidden md:block">
               <div className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[160px]">
-                {sesi?.namaLengkap || (akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole).split('-')[0].trim())}
+                {sesi?.namaLengkap || namaPengguna(currentRole).split('-')[0].trim()}
               </div>
               <div className="text-2xs font-semibold uppercase tracking-wider text-slate-500 truncate max-w-[160px]">
-                {sesi?.namaPeran || (roleAktifObj ? roleAktifObj.nama : currentRole.replace('_', ' '))}
+                {sesi?.namaPeran || currentRole.replace('_', ' ')}
               </div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
@@ -487,7 +470,7 @@ export default function Navbar({
               <div className="absolute right-0 top-full mt-1.5 w-72 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 divide-y divide-slate-100">
                 <div className="px-3.5 py-2.5 space-y-1">
                   <div className="text-xs font-bold text-slate-900 truncate">
-                    {sesi?.namaLengkap || (akunAktif ? akunAktif.namaLengkap : namaPengguna(currentRole))}
+                    {sesi?.namaLengkap || namaPengguna(currentRole)}
                   </div>
                   {sesi && (
                     <div className="text-2xs text-slate-500 truncate">
@@ -496,7 +479,7 @@ export default function Navbar({
                   )}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <span className="text-2xs bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded inline-block border border-slate-200">
-                      {sesi?.namaPeran || (roleAktifObj ? roleAktifObj.nama : peranPengguna(currentRole))}
+                      {sesi?.namaPeran || peranPengguna(currentRole)}
                     </span>
                     <span className="text-2xs text-slate-500">
                       {aksesEfektif.aksesPenuh ? 'Akses Penuh' : `${aksesEfektif.modulDiizinkan.length} modul`}

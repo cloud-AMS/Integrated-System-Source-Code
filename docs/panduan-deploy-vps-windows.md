@@ -1,5 +1,5 @@
 # Panduan Deployment Firebase Staging di Windows Server VPS — AMS Integrated System
-
+Dibuat oleh Langgo Bramandityo.
 Dokumen ini memandu langkah lengkap untuk menjalankan **AMS Integrated System** dengan mode **Firebase Staging** (`DEPLOYMENT_ENV=staging` + `AMS_DB_DRIVER=firebase`) di **Windows Server VPS (2019 / 2022 / 2025)**.
 
 > Untuk deployment staging di Render gunakan [panduan Render](./deployment-render-staging.md), sedangkan untuk Linux Ubuntu gunakan [panduan VPS Linux](./panduan-deploy-vps.md).
@@ -142,12 +142,12 @@ Gunakan skrip otomasi resmi dari repositori:
 
 ```powershell
 cd C:\AMS\App
-powershell -ExecutionPolicy Bypass -File .\scripts\deploy-windows-vps.ps1 `
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1 `
   -Domain "ams.bejodigitalprint.com" `
   -ConfigureFirewall
 ```
 
-Skrip di atas akan otomatis:
+Skrip tunggal `C:\AMS\App\deploy.ps1` akan memperbarui branch Git `main` secara fast-forward-only, lalu otomatis:
 - Menjalankan `npm ci`, `npm run lint`, `npm test`, dan `npm run build:staging` (sehingga Vite mengompilasi aset `dist/` menggunakan `.env.staging`).
 - Membuka port `80` & `443` di Windows Defender Firewall serta menutup akses langsung dari internet ke port internal `3000` & `8091`.
 - Membuat `C:\caddy\Caddyfile` dengan dukungan HTTPS otomatis + WebSocket `/api/sync/ws`.
@@ -178,7 +178,9 @@ pm2 start ecosystem.config.cjs --env staging
    $env:DEPLOYMENT_ENV="staging"
    npm run auth:bootstrap
    ```
-3. Masuk ke menu **IT & Traceability Hub → Penyimpanan & Sinkronisasi → Hubungkan Google Firebase**, lalu jalankan **Sinkronkan 2-Arah Firebase** untuk memverifikasi baca/tulis Firestore Staging berjalan normal.
+3. Setelah masuk, buka **IT & Traceability Hub → User Account & Roles (RBAC Server)** untuk membuat akun terpisah bagi tiap pengguna. Pilih role dan kata sandi masing-masing; akun serta hash kata sandi disimpan oleh server pada `AMS_DATA_DIR\rbac-db.json`, sehingga pengguna dari perangkat/internet lain memakai layanan akun yang sama. Data akun/role lama di state sinkronisasi (`rb_akun`/`rb_role`) tidak lagi digunakan atau dimigrasikan; buat akun pada RBAC Server. Jangan berbagi satu sandi antar-pengguna.
+4. Masuk dengan akun baru dari browser/perangkat lain untuk memverifikasi autentikasi dan izin role melalui server.
+5. Masuk ke menu **IT & Traceability Hub → Penyimpanan & Sinkronisasi → Hubungkan Google Firebase**, lalu jalankan **Sinkronkan 2-Arah Firebase** untuk memverifikasi baca/tulis Firestore Staging berjalan normal.
 
 ---
 

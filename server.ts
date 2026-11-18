@@ -22,6 +22,7 @@ import {
 import {
   canDeleteSyncKey,
   canWriteSyncKey,
+  isLegacyRbacSyncKey,
   isValidSyncKey,
   mapSyncKeyToResource,
   PUBLIC_SYNC_KEYS,
@@ -970,20 +971,29 @@ async function startServer() {
 
   app.post('/api/rbac/users', requirePermission('rbac-admin', 'create'), (req, res) => {
     const { username, fullName, email, roleId, department, password, isActive } = (req.body || {}) as Record<string, any>;
-    const result = rbacStore.createUser(
-      {
-        username: String(username || ''),
-        fullName: String(fullName || ''),
-        email: String(email || ''),
-        roleId: String(roleId || ''),
-        department: String(department || ''),
-        password: String(password || ''),
-        isActive: isActive !== false
-      },
-      req.auth!.user.username,
-      req.auth!.role.id,
-      getClientIp(req)
-    );
+    let result: ReturnType<typeof rbacStore.createUser>;
+    try {
+      result = rbacStore.createUser(
+        {
+          username: String(username || ''),
+          fullName: String(fullName || ''),
+          email: String(email || ''),
+          roleId: String(roleId || ''),
+          department: String(department || ''),
+          password: String(password || ''),
+          isActive: isActive !== false
+        },
+        req.auth!.user.username,
+        req.auth!.role.id,
+        getClientIp(req)
+      );
+    } catch (error) {
+      console.error('[RBAC] Gagal menyimpan akun pengguna di server.', error);
+      return res.status(500).json({
+        error: 'USER_PERSISTENCE_FAILED',
+        pesan: 'Server gagal menyimpan akun ke penyimpanan RBAC. Periksa log layanan server.'
+      });
+    }
     if (!result.ok) return res.status(result.status).json({ error: 'USER_ERROR', pesan: result.message });
     broadcastRbacUpdated();
     res.status(201).json({ user: result.user });
@@ -1065,6 +1075,12 @@ async function startServer() {
 
   app.put('/api/sync/keys/:key', requireAuth, (req, res) => {
     const { key } = req.params;
+    if (isLegacyRbacSyncKey(key)) {
+      return res.status(410).json({
+        error: 'LEGACY_RBAC_REMOVED',
+        pesan: 'Koleksi RBAC lama sudah dihapus. Gunakan manajemen RBAC server.'
+      });
+    }
     if (!isValidSyncKey(key)) {
       return res.status(400).json({ error: 'INVALID_KEY', pesan: 'Kunci sinkronisasi tidak valid.' });
     }
@@ -1123,6 +1139,12 @@ async function startServer() {
 
   app.delete('/api/sync/keys/:key', requireAuth, (req, res) => {
     const { key } = req.params;
+    if (isLegacyRbacSyncKey(key)) {
+      return res.status(410).json({
+        error: 'LEGACY_RBAC_REMOVED',
+        pesan: 'Koleksi RBAC lama sudah dihapus. Gunakan manajemen RBAC server.'
+      });
+    }
     if (!isValidSyncKey(key)) {
       return res.status(400).json({ error: 'INVALID_KEY', pesan: 'Kunci sinkronisasi tidak valid.' });
     }
@@ -1160,6 +1182,12 @@ async function startServer() {
     const deletes = Array.isArray(body.deletes) ? body.deletes : [];
 
     for (const key of Object.keys(updates)) {
+      if (isLegacyRbacSyncKey(key)) {
+        return res.status(410).json({
+          error: 'LEGACY_RBAC_REMOVED',
+          pesan: 'Koleksi RBAC lama sudah dihapus. Gunakan manajemen RBAC server.'
+        });
+      }
       if (!isValidSyncKey(key)) {
         return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci sinkronisasi tidak valid: ${key}` });
       }
@@ -1182,6 +1210,12 @@ async function startServer() {
     }
 
     for (const key of deletes) {
+      if (isLegacyRbacSyncKey(key)) {
+        return res.status(410).json({
+          error: 'LEGACY_RBAC_REMOVED',
+          pesan: 'Koleksi RBAC lama sudah dihapus. Gunakan manajemen RBAC server.'
+        });
+      }
       if (!isValidSyncKey(key)) {
         return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci hapus tidak valid: ${key}` });
       }
@@ -1268,6 +1302,12 @@ async function startServer() {
     const deletes = Array.isArray(body.deletes) ? body.deletes : [];
 
     for (const key of [...Object.keys(updates), ...deletes]) {
+      if (isLegacyRbacSyncKey(key)) {
+        return res.status(410).json({
+          error: 'LEGACY_RBAC_REMOVED',
+          pesan: 'Koleksi RBAC lama sudah dihapus. Gunakan manajemen RBAC server.'
+        });
+      }
       if (!isValidSyncKey(key)) {
         return res.status(400).json({ error: 'INVALID_KEY', pesan: `Kunci sinkronisasi tidak valid: ${key}` });
       }

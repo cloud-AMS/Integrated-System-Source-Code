@@ -1482,9 +1482,9 @@ export class ServerRbacStore {
       createdAt: now,
       updatedAt: now
     };
-    this.state.users.push(record);
-    this.persistState();
-    this.recordAudit({
+    const auditEntry: ServerAuditEntry = {
+      id: `aud-${crypto.randomUUID()}`,
+      timestamp: now,
       actorUsername,
       actorRole,
       action: 'USER_CREATED',
@@ -1493,7 +1493,15 @@ export class ServerRbacStore {
       status: 'ALLOWED',
       ip,
       detail: `Akun baru "${record.username}" dibuat dengan peran ${record.roleId}.`
-    });
+    };
+    const nextState: RbacDatabaseState = {
+      ...this.state,
+      users: [...this.state.users, record],
+      auditLogs: [auditEntry, ...this.state.auditLogs].slice(0, 500)
+    };
+
+    this.persistState(nextState);
+    this.state = nextState;
     return { ok: true, user: this.toPublicUser(record) };
   }
 

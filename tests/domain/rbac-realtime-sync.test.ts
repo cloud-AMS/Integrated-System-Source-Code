@@ -113,6 +113,36 @@ describe('ServerRbacStore & ServerDataSyncStore — Sinkronisasi Multi-User & Lo
     expect(canWriteSyncKey(resolvedLive!.role, 'keuangan_jurnal')).toBe(false);
   });
 
+  it('gagal menulis akun tidak meninggalkan akun setengah-jadi di memori maupun di disk', () => {
+    const dataDir = createTempDataDir();
+    const rbac = new ServerRbacStore(dataDir);
+    const dev = rbac.bootstrapFirstDeveloper(
+      { username: 'dev.persist', password: 'StrongPassword123!', fullName: 'Dev Persist' },
+      '127.0.0.1',
+      'Vitest'
+    );
+    expect(dev.ok).toBe(true);
+    if (!dev.ok) return;
+
+    fs.mkdirSync(path.join(dataDir, 'rbac-db.json.tmp'));
+    expect(() =>
+      rbac.createUser(
+        {
+          username: 'beta.persist',
+          password: 'BetaPassword123!',
+          fullName: 'Beta Tester',
+          roleId: 'sales_medrep'
+        },
+        dev.user.username,
+        dev.role.id,
+        '127.0.0.1'
+      )
+    ).toThrow();
+
+    expect(rbac.listUsers()).toEqual([]);
+    expect(new ServerRbacStore(dataDir).listUsers()).toEqual([]);
+  });
+
   it('reset sandi oleh admin, penonaktifan akun, dan penghapusan akun langsung mencabut sesi aktif', () => {
     const dataDir = createTempDataDir();
     const rbac = new ServerRbacStore(dataDir);

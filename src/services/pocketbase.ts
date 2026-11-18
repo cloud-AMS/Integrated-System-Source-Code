@@ -80,15 +80,9 @@ import {
   KonfigurasiGudang,
   RiwayatEksporEReport,
   AuditInternalIso13485,
-  AkunPengguna,
-  RoleSistem,
   RoleDefinition,
   ServerUserRecord
 } from '../types';
-import {
-  AKUN_BAWAAN_SISTEM,
-  ROLE_BAWAAN_SISTEM
-} from '../utils/hakAkses';
 import {
   alokasiFEFOSadarKunci,
   bangunBundleFhir,
@@ -285,6 +279,11 @@ const KUNCI_SESI_AUTH = 'ams_alkes_sesi_login_v2';
 const KUNCI_ANTREAN_SYNC = '__ams_pending_sync_v1';
 const KUNCI_LAST_SYNC_USER = '__ams_last_sync_user_v1';
 const KUNCI_MANIFEST_DATA = 'sistem_data_manifest';
+const LEGACY_RBAC_SYNC_KEYS = new Set(['rb_akun', 'rb_role']);
+
+function isLegacyRbacSyncKey(key: string): boolean {
+  return LEGACY_RBAC_SYNC_KEYS.has(key);
+}
 
 type SyncOp = { type: 'put'; value: unknown } | { type: 'delete' };
 export type StatusSinkronisasi = 'idle' | 'syncing' | 'pending' | 'offline' | 'error';
@@ -402,6 +401,7 @@ class AMSDatabaseManager {
       onEntriesChanged: (entries) => {
         const changed: string[] = [];
         for (const [key, entry] of Object.entries(entries)) {
+          if (isLegacyRbacSyncKey(key)) continue;
           if (this.pendingSyncKeys.has(key)) continue;
           if (this.applyRemoteEntry(key, entry.value, undefined, true, false)) {
             changed.push(key);
@@ -435,9 +435,16 @@ class AMSDatabaseManager {
       if (!raw) return;
       const parsed = JSON.parse(raw) as unknown;
       if (Array.isArray(parsed)) {
+        let antreanDibersihkan = false;
         parsed.forEach((k) => {
-          if (typeof k === 'string' && k) this.pendingSyncKeys.add(k);
+          if (typeof k !== 'string' || !k) return;
+          if (isLegacyRbacSyncKey(k)) {
+            antreanDibersihkan = true;
+            return;
+          }
+          this.pendingSyncKeys.add(k);
         });
+        if (antreanDibersihkan) this.simpanAntreanSyncPersisten();
       }
     } catch {
       /* abaikan antrean rusak */
@@ -837,6 +844,7 @@ class AMSDatabaseManager {
   }
 
   private enqueueKeySync(key: string, op: SyncOp) {
+    if (isLegacyRbacSyncKey(key)) return;
     if (typeof window === 'undefined' || typeof fetch !== 'function') return;
     this.pendingSyncKeys.add(key);
     this.latestSyncOp.set(key, op);
@@ -1129,6 +1137,7 @@ class AMSDatabaseManager {
     notifyIndividual = true,
     forceApply = false
   ): boolean {
+    if (isLegacyRbacSyncKey(key)) return false;
     if (typeof localStorage === 'undefined') return false;
     if (!forceApply && typeof version === 'number' && (this.serverVersions[key] ?? 0) >= version) {
       return false;
@@ -1154,6 +1163,7 @@ class AMSDatabaseManager {
   }
 
   private applyRemoteDelete(key: string, reason = 'ws'): boolean {
+    if (isLegacyRbacSyncKey(key)) return false;
     delete this.serverVersions[key];
     if (typeof localStorage === 'undefined') return false;
     const hadKey = localStorage.getItem(STORAGE_PREFIX + key) !== null;
@@ -4143,127 +4153,6 @@ class AMSDatabaseManager {
       fasyankesPenerima,
       statusRecall: recall ? 'Dalam Pengawasan Recall' : 'Aman (Tidak Ada Recall)'
     };
-  }
-
-  // ============================ USER ACCOUNT & ROLES ============================
-
-  public getRoleSistem(): RoleSistem[] {
-    return this.getCollection<RoleSistem>('rb_role', ROLE_BAWAAN_SISTEM);
-  }
-
-  public saveRoleSistem(items: RoleSistem[]) {
-    this.setCollection('rb_role', items);
-  }
-
-  public tambahRoleSistem(role: RoleSistem, pelaku = 'Administrator Sistem') {
-    const current = this.getRoleSistem();
-    this.saveRoleSistem([...current, role]);
-    this.logAudit(
-      'User Account & Roles',
-      `Pembuatan role baru "${role.nama}" (${role.aksesPenuh ? 'Akses Penuh' : `${role.modulDiizinkan.length} modul`})`,
-      role.id,
-      pelaku,
-      'Administrator',
-      [
-        { kolom: 'nama', nilaiLama: '-', nilaiBaru: role.nama },
-        { kolom: 'aksesPenuh', nilaiLama: '-', nilaiBaru: String(role.aksesPenuh) },
-        { kolom: 'modulDiizinkan', nilaiLama: '-', nilaiBaru: role.modulDiizinkan.join(', ') || '-' }
-      ]
-    );
-  }
-
-  public perbaruiRoleSistem(role: RoleSistem, pelaku = 'Administrator Sistem') {
-    const current = this.getRoleSistem();
-    const lama = current.find((r) => r.id === role.id);
-    const updated: RoleSistem = {
-      ...role,
-      diperbaruiPada: new Date().toISOString()
-    };
-    this.saveRoleSistem(current.map((r) => (r.id === role.id ? updated : r)));
-    this.logAudit(
-      'User Account & Roles',
-      `Pembaruan batasan akses role "${updated.nama}"`,
-      updated.id,
-      pelaku,
-      'Administrator',
-      [
-        { kolom: 'aksesPenuh', nilaiLama: lama ? String(lama.aksesPenuh) : '-', nilaiBaru: String(updated.aksesPenuh) },
-        { kolom: 'modulDiizinkan', nilaiLama: lama ? lama.modulDiizinkan.join(', ') : '-', nilaiBaru: updated.modulDiizinkan.join(', ') || '-' }
-      ]
-    );
-  }
-
-  public hapusRoleSistem(roleId: string, pelaku = 'Administrator Sistem') {
-    const current = this.getRoleSistem();
-    const target = current.find((r) => r.id === roleId);
-    if (!target || target.bawaanSistem) return false;
-    this.saveRoleSistem(current.filter((r) => r.id !== roleId));
-    this.logAudit(
-      'User Account & Roles',
-      `Penghapusan role "${target.nama}"`,
-      target.id,
-      pelaku,
-      'Administrator'
-    );
-    return true;
-  }
-
-  public getAkunPengguna(): AkunPengguna[] {
-    return this.getCollection<AkunPengguna>('rb_akun', AKUN_BAWAAN_SISTEM);
-  }
-
-  public saveAkunPengguna(items: AkunPengguna[]) {
-    this.setCollection('rb_akun', items);
-  }
-
-  public tambahAkunPengguna(akun: AkunPengguna, pelaku = 'Administrator Sistem') {
-    const current = this.getAkunPengguna();
-    this.saveAkunPengguna([akun, ...current]);
-    this.logAudit(
-      'User Account & Roles',
-      `Pembuatan user akun "${akun.username}" (${akun.namaLengkap}) dengan role "${akun.roleId}"`,
-      akun.id,
-      pelaku,
-      'Administrator',
-      [
-        { kolom: 'username', nilaiLama: '-', nilaiBaru: akun.username },
-        { kolom: 'roleId', nilaiLama: '-', nilaiBaru: akun.roleId },
-        { kolom: 'aksesKustom', nilaiLama: '-', nilaiBaru: String(akun.aksesKustom) }
-      ]
-    );
-  }
-
-  public perbaruiAkunPengguna(akun: AkunPengguna, pelaku = 'Administrator Sistem') {
-    const current = this.getAkunPengguna();
-    const lama = current.find((a) => a.id === akun.id);
-    this.saveAkunPengguna(current.map((a) => (a.id === akun.id ? akun : a)));
-    this.logAudit(
-      'User Account & Roles',
-      `Pembaruan akun & hak akses "${akun.username}"`,
-      akun.id,
-      pelaku,
-      'Administrator',
-      [
-        { kolom: 'roleId', nilaiLama: lama?.roleId ?? '-', nilaiBaru: akun.roleId },
-        { kolom: 'status', nilaiLama: lama?.status ?? '-', nilaiBaru: akun.status },
-        { kolom: 'aksesKustom', nilaiLama: lama ? String(lama.aksesKustom) : '-', nilaiBaru: String(akun.aksesKustom) },
-        { kolom: 'modulDiizinkan', nilaiLama: lama?.modulDiizinkan?.join(', ') ?? '(ikuti role)', nilaiBaru: akun.aksesKustom ? (akun.modulDiizinkan?.join(', ') || '-') : '(ikuti role)' }
-      ]
-    );
-  }
-
-  public hapusAkunPengguna(akunId: string, pelaku = 'Administrator Sistem') {
-    const current = this.getAkunPengguna();
-    const target = current.find((a) => a.id === akunId);
-    if (!target) return;
-    this.saveAkunPengguna(current.filter((a) => a.id !== akunId));
-    this.logAudit(
-      'User Account & Roles',
-      `Penghapusan user akun "${target.username}"`,
-      target.id,
-      pelaku,
-      'Administrator'
-    );
   }
 
   private bacaKoleksiMentahUntukProvenance(key: string): unknown[] {

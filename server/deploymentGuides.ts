@@ -117,7 +117,7 @@ FIREBASE_ADMIN_EMAILS=cloud.ams2026@gmail.com,antraderyll@gmail.com`;
   const powershellQuickDeploy = [
     '# Jalankan di PowerShell Administrator pada Windows Server VPS:',
     'cd C:\\AMS\\App',
-    'powershell -ExecutionPolicy Bypass -File .\\scripts\\deploy-windows-vps.ps1 -Domain "' + domain + '" -ConfigureFirewall',
+    'powershell -ExecutionPolicy Bypass -File .\\deploy.ps1 -Domain "' + domain + '" -ConfigureFirewall',
     '',
     '# Verifikasi rules Firebase Staging sebelum membuka login Google:',
     'npx eslint firestore.rules',

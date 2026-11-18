@@ -31,6 +31,7 @@ import {
   ServerDataSyncStore,
   canDeleteSyncKey,
   canWriteSyncKey,
+  isLegacyRbacSyncKey,
   mapSyncKeyToResource
 } from '../../server/dataSyncStore';
 
@@ -481,5 +482,45 @@ describe('ServerDataSyncStore & otorisasi kunci sinkronisasi server', () => {
     // Tidak boleh tulis modul keuangan maupun menghapus key gudang jika hanya punya ['read', 'create']
     expect(canWriteSyncKey(roleGudangTerbatas, 'keuangan_jurnal')).toBe(false);
     expect(canDeleteSyncKey(roleGudangTerbatas, 'stok_gudang')).toBe(false);
+  });
+
+  it('menonaktifkan koleksi RBAC lama agar akun dan role hanya tersimpan di RBAC server', () => {
+    const dir = createTempDir();
+    const legacyEntry = {
+      value: [{ id: 'legacy-user', username: 'admin' }],
+      version: 1,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      updatedBy: 'legacy-rbac'
+    };
+    fs.writeFileSync(
+      path.join(dir, 'app-state.json'),
+      JSON.stringify({
+        version: 1,
+        revision: 1,
+        entries: { rb_akun: legacyEntry, rb_role: legacyEntry }
+      }),
+      'utf8'
+    );
+    const store = new ServerDataSyncStore(dir);
+    const fullAccessRole: RoleDefinition = {
+      id: 'test',
+      name: 'Test',
+      description: 'Test',
+      isSystem: false,
+      permissions: {
+        overview: ['view', 'create', 'update', 'delete'],
+        'rbac-admin': ['view', 'create', 'update', 'delete']
+      },
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    };
+
+    expect(isLegacyRbacSyncKey('rb_akun')).toBe(true);
+    expect(store.hasKey('rb_akun')).toBe(false);
+    expect(store.getAllState().entries).toEqual({});
+    expect(store.getAllState({}).entries).toEqual({});
+    expect(canWriteSyncKey(fullAccessRole, 'rb_akun')).toBe(false);
+    expect(canDeleteSyncKey(fullAccessRole, 'rb_role')).toBe(false);
+    expect(() => store.setBatch({ rb_akun: [] }, [], 'admin')).toThrow(/no longer supported/);
+    expect(store.hydrateFromCloud({ rb_role: legacyEntry }).appliedKeys).toEqual([]);
   });
 });

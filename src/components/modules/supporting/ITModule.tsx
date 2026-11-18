@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import DeveloperNotes from '../../common/DeveloperNotes';
 import { db } from '../../../services/pocketbase';
-import type { AksesEfektif, LogAuditTrail, UserRole } from '../../../types';
+import type { LogAuditTrail, UserRole } from '../../../types';
 import { 
   Cpu, 
   Terminal, 
@@ -41,11 +41,9 @@ import {
   punyaIzin,
   type SesiLogin
 } from '../../../utils/autentikasi';
-import { SEMUA_ID_MODUL } from '../../../utils/hakAkses';
 import { useDbTick } from '../../../hooks/useDbSync';
 import { verifikasiRantaiHash } from '../../../utils/gudang';
 import type { KategoriPenyimpananData } from '../../../utils/dataOrigin';
-import UserAccountRolesModule from '../../dashboard/UserAccountRolesModule';
 import RbacManagementTab from './it/RbacManagementTab';
 
 interface DbConfigResponse {
@@ -100,8 +98,6 @@ export type ITSubTabId = 'traceability' | 'audit' | 'user-roles' | 'deployment';
 export interface ITModuleProps {
   currentRole?: UserRole;
   currentUserName?: string;
-  aksesAktif?: AksesEfektif;
-  akunAktifId?: string;
   activeTab?: ITSubTabId;
   onTabChange?: (tab: ITSubTabId) => void;
   sesi?: SesiLogin;
@@ -111,24 +107,18 @@ export interface ITModuleProps {
 export default function ITModule({
   currentRole,
   currentUserName,
-  aksesAktif,
-  akunAktifId,
   activeTab: activeTabProp,
   onTabChange,
   sesi,
   onPermissionsUpdated
 }: ITModuleProps) {
-  const bolehRbac = sesi ? punyaIzin(sesi, 'rbac-admin', 'view') : true;
+  const sesiAktif = sesi ?? bacaSesi();
+  const bolehRbac = Boolean(sesiAktif && punyaIzin(sesiAktif, 'rbac-admin', 'view'));
   const [activeTabLokal, setActiveTabLokal] = useState<ITSubTabId>(activeTabProp || 'traceability');
   const activeTab = activeTabProp ?? activeTabLokal;
   const setActiveTab = (tab: ITSubTabId) => {
     setActiveTabLokal(tab);
     onTabChange?.(tab);
-  };
-  const aksesEfektif: AksesEfektif = aksesAktif ?? {
-    aksesPenuh: true,
-    modulDiizinkan: [...SEMUA_ID_MODUL],
-    sumber: 'akses-penuh'
   };
   const dbTick = useDbTick(['all', 'connection_status', 'sistem_data_manifest']);
   const [auditList, setAuditList] = useState<LogAuditTrail[]>(db.getAuditTrail());
@@ -157,7 +147,6 @@ export default function ITModule({
   const [pocketbaseUrlInput, setPocketbaseUrlInput] = useState('http://127.0.0.1:8091');
 
   // Sesi pengguna aktif untuk atribusi kepatuhan ALCOA+
-  const sesiAktif = sesi ?? bacaSesi();
   const namaAdmin = currentUserName || sesiAktif?.namaPengguna || 'Administrator IT / PJT apt. Dewi Kartika, S.Si';
   const peranAdmin = currentRole || sesiAktif?.peran || 'it_admin';
 
@@ -227,7 +216,7 @@ AMS_DB_DRIVER=firebase
 AMS_DATA_DIR=C:\\AMS\\Data`,
     powershellQuickDeploy: [
       'cd C:\\AMS\\App',
-      'powershell -ExecutionPolicy Bypass -File .\\scripts\\deploy-windows-vps.ps1 -Domain "ams.bejodigitalprint.com" -ConfigureFirewall'
+      'powershell -ExecutionPolicy Bypass -File .\\deploy.ps1 -Domain "ams.bejodigitalprint.com" -ConfigureFirewall'
     ]
   });
 
@@ -711,19 +700,11 @@ AMS_DATA_DIR=C:\\AMS\\Data`,
       </div>
 
       {/* Tab 0: Manajemen RBAC Server / User Account & Roles */}
-      {activeTab === 'user-roles' && bolehRbac && (
-        sesiAktif ? (
-          <RbacManagementTab
-            sesi={sesiAktif}
-            onPermissionsUpdated={onPermissionsUpdated}
-          />
-        ) : (
-          <UserAccountRolesModule
-            aksesAktif={aksesEfektif}
-            pelakuAktif={namaAdmin}
-            akunAktifId={akunAktifId}
-          />
-        )
+      {activeTab === 'user-roles' && bolehRbac && sesiAktif && (
+        <RbacManagementTab
+          sesi={sesiAktif}
+          onPermissionsUpdated={onPermissionsUpdated}
+        />
       )}
 
       {/* Tab 1: Storage, Sync & Pemisahan Data Dummy vs User */}

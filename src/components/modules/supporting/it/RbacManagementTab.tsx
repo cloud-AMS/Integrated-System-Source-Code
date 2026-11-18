@@ -74,6 +74,7 @@ export default function RbacManagementTab({
   // User Modal state
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ServerUserPublic | null>(null);
+  const [savingUser, setSavingUser] = useState(false);
   const [userForm, setUserForm] = useState({
     username: '',
     fullName: '',
@@ -219,6 +220,8 @@ export default function RbacManagementTab({
 
   const submitUser = async (e: FormEvent) => {
     e.preventDefault();
+    if (savingUser) return;
+    setSavingUser(true);
     const cleanUsername = userForm.username.trim().toLowerCase();
     const endpoint = editingUser ? `/api/rbac/users/${editingUser.id}` : '/api/rbac/users';
     const method = editingUser ? 'PUT' : 'POST';
@@ -241,26 +244,33 @@ export default function RbacManagementTab({
           isActive: userForm.isActive
         };
 
-    const res = await authFetch(endpoint, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = (await res.json().catch(() => ({}))) as { pesan?: string };
-    if (!res.ok) {
-      showMsg('err', data.pesan || 'Gagal menyimpan data pengguna.');
-      return;
+    try {
+      const res = await authFetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = (await res.json().catch(() => ({}))) as { pesan?: string };
+      if (!res.ok) {
+        showMsg('err', data.pesan || `Gagal menyimpan data pengguna (HTTP ${res.status}).`);
+        return;
+      }
+      setUserModalOpen(false);
+      showMsg(
+        'ok',
+        editingUser
+          ? `Akun @${editingUser.username} diperbarui secara real-time di server.`
+          : `Akun @${cleanUsername} tersimpan di server dan langsung aktif untuk login dari internet.`
+      );
+      await loadAll();
+      void db.pushRbacSnapshotToFirebase();
+      onPermissionsUpdated?.();
+    } catch (error) {
+      console.error('[RBAC] Gagal menyimpan akun pengguna ke server.', error);
+      showMsg('err', 'Tidak dapat menghubungi server RBAC. Periksa koneksi dan coba lagi.');
+    } finally {
+      setSavingUser(false);
     }
-    setUserModalOpen(false);
-    showMsg(
-      'ok',
-      editingUser
-        ? `Akun @${editingUser.username} diperbarui secara real-time di server.`
-        : `Akun @${cleanUsername} tersimpan di server dan langsung aktif untuk login dari internet.`
-    );
-    await loadAll();
-    void db.pushRbacSnapshotToFirebase();
-    onPermissionsUpdated?.();
   };
 
   const removeUser = async (u: ServerUserPublic) => {
@@ -1005,9 +1015,10 @@ export default function RbacManagementTab({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer"
+                  disabled={savingUser}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait text-white font-semibold cursor-pointer"
                 >
-                  Simpan Akun
+                  {savingUser ? 'Menyimpan…' : 'Simpan Akun'}
                 </button>
               </div>
             </form>

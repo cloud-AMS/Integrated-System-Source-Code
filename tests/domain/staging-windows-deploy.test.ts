@@ -85,7 +85,13 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(guides.nssmCommands.join('\n')).toContain('DEPLOYMENT_ENV=staging');
     expect(guides.envStagingTemplate).toContain('APP_URL=https://staging.ams-med.co.id');
     expect(guides.envStagingTemplate).toContain('VITE_DEPLOYMENT_ENV=staging');
-    expect(guides.powershellQuickDeploy.join('\n')).toContain('deploy-windows-vps.ps1');
+    expect(guides.powershellQuickDeploy.join('\n')).toContain('.\\deploy.ps1');
+    expect(fs.existsSync(path.join(process.cwd(), 'deploy.ps1'))).toBe(true);
+    expect(fs.existsSync(path.join(process.cwd(), 'scripts', 'deploy-windows-vps.ps1'))).toBe(false);
+    const deployScript = fs.readFileSync(path.join(process.cwd(), 'deploy.ps1'), 'utf8');
+    expect(deployScript).toContain('"pull"');
+    expect(deployScript).toContain('"--ff-only"');
+    expect(deployScript).toContain('"build:staging"');
   });
 
   it('mengizinkan admin Firebase staging (cloud.ams2026@gmail.com) login tanpa menimpa email developer utama', () => {

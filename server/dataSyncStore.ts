@@ -22,7 +22,13 @@ export const PUBLIC_SYNC_KEYS = new Set<string>([
   'website_media_v1'
 ]);
 
+export const LEGACY_RBAC_SYNC_KEYS = new Set(['rb_akun', 'rb_role']);
+
 const VALID_KEY_PATTERN = /^[a-zA-Z0-9_-]{1,80}$/;
+
+export function isLegacyRbacSyncKey(key: string): boolean {
+  return LEGACY_RBAC_SYNC_KEYS.has(key);
+}
 
 export function isValidSyncKey(key: string): boolean {
   return VALID_KEY_PATTERN.test(key);
@@ -65,11 +71,11 @@ export function mapSyncKeyToResource(key: string): RbacResourceId {
   }
   if (key === 'sistem_data_manifest') return 'it-traceability';
   if (key === 'audit_trail') return 'audit-trail';
-  if (key === 'rb_akun' || key === 'rb_role') return 'rbac-admin';
   return 'overview';
 }
 
 export function canWriteSyncKey(role: RoleDefinition, key: string): boolean {
+  if (isLegacyRbacSyncKey(key)) return false;
   // Log audit operasional dicatat otomatis saat user sah beraktivitas di modulnya
   if (key === 'audit_trail') return true;
   // Self-service mobile HRIS: absensi GPS & pengajuan cuti pribadi oleh karyawan/sales aktif
@@ -89,6 +95,7 @@ export function canWriteSyncKey(role: RoleDefinition, key: string): boolean {
 }
 
 export function canDeleteSyncKey(role: RoleDefinition, key: string): boolean {
+  if (isLegacyRbacSyncKey(key)) return false;
   const resource = mapSyncKeyToResource(key);
   const perms = role.permissions[resource];
   if (!Array.isArray(perms)) return false;
@@ -137,6 +144,7 @@ export class ServerDataSyncStore {
   }
 
   public hasKey(key: string): boolean {
+    if (isLegacyRbacSyncKey(key)) return false;
     return Object.prototype.hasOwnProperty.call(this.state.entries, key);
   }
 
@@ -155,11 +163,15 @@ export class ServerDataSyncStore {
     entries: Record<string, SyncEntry>;
   } {
     if (!sinceVersionMap) {
-      return { revision: this.state.revision, entries: { ...this.state.entries } };
+      const entries: Record<string, SyncEntry> = {};
+      for (const [key, entry] of Object.entries(this.state.entries)) {
+        if (!isLegacyRbacSyncKey(key)) entries[key] = entry;
+      }
+      return { revision: this.state.revision, entries };
     }
     const delta: Record<string, SyncEntry> = {};
     for (const [key, entry] of Object.entries(this.state.entries)) {
-      if ((sinceVersionMap[key] ?? 0) < entry.version) {
+      if (!isLegacyRbacSyncKey(key) && (sinceVersionMap[key] ?? 0) < entry.version) {
         delta[key] = entry;
       }
     }
@@ -171,6 +183,9 @@ export class ServerDataSyncStore {
     value: unknown,
     actorUsername: string
   ): { entry: SyncEntry; revision: number } {
+    if (isLegacyRbacSyncKey(key)) {
+      throw new Error(`Legacy RBAC sync key "${key}" is no longer supported.`);
+    }
     const prev = this.state.entries[key];
     const nextVersion = (prev?.version ?? 0) + 1;
     const nextRevision = this.state.revision + 1;
@@ -195,6 +210,10 @@ export class ServerDataSyncStore {
     deleted: string[];
     revision: number;
   } {
+    const legacyKey = [...Object.keys(updates), ...deletes].find(isLegacyRbacSyncKey);
+    if (legacyKey) {
+      throw new Error(`Legacy RBAC sync key "${legacyKey}" is no longer supported.`);
+    }
     const updated: Record<string, SyncEntry> = {};
     const deleted: string[] = [];
     const now = new Date().toISOString();
@@ -236,6 +255,9 @@ export class ServerDataSyncStore {
   }
 
   public deleteKey(key: string): { deleted: boolean; revision: number } {
+    if (isLegacyRbacSyncKey(key)) {
+      throw new Error(`Legacy RBAC sync key "${key}" is no longer supported.`);
+    }
     if (!this.hasKey(key)) {
       return { deleted: false, revision: this.state.revision };
     }
@@ -257,7 +279,7 @@ export class ServerDataSyncStore {
   ): { appliedKeys: string[]; revision: number } {
     const appliedKeys: string[] = [];
     for (const [key, item] of Object.entries(cloudEntries)) {
-      if (!isValidSyncKey(key) || !item || item.value === undefined) continue;
+      if (!isValidSyncKey(key) || isLegacyRbacSyncKey(key) || !item || item.value === undefined) continue;
       const existing = this.state.entries[key];
       const incomingTime = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
       const existingTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;

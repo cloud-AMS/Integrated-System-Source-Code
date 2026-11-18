@@ -1,25 +1,27 @@
 <#
 .SYNOPSIS
-  Automasi Build & Deployment AMS Integrated System (Firebase Staging) pada Windows Server VPS.
+  Update, build, and deploy AMS Integrated System (Firebase Staging) on a Windows Server VPS.
 .DESCRIPTION
-  Script ini menyiapkan direktori persisten Windows (C:\AMS\Data), memvalidasi .env.staging,
-  menjalankan build Vite mode staging (npm run build:staging), mendaftarkan/me-restart service NSSM
-  (AMS_AppService & CaddyWebServer), mengonfigurasi firewall opsional, serta memverifikasi /api/health.
+  Pulls the configured Git branch (fast-forward only), validates .env.staging, runs checks and build,
+  updates the NSSM app/Caddy services, optionally configures firewall rules, then checks health.
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\scripts\deploy-windows-vps.ps1 -Domain "ams.bejodigitalprint.com" -ConfigureFirewall
+  powershell -ExecutionPolicy Bypass -File .\deploy.ps1 -Domain "ams.bejodigitalprint.com"
 #>
 
 [CmdletBinding()]
 param(
   [string]$Domain = "ams.bejodigitalprint.com",
-  [string]$AppDir = "C:\AMS\App",
+  [string]$AppDir = "",
   [string]$DataDir = "C:\AMS\Data",
   [string]$SecretsDir = "C:\AMS\Secrets",
   [string]$LogsDir = "C:\AMS\Logs",
   [string]$BackupDir = "C:\AMS\Backups",
   [string]$CaddyDir = "C:\caddy",
+  [string]$Remote = "origin",
+  [string]$Branch = "main",
   [string]$EnvFileName = ".env.staging",
   [int]$Port = 3000,
+  [switch]$SkipGitUpdate,
   [switch]$SkipTests,
   [switch]$ConfigureFirewall,
   [switch]$SkipServiceRestart
@@ -37,9 +39,27 @@ function Assert-Command([string]$cmd, [string]$installHint) {
   }
 }
 
+function Invoke-CheckedCommand([string]$cmd, [string[]]$arguments) {
+  & $cmd @arguments
+  if ($LASTEXITCODE -ne 0) {
+    throw "Perintah '$cmd $($arguments -join ' ')' gagal dengan exit code $LASTEXITCODE."
+  }
+}
+
+if ([string]::IsNullOrWhiteSpace($AppDir)) {
+  $AppDir = $PSScriptRoot
+}
+if (-not (Test-Path $AppDir -PathType Container)) {
+  throw "Direktori aplikasi tidak ditemukan: $AppDir"
+}
+$AppDir = (Resolve-Path $AppDir).Path
+
 Write-Step "1. Memeriksa prasyarat sistem & versi Node.js..."
 Assert-Command "node" "Pasang Node.js v22 LTS dari https://nodejs.org/"
 Assert-Command "npm" "Pastikan npm ikut terpasang bersama Node.js v22 LTS."
+if (-not $SkipGitUpdate) {
+  Assert-Command "git" "Pasang Git for Windows dan pastikan tersedia di PATH."
+}
 
 $nodeMajor = [int]((node -v).TrimStart('v').Split('.')[0])
 if ($nodeMajor -lt 22) {
@@ -47,12 +67,28 @@ if ($nodeMajor -lt 22) {
 }
 Write-Host "Node.js aktif: $(node -v)" -ForegroundColor Green
 
-if (-not (Test-Path $AppDir)) {
-  $AppDir = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-  Write-Host "Menggunakan direktori aplikasi saat ini: $AppDir" -ForegroundColor Yellow
+if (-not $SkipGitUpdate) {
+  Write-Step "2. Memperbarui source dari $Remote/$Branch secara fast-forward..."
+  $branchAktif = (& git -C $AppDir branch --show-current).Trim()
+  if ($LASTEXITCODE -ne 0 -or -not $branchAktif) {
+    throw "Direktori '$AppDir' bukan working tree Git dengan branch aktif."
+  }
+  if ($branchAktif -ne $Branch) {
+    throw "Branch aktif '$branchAktif' berbeda dari '$Branch'. Pindah branch secara eksplisit sebelum deploy."
+  }
+  & git -C $AppDir diff --quiet
+  if ($LASTEXITCODE -ne 0) {
+    throw "Ada perubahan tracked yang belum di-commit di '$AppDir'. Commit atau simpan perubahan sebelum deploy."
+  }
+  & git -C $AppDir diff --cached --quiet
+  if ($LASTEXITCODE -ne 0) {
+    throw "Ada perubahan staged yang belum di-commit di '$AppDir'. Commit atau simpan perubahan sebelum deploy."
+  }
+  Invoke-CheckedCommand "git" @("-C", $AppDir, "fetch", "--prune", $Remote, $Branch)
+  Invoke-CheckedCommand "git" @("-C", $AppDir, "pull", "--ff-only", $Remote, $Branch)
 }
 
-Write-Step "2. Menyiapkan direktori persisten Windows di luar folder source..."
+Write-Step "3. Menyiapkan direktori persisten Windows di luar folder source..."
 $caddyLogs = Join-Path $CaddyDir "logs"
 New-Item -ItemType Directory -Force -Path $AppDir, $DataDir, $SecretsDir, $LogsDir, $BackupDir, $CaddyDir, $caddyLogs | Out-Null
 
@@ -67,7 +103,7 @@ if (-not (Test-Path $envPath)) {
   }
 }
 
-Write-Step "3. Memvalidasi konfigurasi Firebase Staging dari $EnvFileName..."
+Write-Step "4. Memvalidasi konfigurasi Firebase Staging dari $EnvFileName..."
 $envMap = @{}
 Get-Content $envPath -Encoding UTF8 | ForEach-Object {
   $line = $_.Trim()
@@ -102,21 +138,21 @@ foreach ($rk in $requiredKeys) {
 [Environment]::SetEnvironmentVariable("AMS_DB_DRIVER", "firebase", "Process")
 [Environment]::SetEnvironmentVariable("AMS_DATA_DIR", $DataDir, "Process")
 
-Write-Step "4. Menginstal dependensi & membangun aplikasi (Vite Staging + server.js)..."
+Write-Step "5. Menginstal dependensi, menjalankan pemeriksaan, dan membangun aplikasi..."
 Push-Location $AppDir
 try {
-  npm ci
+  Invoke-CheckedCommand "npm" @("ci")
   if (-not $SkipTests) {
-    npm run lint
-    npm test
+    Invoke-CheckedCommand "npm" @("run", "lint")
+    Invoke-CheckedCommand "npm" @("test")
   }
-  npm run build:staging
+  Invoke-CheckedCommand "npm" @("run", "build:staging")
 } finally {
   Pop-Location
 }
 
 if ($ConfigureFirewall) {
-  Write-Step "5. Mengonfigurasi Windows Defender Firewall (buka 80/443, blokir akses langsung ke $Port/8091)..."
+  Write-Step "6. Mengonfigurasi Windows Defender Firewall (buka 80/443, blokir akses langsung ke $Port/8091)..."
   $rulesToEnsure = @(
     @{ Name = "AMS-HTTP-80"; Port = 80; Action = "Allow" },
     @{ Name = "AMS-HTTPS-443"; Port = 443; Action = "Allow" },
@@ -163,7 +199,7 @@ $Domain {
 }
 
 if (-not $SkipServiceRestart) {
-  Write-Step "6. Mengatur service Windows via NSSM (1 instance tunggal)..."
+  Write-Step "7. Mengatur service Windows via NSSM (1 instance tunggal)..."
   Assert-Command "nssm" "Pasang NSSM dari https://nssm.cc/download dan masukkan ke PATH Windows."
   $nodeExe = (Get-Command node).Source
   $serverJs = Join-Path $AppDir "server.js"
@@ -171,10 +207,10 @@ if (-not $SkipServiceRestart) {
 
   $svcExists = Get-Service -Name $svcName -ErrorAction SilentlyContinue
   if (-not $svcExists) {
-    & nssm install $svcName $nodeExe $serverJs
+    Invoke-CheckedCommand "nssm" @("install", $svcName, $nodeExe, $serverJs)
   } else {
-    & nssm set $svcName Application $nodeExe
-    & nssm set $svcName AppParameters $serverJs
+    Invoke-CheckedCommand "nssm" @("set", $svcName, "Application", $nodeExe)
+    Invoke-CheckedCommand "nssm" @("set", $svcName, "AppParameters", $serverJs)
   }
   $firestoreDbId = if ($envMap["FIRESTORE_DATABASE_ID"]) { $envMap["FIRESTORE_DATABASE_ID"] } elseif ($envMap["FIREBASE_FIRESTORE_DATABASE_ID"]) { $envMap["FIREBASE_FIRESTORE_DATABASE_ID"] } elseif ($envMap["VITE_FIRESTORE_DATABASE_ID"]) { $envMap["VITE_FIRESTORE_DATABASE_ID"] } else { "ai-studio-amsintegratedsys-a6cc9862-667b-4eea-be94-96098a1c9439" }
   $defaultSaPath = Join-Path $SecretsDir "firebase-service-account.json"
@@ -183,33 +219,72 @@ if (-not $SkipServiceRestart) {
     Write-Host "Peringatan: File Service Account Admin SDK belum ditemukan di '$saPath'. Server akan berjalan pada mode fallback hingga file JSON diletakkan." -ForegroundColor Yellow
   }
 
-  & nssm set $svcName AppDirectory $AppDir
-  & nssm set $svcName AppEnvironmentExtra "NODE_ENV=production" "DEPLOYMENT_ENV=staging" "VITE_DEPLOYMENT_ENV=staging" "AMS_DB_DRIVER=firebase" "PORT=$Port" "AMS_DATA_DIR=$DataDir" "FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId" "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
-  & nssm set $svcName AppStdout (Join-Path $LogsDir "service_output.log")
-  & nssm set $svcName AppStderr (Join-Path $LogsDir "service_error.log")
-  & nssm set $svcName AppRotateFiles 1
-  & nssm set $svcName AppRotateBytes 10485760
-  & nssm set $svcName Start SERVICE_AUTO_START
-  & nssm restart $svcName
+  $serviceEnvironment = @(
+    "NODE_ENV=production",
+    "DEPLOYMENT_ENV=staging",
+    "VITE_DEPLOYMENT_ENV=staging",
+    "AMS_DB_DRIVER=firebase",
+    "PORT=$Port",
+    "APP_URL=https://$Domain",
+    "AMS_DATA_DIR=$DataDir",
+    "FIRESTORE_DATABASE_ID=$firestoreDbId",
+    "FIREBASE_FIRESTORE_DATABASE_ID=$firestoreDbId",
+    "FIREBASE_SERVICE_ACCOUNT_PATH=$saPath"
+  )
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppDirectory", $AppDir)
+  Invoke-CheckedCommand "nssm" (@("set", $svcName, "AppEnvironmentExtra") + $serviceEnvironment)
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppStdout", (Join-Path $LogsDir "service_output.log"))
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppStderr", (Join-Path $LogsDir "service_error.log"))
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppRotateFiles", "1")
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "AppRotateBytes", "10485760")
+  Invoke-CheckedCommand "nssm" @("set", $svcName, "Start", "SERVICE_AUTO_START")
 
   $caddyExe = Join-Path $CaddyDir "caddy.exe"
   if (Test-Path $caddyExe) {
     $caddySvc = Get-Service -Name "CaddyWebServer" -ErrorAction SilentlyContinue
     if (-not $caddySvc) {
-      & nssm install CaddyWebServer $caddyExe "run --config $caddyfilePath"
+      Invoke-CheckedCommand "nssm" @("install", "CaddyWebServer", $caddyExe, "run --config `"$caddyfilePath`"")
     }
-    & nssm set CaddyWebServer AppDirectory $CaddyDir
-    & nssm set CaddyWebServer AppStdout (Join-Path $caddyLogs "caddy_stdout.log")
-    & nssm set CaddyWebServer AppStderr (Join-Path $caddyLogs "caddy_stderr.log")
-    & nssm set CaddyWebServer Start SERVICE_AUTO_START
-    & nssm restart CaddyWebServer
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "Application", $caddyExe)
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppParameters", "run --config `"$caddyfilePath`"")
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppDirectory", $CaddyDir)
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppStdout", (Join-Path $caddyLogs "caddy_stdout.log"))
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "AppStderr", (Join-Path $caddyLogs "caddy_stderr.log"))
+    Invoke-CheckedCommand "nssm" @("set", "CaddyWebServer", "Start", "SERVICE_AUTO_START")
   } else {
     Write-Host "Catatan: $caddyExe belum ditemukan; lewati registrasi CaddyWebServer." -ForegroundColor Yellow
   }
 
-  Start-Sleep -Seconds 3
-  Write-Step "7. Memeriksa endpoint kesehatan lokal http://127.0.0.1:$Port/api/health..."
-  $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 15
+  $servicesToStart = @("AMS_AppService")
+  if (Test-Path $caddyExe) {
+    $servicesToStart += "CaddyWebServer"
+  }
+  foreach ($service in $servicesToStart) {
+    $currentService = Get-Service -Name $service -ErrorAction SilentlyContinue
+    if ($currentService -and $currentService.Status -eq "Running") {
+      Stop-Service -Name $service -Force
+      $currentService.WaitForStatus(
+        [System.ServiceProcess.ServiceControllerStatus]::Stopped,
+        [TimeSpan]::FromSeconds(30)
+      )
+    }
+    Start-Service -Name $service
+  }
+
+  Write-Step "8. Memeriksa endpoint kesehatan lokal http://127.0.0.1:$Port/api/health..."
+  $health = $null
+  for ($attempt = 1; $attempt -le 12; $attempt++) {
+    try {
+      $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 15
+      break
+    } catch {
+      if ($attempt -eq 12) { throw }
+      Start-Sleep -Seconds 5
+    }
+  }
+  if (-not $health -or $health.status -ne "aktif") {
+    throw "Health check tidak mengembalikan status aktif."
+  }
   $dbCfg = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/system/db-config" -TimeoutSec 15
   Write-Host "Health OK: status=$($health.status), env=$($health.deploymentEnv), firebaseProjectId=$($dbCfg.firebase.projectId), adminConnected=$($dbCfg.firebaseAdmin.connected), databaseId=$($dbCfg.firebaseAdmin.databaseId)" -ForegroundColor Green
 }
