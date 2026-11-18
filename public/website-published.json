@@ -1,7 +1,7 @@
 {
   "isPublished": true,
-  "lastModifiedAt": 1794831395695,
-  "lastModifiedBy": "Developer Utama AMS",
+  "lastModifiedAt": 1794935390464,
+  "lastModifiedBy": "Langgo Bramandityo",
   "identitas": {
     "nama": "PT Anugrahmitra Selaras",
     "tagline": "REMEDI — Every Life Matters",
@@ -160,7 +160,7 @@
     "badge": "Sejak 1994 • Produsen, Agen & Distributor Alat Kesehatan • ISO 9001:2015 • ISO 13485:2016",
     "judul": "Every Life Matters",
     "subjudul": "Kami adalah produsen, agen, dan distributor produk peralatan kesehatan, instrument set, dan barang habis pakai untuk kebutuhan fasilitas pelayanan kesehatan di seluruh Indonesia — bermerek dagang Remedi dengan dukungan 15 merek prinsipal.",
-    "gambarUrl": "media:img-e5kbglj",
+    "gambarUrl": "media:img-iesfxdy",
     "teksCtaUtama": "Request for Quotation",
     "tautanCtaUtama": {
       "tipe": "halaman",
@@ -1651,28 +1651,5 @@
     }
   ],
   "footerCatatan": "© 2026 PT Anugrahmitra Selaras (REMEDI). Seluruh hak cipta dilindungi. Produsen, agen, dan distributor alat kesehatan sejak 1994 — distribusi dijalankan sesuai Cara Distribusi Alat Kesehatan yang Baik (CDAKB) Kementerian Kesehatan RI.",
-  "tampilan": {
-    "templateId": "remedi-klasik",
-    "warnaUtama": "#cb2310",
-    "warnaAksen": "#ea5110",
-    "fontId": "open-sans",
-    "berandaUrutan": [
-      "hero",
-      "slide",
-      "kepercayaan",
-      "solusi",
-      "konsultasi",
-      "statistik",
-      "produk",
-      "merek",
-      "perjalanan",
-      "institusi",
-      "kegiatan",
-      "promo",
-      "artikel",
-      "testimoni",
-      "faq"
-    ]
-  },
-  "lastPublishedAt": 1794831395712
+  "lastPublishedAt": 1794935390467
 }
