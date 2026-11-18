@@ -2,6 +2,7 @@ import { ArrowRight, BadgeCheck, PackageSearch, Search, ShieldCheck } from 'luci
 import type { HalamanWebsite, KonfigurasiSitus } from '../../../../types';
 import { selesaikanGambar } from '../../../../utils/website';
 import { TombolSitus } from './SiteSections';
+import { translateWebsiteUi, useWebsiteLanguage } from './WebsiteLanguage';
 
 export function SorotanKatalog({
   cfg,
@@ -10,6 +11,8 @@ export function SorotanKatalog({
   cfg: KonfigurasiSitus;
   ke: (halaman: HalamanWebsite, kategoriKey?: string) => void;
 }) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
   const hero = cfg.hero;
   if (!hero.isActive) return null;
 
@@ -38,13 +41,13 @@ export function SorotanKatalog({
             <TombolSitus teks={hero.teksCtaCadangan} tautan={hero.tautanCtaCadangan} cfg={cfg} ke={ke} varian="garis" />
             <button type="button" onClick={() => ke('produk')} className="katalog-search-link">
               <Search className="w-4 h-4" />
-              Jelajahi katalog
+              {t('Jelajahi katalog')}
             </button>
           </div>
 
           {kategori.length > 0 && (
             <div className="mt-8">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Jelajahi kategori</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('Jelajahi kategori')}</p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {kategori.map((label) => (
                   <button
@@ -69,7 +72,7 @@ export function SorotanKatalog({
             ) : (
               <div className="katalog-visual-fallback">
                 <PackageSearch className="w-16 h-16" />
-                <span>Peralatan kesehatan untuk kebutuhan fasilitas Anda</span>
+                <span>{t('Peralatan kesehatan untuk kebutuhan fasilitas Anda')}</span>
               </div>
             )}
             {produkUnggulan && gambarProduk && (
@@ -77,13 +80,13 @@ export function SorotanKatalog({
                 type="button"
                 className="katalog-featured-product"
                 onClick={() => ke('produk', produkUnggulan.kategori)}
-                aria-label={`Lihat katalog ${produkUnggulan.nama}`}
+                aria-label={`${t('Lihat katalog')} ${produkUnggulan.nama}`}
               >
                 <span className="katalog-featured-icon">
                   <BadgeCheck className="w-5 h-5" />
                 </span>
                 <span className="min-w-0 text-left">
-                  <span className="block text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">Produk katalog</span>
+                  <span className="block text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">{t('Produk katalog')}</span>
                   <span className="block text-sm font-bold text-slate-900 truncate">{produkUnggulan.nama}</span>
                   <span className="block text-xs text-slate-500 truncate">{produkUnggulan.produsen}</span>
                 </span>

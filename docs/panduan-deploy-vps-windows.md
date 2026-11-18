@@ -82,11 +82,17 @@ FIREBASE_FIRESTORE_DATABASE_ID=(default)
 FIRESTORE_EXPECTED_DATABASE_ID=(default)
 FIREBASE_SERVICE_ACCOUNT_PATH=C:\AMS\Secrets\firebase-service-account.json
 
+# Terjemahan situs publik (opsional; kunci digunakan server saja)
+DEEPL_AUTH_KEY=<API-key-DeepL>
+DEEPL_API_URL=https://api-free.deepl.com
+
 SESSION_SECRET=<64-karakter-hex-acak>
 INITIAL_SETUP_TOKEN=<token-setup-awal>
 BOOTSTRAP_DEV_EMAIL=cloud.ams2026@gmail.com
 FIREBASE_ADMIN_EMAILS=cloud.ams2026@gmail.com,antraderyll@gmail.com
 ```
+
+Fitur tombol **ID / EN** menerjemahkan teks CMS situs terbit menggunakan DeepL. Untuk mengaktifkannya, isi `DEEPL_AUTH_KEY` pada `.env.staging` di VPS dengan API key akun DeepL Anda. Gunakan `https://api-free.deepl.com` untuk paket Free atau `https://api.deepl.com` untuk Pro. Jangan gunakan awalan `VITE_` dan jangan kirim API key ke browser, Git, atau chat. Cache terjemahan disimpan di `AMS_DATA_DIR\website-translation-en.json`; setelah memperbarui environment, jalankan ulang deployment agar service membaca konfigurasi terbaru.
 
 > **Konfigurasi Service Account Firebase Admin SDK (Wajib untuk koneksi server VPS → Firestore)**:
 > 1. Buka Firebase Console → **Project Settings (ikon roda gigi) → Service accounts → Generate new private key**.

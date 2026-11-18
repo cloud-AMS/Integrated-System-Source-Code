@@ -32,6 +32,7 @@ import { ActiveDbDriver, PocketBaseArchiveConfig, ServerDbDriverManager } from '
 import { resolveFirebaseClientConfig, type FirebaseClientConfig } from './src/services/firebaseConfig';
 import { loadDeploymentEnv, resolveDeploymentEnvironment } from './server/envLoader';
 import { buildWindowsDeploymentGuides } from './server/deploymentGuides';
+import { WebsiteTranslationError, WebsiteTranslationService } from './server/websiteTranslation';
 import {
   getFirebaseAdminStatus,
   initializeFirebaseAdmin,
@@ -54,6 +55,7 @@ const BERKAS_INDEKS = path.resolve(__dirname, 'index.html');
 const rbacStore = new ServerRbacStore(DATA_DIR);
 const dataSyncStore = new ServerDataSyncStore(DATA_DIR);
 const dbDriverManager = new ServerDbDriverManager(DATA_DIR, __dirname);
+const websiteTranslationService = new WebsiteTranslationService(DATA_DIR);
 const { attachAuth, requireAuth, requirePermission } = createRbacMiddleware(rbacStore);
 
 function readFirebaseClientConfig(): FirebaseClientConfig | null {
@@ -1421,6 +1423,45 @@ async function startServer() {
     const snapshot = bacaSnapshot();
     if (!snapshot) return res.status(404).json({ pesan: 'Belum ada konten situs yang diterbitkan.' });
     res.set('Cache-Control', 'no-store').json({ config: snapshot });
+  });
+
+  const translationHits = new Map<string, { count: number; reset: number }>();
+  const TRANSLATION_WINDOW_MS = 15 * 60 * 1000;
+  const TRANSLATION_MAX_HITS = 20;
+  app.get('/api/website/translation/en', async (req, res) => {
+    const now = Date.now();
+    const ip = getClientIp(req);
+    const current = translationHits.get(ip);
+    if (!current || current.reset <= now) {
+      translationHits.set(ip, { count: 1, reset: now + TRANSLATION_WINDOW_MS });
+    } else if (current.count >= TRANSLATION_MAX_HITS) {
+      return res.status(429).json({
+        error: 'WEBSITE_TRANSLATION_RATE_LIMITED',
+        message: 'Terlalu banyak permintaan terjemahan. Coba lagi beberapa menit.'
+      });
+    } else {
+      current.count += 1;
+    }
+
+    const snapshot = bacaSnapshot();
+    if (!snapshot) return res.status(404).json({ error: 'WEBSITE_NOT_PUBLISHED', message: 'Belum ada konten situs yang diterbitkan.' });
+    try {
+      const translated = await websiteTranslationService.translate(snapshot);
+      return res.set('Cache-Control', 'no-store').json({
+        config: translated.config,
+        sourceHash: translated.sourceHash,
+        sourceVersion: snapshot.lastModifiedAt
+      });
+    } catch (error) {
+      if (error instanceof WebsiteTranslationError) {
+        return res.status(error.statusCode).json({ error: error.code, message: error.message });
+      }
+      console.error('[website-translation] Gagal menerjemahkan snapshot situs.', error);
+      return res.status(500).json({
+        error: 'WEBSITE_TRANSLATION_FAILED',
+        message: 'Terjadi kesalahan saat menyiapkan terjemahan situs.'
+      });
+    }
   });
 
   // Salinan statis untuk hosting tanpa Node (jalur cadangan pada PublicWebsiteApp).

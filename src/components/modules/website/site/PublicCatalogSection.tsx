@@ -34,6 +34,7 @@ import {
   slugifyWebsite
 } from '../../../../utils/website';
 import { IDENTITAS_RUJUKAN } from '../../../../data/websiteRujukan';
+import { translateWebsiteUi, useWebsiteLanguage } from './WebsiteLanguage';
 
 export interface ItemRfqPublik {
   produkId: string;
@@ -49,6 +50,7 @@ export interface ItemRfqPublik {
 
 export interface PropsKatalogProduk {
   cfg: KonfigurasiSitus;
+  cfgAsli?: KonfigurasiSitus;
   ke: (halaman: HalamanWebsite, kategoriKey?: string) => void;
   /** Jumlah kartu produk maksimal (dibatasi di beranda, penuh di halaman Produk). */
   batasProduk?: number;
@@ -114,7 +116,7 @@ function ikonKategoriAlkes(kategori: string) {
  * Perkaya daftar produk situs secara real-time dengan status stok gudang FEFO, recall, izin edar,
  * serta skema/kontrak harga terkini dari modul operasional, tanpa mengabaikan visibilitas CMS Website.
  */
-function useProdukKatalogPublik(cfg: KonfigurasiSitus): ProdukWebsite[] {
+function useProdukKatalogPublik(cfg: KonfigurasiSitus, cfgAsli: KonfigurasiSitus): ProdukWebsite[] {
   const [versiData, setVersiData] = useState(0);
 
   useEffect(() => {
@@ -125,9 +127,27 @@ function useProdukKatalogPublik(cfg: KonfigurasiSitus): ProdukWebsite[] {
 
   return useMemo(() => {
     void versiData;
-    const terselaraskan = selaraskanKontenOperasional(cfg, db.getSumberOperasionalWebsite());
-    return terselaraskan.produk.item.filter((p) => p.isActive);
-  }, [cfg, versiData]);
+    const terselaraskan = selaraskanKontenOperasional(cfgAsli, db.getSumberOperasionalWebsite());
+    const teksAsli = new Map(cfgAsli.produk.item.map((produk) => [produk.id, produk]));
+    const teksTerjemahan = new Map(cfg.produk.item.map((produk) => [produk.id, produk]));
+    return terselaraskan.produk.item
+      .filter((produk) => produk.isActive)
+      .map((produk) => {
+        const asli = teksAsli.get(produk.id);
+        const terjemahan = teksTerjemahan.get(produk.id);
+        if (!asli || !terjemahan) return produk;
+        const spesifikasiBelumBerubah = produk.spesifikasi === asli.spesifikasi;
+        const poinJualBelumBerubah =
+          produk.poinJual.length === asli.poinJual.length &&
+          produk.poinJual.every((poin, index) => poin === asli.poinJual[index]);
+        return {
+          ...produk,
+          kategori: terjemahan.kategori,
+          spesifikasi: spesifikasiBelumBerubah ? terjemahan.spesifikasi : produk.spesifikasi,
+          poinJual: poinJualBelumBerubah ? terjemahan.poinJual : produk.poinJual
+        };
+      });
+  }, [cfg, cfgAsli, versiData]);
 }
 
 function cariLogoMerek(cfg: KonfigurasiSitus, produsen: string): string | undefined {
@@ -217,6 +237,7 @@ function VisualProduk({
 
 export function SeksiProdukPublik({
   cfg,
+  cfgAsli = cfg,
   ke,
   batasProduk,
   kategoriAktif,
@@ -228,7 +249,9 @@ export function SeksiProdukPublik({
   onHapusRfq,
   onAjukanPenawaranLangsung
 }: PropsKatalogProduk) {
-  const semua = useProdukKatalogPublik(cfg);
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
+  const semua = useProdukKatalogPublik(cfg, cfgAsli);
   const modeRingkas = typeof batasProduk === 'number';
 
   const kategoriTersedia = useMemo(() => {
@@ -421,7 +444,7 @@ export function SeksiProdukPublik({
               onClick={() => ke('produk', kategori === 'Semua' ? undefined : kategori)}
               className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-full bg-white text-slate-800 hover:bg-slate-100 border border-slate-300 text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
             >
-              Telusuri Seluruh Katalog ({semua.length})
+              {t('Telusuri Seluruh Katalog')} ({semua.length})
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : (
@@ -433,7 +456,7 @@ export function SeksiProdukPublik({
                 className="inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
               >
                 <FileText className="w-3.5 h-3.5 text-[var(--brand)]" />
-                Unduh Katalog PDF
+                {t('Unduh Katalog PDF')}
               </a>
               <a
                 href={IDENTITAS_RUJUKAN.tautanDaftarHarga}
@@ -442,7 +465,7 @@ export function SeksiProdukPublik({
                 className="inline-flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-full bg-white border border-slate-300 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-[var(--brand)]" />
-                Price List Resmi
+                {t('Price List Resmi')}
               </a>
             </div>
           )}
@@ -452,24 +475,24 @@ export function SeksiProdukPublik({
         {!modeRingkas && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Total Alat Kesehatan</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{t('Total Alat Kesehatan')}</p>
               <p className="text-xl font-bold text-slate-900 mt-0.5 tabular-nums">{statistikKatalog.totalProduk}</p>
-              <p className="text-2xs text-slate-500 mt-0.5">Unit elektromedik, instrumen & BMHP</p>
+              <p className="text-2xs text-slate-500 mt-0.5">{t('Unit elektromedik, instrumen & BMHP')}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Grup Katalog</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{t('Grup Katalog')}</p>
               <p className="text-xl font-bold text-[var(--brand)] mt-0.5 tabular-nums">{statistikKatalog.totalGrup}</p>
-              <p className="text-2xs text-slate-500 mt-0.5">Dari Disposable hingga X-Ray System</p>
+              <p className="text-2xs text-slate-500 mt-0.5">{t('Dari Disposable hingga X-Ray System')}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Merek & Prinsipal</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{t('Merek & Prinsipal')}</p>
               <p className="text-xl font-bold text-slate-900 mt-0.5 tabular-nums">{statistikKatalog.totalMerek}</p>
-              <p className="text-2xs text-slate-500 mt-0.5">Merek dagang sendiri & agen resmi</p>
+              <p className="text-2xs text-slate-500 mt-0.5">{t('Merek dagang sendiri & agen resmi')}</p>
             </div>
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Stok Siap Kirim (FEFO)</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{t('Stok Siap Kirim (FEFO)')}</p>
               <p className="text-xl font-bold text-emerald-700 mt-0.5 tabular-nums">{statistikKatalog.siapKirim}</p>
-              <p className="text-2xs text-slate-500 mt-0.5">Tersedia di gudang distribusi CDAKB</p>
+              <p className="text-2xs text-slate-500 mt-0.5">{t('Tersedia di gudang distribusi CDAKB')}</p>
             </div>
           </div>
         )}
@@ -484,15 +507,15 @@ export function SeksiProdukPublik({
                   type="search"
                   value={kataKunci}
                   onChange={(e) => setKataKunci(e.target.value)}
-                  placeholder="Cari nama alat kesehatan, tipe/model, merek prinsipal, nomor izin edar (AKL/AKD), atau spesifikasi…"
-                  aria-label="Cari alat kesehatan"
+                  placeholder={t('Cari nama alat kesehatan, tipe/model, merek prinsipal, nomor izin edar (AKL/AKD), atau spesifikasi…')}
+                  aria-label={t('Cari alat kesehatan')}
                   className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] outline-none"
                 />
                 {kataKunci && (
                   <button
                     type="button"
                     onClick={() => setKataKunci('')}
-                    aria-label="Bersihkan kata kunci"
+                    aria-label={t('Bersihkan kata kunci')}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -506,10 +529,10 @@ export function SeksiProdukPublik({
                   <select
                     value={merekFilter}
                     onChange={(e) => setMerekFilter(e.target.value)}
-                    aria-label="Filter merek atau prinsipal"
+                    aria-label={t('Filter merek atau prinsipal')}
                     className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
                   >
-                    <option value="Semua">Semua Merek ({daftarMerek.length})</option>
+                    <option value="Semua">{t('Semua Merek')} ({daftarMerek.length})</option>
                     {daftarMerek.map((m) => (
                       <option key={m} value={m}>
                         {m}
@@ -523,35 +546,35 @@ export function SeksiProdukPublik({
                   <select
                     value={ketersediaanFilter}
                     onChange={(e) => setKetersediaanFilter(e.target.value as FilterKetersediaan)}
-                    aria-label="Filter status ketersediaan"
+                    aria-label={t('Filter status ketersediaan')}
                     className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
                   >
-                    <option value="semua">Semua Status</option>
-                    <option value="stok_tersedia">Stok Gudang Tersedia</option>
-                    <option value="nie_aktif">NIE Kemenkes Aktif</option>
-                    <option value="harga_tercantum">Harga Katalog Tercantum</option>
+                    <option value="semua">{t('Semua Status')}</option>
+                    <option value="stok_tersedia">{t('Stok Gudang Tersedia')}</option>
+                    <option value="nie_aktif">{t('NIE Kemenkes Aktif')}</option>
+                    <option value="harga_tercantum">{t('Harga Katalog Tercantum')}</option>
                   </select>
                 </label>
 
                 <label className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700">
-                  <span className="text-slate-400">Urut:</span>
+                  <span className="text-slate-400">{t('Urut')}:</span>
                   <select
                     value={urutan}
                     onChange={(e) => setUrutan(e.target.value as UrutanProduk)}
-                    aria-label="Urutkan produk"
+                    aria-label={t('Urutkan produk')}
                     className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
                   >
-                    <option value="unggulan">Urutan Katalog</option>
-                    <option value="stok_terbanyak">Stok Siap Kirim</option>
-                    <option value="nama_az">Nama Produk (A–Z)</option>
-                    <option value="merek_az">Merek / Prinsipal</option>
+                    <option value="unggulan">{t('Urutan Katalog')}</option>
+                    <option value="stok_terbanyak">{t('Stok Siap Kirim')}</option>
+                    <option value="nama_az">{t('Nama Produk (A–Z)')}</option>
+                    <option value="merek_az">{t('Merek / Prinsipal')}</option>
                   </select>
                 </label>
 
                 <div
                   className="inline-flex items-center rounded-xl border border-slate-300 bg-slate-50 p-0.5"
                   role="group"
-                  aria-label="Mode tampilan katalog"
+                  aria-label={t('Mode tampilan katalog')}
                 >
                   <button
                     type="button"
@@ -561,7 +584,7 @@ export function SeksiProdukPublik({
                     }`}
                   >
                     <LayoutGrid className="w-3.5 h-3.5" />
-                    Kartu
+                    {t('Kartu')}
                   </button>
                   <button
                     type="button"
@@ -571,7 +594,7 @@ export function SeksiProdukPublik({
                     }`}
                   >
                     <List className="w-3.5 h-3.5" />
-                    Tabel
+                    {t('Tabel')}
                   </button>
                 </div>
               </div>
@@ -589,7 +612,7 @@ export function SeksiProdukPublik({
                   : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'
               }`}
             >
-              Semua Grup
+              {t('Semua Grup')}
               <span className={`tabular-nums text-2xs ${kategori === 'Semua' ? 'text-slate-300' : 'text-slate-400'}`}>
                 ({semua.length})
               </span>
@@ -619,9 +642,9 @@ export function SeksiProdukPublik({
           {!modeRingkas && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <p className="tabular-nums">
-                Menampilkan <strong className="text-slate-800">{hasilFilter.length}</strong> dari{' '}
-                <strong className="text-slate-800">{semua.length}</strong> alat kesehatan
-                {kategori !== 'Semua' ? ` pada grup "${kategori}"` : ''}
+                {t('Menampilkan')} <strong className="text-slate-800">{hasilFilter.length}</strong> {t('dari')}{' '}
+                <strong className="text-slate-800">{semua.length}</strong> {t('alat kesehatan')}
+                {kategori !== 'Semua' ? ` ${t('pada grup')} "${kategori}"` : ''}
               </p>
               {adaFilterAktif && (
                 <button
@@ -629,7 +652,7 @@ export function SeksiProdukPublik({
                   onClick={resetSemuaFilter}
                   className="text-xs font-semibold text-[var(--brand)] hover:text-[var(--brand)] cursor-pointer"
                 >
-                  Atur ulang filter
+                  {t('Atur ulang filter')}
                 </button>
               )}
             </div>
@@ -639,9 +662,9 @@ export function SeksiProdukPublik({
         {/* Kondisi Kosong */}
         {daftarTampil.length === 0 ? (
           <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-8 text-center">
-            <p className="text-sm font-bold text-slate-900">Tidak ada produk yang cocok dengan pencarian Anda</p>
+            <p className="text-sm font-bold text-slate-900">{t('Tidak ada produk yang cocok dengan pencarian Anda')}</p>
             <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
-              Coba ubah kata kunci, pilih grup katalog lain, atau kirimkan spesifikasi kebutuhan instansi Anda secara langsung kepada tim penjualan REMEDI.
+              {t('Coba ubah kata kunci, pilih grup katalog lain, atau kirimkan spesifikasi kebutuhan instansi Anda secara langsung kepada tim penjualan REMEDI.')}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <button
@@ -649,14 +672,14 @@ export function SeksiProdukPublik({
                 onClick={resetSemuaFilter}
                 className="px-4 py-2 rounded-full border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 cursor-pointer"
               >
-                Tampilkan Semua Produk
+                {t('Tampilkan Semua Produk')}
               </button>
               <button
                 type="button"
                 onClick={() => ke('kontak')}
                 className="px-4 py-2 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-xs font-semibold text-white cursor-pointer"
               >
-                Konsultasikan Kebutuhan Khusus
+                {t('Konsultasikan Kebutuhan Khusus')}
               </button>
             </div>
           </div>
@@ -667,13 +690,13 @@ export function SeksiProdukPublik({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-2xs font-bold uppercase tracking-wider text-slate-500">
-                    <th className="py-3 px-4">Alat Kesehatan & Model</th>
-                    <th className="py-3 px-4">Grup & Klasifikasi</th>
-                    <th className="py-3 px-4">Merek / Asal</th>
-                    <th className="py-3 px-4">Registrasi Kemenkes RI</th>
-                    <th className="py-3 px-4">Ketersediaan & Zona</th>
-                    <th className="py-3 px-4">Referensi Harga</th>
-                    <th className="py-3 px-4 text-right">Aksi</th>
+                    <th className="py-3 px-4">{t('Alat Kesehatan & Model')}</th>
+                    <th className="py-3 px-4">{t('Grup & Klasifikasi')}</th>
+                    <th className="py-3 px-4">{t('Merek / Asal')}</th>
+                    <th className="py-3 px-4">{t('Registrasi Kemenkes RI')}</th>
+                    <th className="py-3 px-4">{t('Ketersediaan & Zona')}</th>
+                    <th className="py-3 px-4">{t('Referensi Harga')}</th>
+                    <th className="py-3 px-4 text-right">{t('Aksi')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
@@ -695,7 +718,7 @@ export function SeksiProdukPublik({
                         <td className="py-3.5 px-4 align-top whitespace-nowrap">
                           <p className="font-semibold text-[var(--brand)]">{p.kategori}</p>
                           <p className="text-2xs text-slate-500 mt-0.5">
-                            {p.kategoriRegulasi ? `${p.kategoriRegulasi}` : 'Lini Katalog REMEDI'}
+                            {p.kategoriRegulasi ? `${p.kategoriRegulasi}` : t('Lini Katalog REMEDI')}
                             {p.kelasRisiko && p.kelasRisiko !== '-' ? ` · ${p.kelasRisiko}` : ''}
                           </p>
                         </td>
@@ -716,23 +739,23 @@ export function SeksiProdukPublik({
                               </p>
                             </>
                           ) : (
-                            <p className="text-2xs text-slate-500">Verifikasi Register RA & PJT</p>
+                            <p className="text-2xs text-slate-500">{t('Verifikasi Register RA & PJT')}</p>
                           )}
                         </td>
                         <td className="py-3.5 px-4 align-top tabular-nums">
                           {p.statusIzinEdar === 'Perpanjangan' || p.statusIzinEdar === 'Kedaluwarsa' ? (
-                            <p className="text-2xs font-semibold text-amber-700">Menunggu rilis NIE</p>
+                            <p className="text-2xs font-semibold text-amber-700">{t('Menunggu rilis NIE')}</p>
                           ) : typeof p.stokTersedia === 'number' && p.stokTersedia > 0 ? (
                             <p className="font-semibold text-emerald-700 whitespace-nowrap">
-                              {p.stokTersedia} {p.satuan || 'Unit'} siap kirim
+                              {p.stokTersedia} {p.satuan || 'Unit'} {t('siap kirim')}
                             </p>
                           ) : (
-                            <p className="text-slate-600">Konfirmasi stok / PO</p>
+                            <p className="text-slate-600">{t('Konfirmasi stok / PO')}</p>
                           )}
                           {p.zonaSuhu && <p className="text-2xs text-slate-500 mt-0.5">{p.zonaSuhu}</p>}
                         </td>
                         <td className="py-3.5 px-4 align-top tabular-nums">
-                          <p className="font-semibold text-slate-800">{p.hargaTayang || 'Sesuai Price List'}</p>
+                          <p className="font-semibold text-slate-800">{p.hargaTayang || t('Sesuai Price List')}</p>
                         </td>
                         <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
@@ -741,7 +764,7 @@ export function SeksiProdukPublik({
                               onClick={() => setProdukDetail(p)}
                               className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 cursor-pointer"
                             >
-                              Detail
+                              {t('Detail')}
                             </button>
                             <button
                               type="button"
@@ -788,7 +811,7 @@ export function SeksiProdukPublik({
                     type="button"
                     onClick={() => setProdukDetail(p)}
                     className="text-left block w-full cursor-pointer"
-                    aria-label={`Lihat spesifikasi ${p.nama}`}
+                    aria-label={`${t('Lihat spesifikasi')} ${p.nama}`}
                   >
                     <VisualProduk produk={p} cfg={cfg} />
                   </button>
@@ -819,7 +842,7 @@ export function SeksiProdukPublik({
 
                     <dl className="mt-auto pt-3.5 border-t border-slate-100 space-y-1.5 text-2xs text-slate-500">
                       <div className="flex items-baseline justify-between gap-2">
-                        <dt className="shrink-0">Registrasi</dt>
+                        <dt className="shrink-0">{t('Registrasi')}</dt>
                         {nieAda ? (
                           <dd className="font-mono text-slate-800 text-right truncate">
                             {p.nomorIzinEdar}{' '}
@@ -832,27 +855,27 @@ export function SeksiProdukPublik({
                             </span>
                           </dd>
                         ) : (
-                          <dd className="text-slate-600 text-right">Verifikasi Register RA</dd>
+                          <dd className="text-slate-600 text-right">{t('Verifikasi Register RA')}</dd>
                         )}
                       </div>
 
                       <div className="flex items-baseline justify-between gap-2 tabular-nums">
-                        <dt className="shrink-0">Ketersediaan</dt>
+                        <dt className="shrink-0">{t('Ketersediaan')}</dt>
                         {p.statusIzinEdar === 'Perpanjangan' || p.statusIzinEdar === 'Kedaluwarsa' ? (
-                          <dd className="text-amber-700 font-semibold text-right">Perpanjangan NIE berjalan</dd>
+                          <dd className="text-amber-700 font-semibold text-right">{t('Perpanjangan NIE berjalan')}</dd>
                         ) : typeof p.stokTersedia === 'number' && p.stokTersedia > 0 ? (
                           <dd className="text-emerald-700 font-semibold text-right">
-                            Siap kirim · {p.stokTersedia} {p.satuan || 'Unit'}
+                            {t('Siap kirim')} · {p.stokTersedia} {p.satuan || 'Unit'}
                           </dd>
                         ) : (
-                          <dd className="text-slate-600 text-right">Pemesanan B2B / Konfirmasi</dd>
+                          <dd className="text-slate-600 text-right">{t('Pemesanan B2B / Konfirmasi')}</dd>
                         )}
                       </div>
 
                       <div className="flex items-baseline justify-between gap-2 tabular-nums">
-                        <dt className="shrink-0">Referensi Harga</dt>
+                        <dt className="shrink-0">{t('Referensi Harga')}</dt>
                         <dd className="text-slate-800 font-semibold text-right truncate">
-                          {p.hargaTayang || 'Sesuai Daftar Harga Resmi'}
+                          {p.hargaTayang || t('Sesuai Daftar Harga Resmi')}
                         </dd>
                       </div>
                     </dl>
@@ -863,7 +886,7 @@ export function SeksiProdukPublik({
                         onClick={() => setProdukDetail(p)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
                       >
-                        Spesifikasi
+                        {t('Spesifikasi')}
                       </button>
                       <button
                         type="button"
@@ -882,7 +905,7 @@ export function SeksiProdukPublik({
                         ) : (
                           <>
                             <Plus className="w-3.5 h-3.5" />
-                            Tambah RFQ
+                            {t('Tambah RFQ')}
                           </>
                         )}
                       </button>
@@ -899,10 +922,10 @@ export function SeksiProdukPublik({
           <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-slate-900">
-                Butuh mencari tipe spesifikasi, merek prinsipal, atau status stok gudang lainnya?
+                {t('Butuh mencari tipe spesifikasi, merek prinsipal, atau status stok gudang lainnya?')}
               </p>
               <p className="text-xs text-slate-600 mt-0.5">
-                Buka halaman katalog penuh untuk memfilter {semua.length} produk, melihat tabel spesifikasi pengadaan, dan menyusun daftar permintaan penawaran (RFQ).
+                {t('Buka halaman katalog penuh untuk memfilter')} {semua.length} {t('produk, melihat tabel spesifikasi pengadaan, dan menyusun daftar permintaan penawaran (RFQ).')}
               </p>
             </div>
             <button
@@ -910,7 +933,7 @@ export function SeksiProdukPublik({
               onClick={() => ke('produk', kategori === 'Semua' ? undefined : kategori)}
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs font-semibold transition-colors cursor-pointer shrink-0"
             >
-              Buka Katalog Lengkap
+              {t('Buka Katalog Lengkap')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -931,7 +954,7 @@ export function SeksiProdukPublik({
                       <span className="tabular-nums text-[color-mix(in_srgb,var(--brand)_65%,white)]">{totalUnitRfq} item/unit</span>
                     </p>
                     <p className="text-2xs text-slate-300">
-                      Produk terpilih akan otomatis dimuat ke formulir penawaran resmi tim komersial & PJT.
+                      {t('Produk terpilih akan otomatis dimuat ke formulir penawaran resmi tim komersial & PJT.')}
                     </p>
                   </div>
                 </div>
@@ -942,14 +965,14 @@ export function SeksiProdukPublik({
                     onClick={() => setPanelRfqTerbuka((b) => !b)}
                     className="whitespace-nowrap px-3 py-2 rounded-full border border-slate-600 hover:bg-slate-800 text-xs font-semibold text-slate-200 cursor-pointer"
                   >
-                    {panelRfqTerbuka ? 'Tutup Rincian' : 'Rincian Item'}
+                    {panelRfqTerbuka ? t('Tutup Rincian') : t('Rincian Item')}
                   </button>
                   <button
                     type="button"
                     onClick={() => ke('kontak')}
                     className="inline-flex items-center gap-1.5 whitespace-nowrap px-4 py-2 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_75%,black)] text-slate-950 text-xs font-bold transition-colors cursor-pointer"
                   >
-                    Lanjut Ajukan Penawaran
+                    {t('Lanjut Ajukan Penawaran')}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -974,7 +997,7 @@ export function SeksiProdukPublik({
                             <button
                               type="button"
                               onClick={() => onUbahJumlahRfq(item.produkId, Math.max(1, item.jumlah - 1))}
-                              aria-label="Kurangi jumlah"
+                              aria-label={t('Kurangi jumlah')}
                               className="p-1.5 text-slate-300 hover:text-white cursor-pointer"
                             >
                               <Minus className="w-3 h-3" />
@@ -985,7 +1008,7 @@ export function SeksiProdukPublik({
                             <button
                               type="button"
                               onClick={() => onUbahJumlahRfq(item.produkId, item.jumlah + 1)}
-                              aria-label="Tambah jumlah"
+                              aria-label={t('Tambah jumlah')}
                               className="p-1.5 text-slate-300 hover:text-white cursor-pointer"
                             >
                               <Plus className="w-3 h-3" />
@@ -1050,6 +1073,8 @@ function ModalDetailProduk({
   onTambahRfq: (jumlah: number) => void;
   onAjukanLangsung: (jumlah: number) => void;
 }) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
   const [jumlah, setJumlah] = useState<number>(jumlahRfqSaatIni ?? 1);
   const [ditambahkan, setDitambahkan] = useState(false);
   const nieAda = adalahNieTerdaftar(produk.nomorIzinEdar);
@@ -1091,12 +1116,12 @@ function ModalDetailProduk({
             <h3 id="judul-detail-produk" className="text-lg font-bold text-slate-900 mt-0.5 leading-snug">
               {produk.nama}
             </h3>
-            <p className="text-xs font-mono text-slate-500 mt-0.5">Model / Tipe: {produk.tipeModel}</p>
+            <p className="text-xs font-mono text-slate-500 mt-0.5">{t('Model / Tipe')}: {produk.tipeModel}</p>
           </div>
           <button
             type="button"
             onClick={onTutup}
-            aria-label="Tutup detail produk"
+            aria-label={t('Tutup detail produk')}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
@@ -1114,17 +1139,17 @@ function ModalDetailProduk({
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
               <div className="flex items-center gap-2 font-bold text-slate-800">
                 <BadgeCheck className="w-4 h-4 text-[var(--brand)] shrink-0" />
-                Informasi Kepatuhan & Distribusi
+                {t('Informasi Kepatuhan & Distribusi')}
               </div>
               <dl className="space-y-1.5 text-2xs">
                 <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">Nomor Izin Edar</dt>
+                  <dt className="text-slate-500">{t('Nomor Izin Edar')}</dt>
                   <dd className="font-mono font-semibold text-slate-800 text-right">
-                    {nieAda ? produk.nomorIzinEdar : 'Terdaftar pada Register RA'}
+                    {nieAda ? produk.nomorIzinEdar : t('Terdaftar pada Register RA')}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">Status Registrasi</dt>
+                  <dt className="text-slate-500">{t('Status Registrasi')}</dt>
                   <dd
                     className={`font-semibold text-right ${
                       produk.statusIzinEdar === 'Aktif'
@@ -1134,31 +1159,31 @@ function ModalDetailProduk({
                           : 'text-amber-700'
                     }`}
                   >
-                    {produk.statusIzinEdar}
+                    {t(produk.statusIzinEdar)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">Produsen / Prinsipal</dt>
+                  <dt className="text-slate-500">{t('Produsen / Prinsipal')}</dt>
                   <dd className="text-slate-800 font-semibold text-right">{produk.produsen}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">Negara Asal</dt>
+                  <dt className="text-slate-500">{t('Negara Asal')}</dt>
                   <dd className="text-slate-700 text-right">{produk.negaraAsal}</dd>
                 </div>
                 {produk.zonaSuhu && (
                   <div className="flex justify-between gap-2">
-                    <dt className="text-slate-500">Zona Penyimpanan</dt>
+                    <dt className="text-slate-500">{t('Zona Penyimpanan')}</dt>
                     <dd className="text-slate-700 text-right">{produk.zonaSuhu}</dd>
                   </div>
                 )}
                 <div className="flex justify-between gap-2 tabular-nums">
-                  <dt className="text-slate-500">Stok Bebas Gudang</dt>
+                  <dt className="text-slate-500">{t('Stok Bebas Gudang')}</dt>
                   <dd className="font-semibold text-slate-800 text-right">
                     {produk.statusIzinEdar === 'Perpanjangan' || produk.statusIzinEdar === 'Kedaluwarsa'
-                      ? 'Ditahan selama perpanjangan NIE'
+                      ? t('Ditahan selama perpanjangan NIE')
                       : typeof produk.stokTersedia === 'number' && produk.stokTersedia > 0
-                        ? `${produk.stokTersedia} ${produk.satuan || 'Unit'} (Alokasi FEFO)`
-                        : 'Sesuai jadwal PO / Inden'}
+                        ? `${produk.stokTersedia} ${produk.satuan || 'Unit'} (${t('Alokasi FEFO')})`
+                        : t('Sesuai jadwal PO / Inden')}
                   </dd>
                 </div>
               </dl>
@@ -1166,7 +1191,7 @@ function ModalDetailProduk({
 
             {/* Berkas Pendukung */}
             <div className="space-y-2">
-              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">Dokumen & Sumber Daya</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{t('Dokumen & Sumber Daya')}</p>
               <div className="flex flex-wrap gap-2">
                 {adalahUrlEksternal(produk.tautanBrosur) ? (
                   <a
@@ -1176,12 +1201,12 @@ function ModalDetailProduk({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-[var(--brand)]"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    Buka Katalog / Brosur
+                    {t('Buka Katalog / Brosur')}
                   </a>
                 ) : produk.tautanBrosur ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-2xs text-slate-600">
                     <FileText className="w-3.5 h-3.5 text-[var(--brand)] shrink-0" />
-                    Brosur teknis dilampirkan bersama penawaran resmi
+                    {t('Brosur teknis dilampirkan bersama penawaran resmi')}
                   </span>
                 ) : null}
 
@@ -1193,7 +1218,7 @@ function ModalDetailProduk({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700"
                   >
                     <ClipboardList className="w-3.5 h-3.5" />
-                    Video Demonstrasi
+                    {t('Video Demonstrasi')}
                   </a>
                 )}
 
@@ -1204,7 +1229,7 @@ function ModalDetailProduk({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  Daftar Harga REMEDI
+                  {t('Daftar Harga REMEDI')}
                 </a>
               </div>
             </div>
@@ -1212,23 +1237,23 @@ function ModalDetailProduk({
 
           <div className="flex flex-col">
             <div className="bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] rounded-xl px-4 py-3">
-              <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">Referensi Harga & Pengadaan</p>
+              <p className="text-2xs font-bold uppercase tracking-wider text-[var(--brand)]">{t('Referensi Harga & Pengadaan')}</p>
               <p className="text-base font-bold text-slate-900 mt-0.5 tabular-nums">
-                {produk.hargaTayang || 'Sesuai Daftar Harga Resmi / Kontrak'}
+                {produk.hargaTayang || t('Sesuai Daftar Harga Resmi / Kontrak')}
               </p>
               <p className="text-2xs text-slate-600 mt-1">
-                Melayani pengadaan RS Pemerintah & Swasta melalui e-Katalog LKPP, LPSE, maupun Purchase Order B2B.
+                {t('Melayani pengadaan RS Pemerintah & Swasta melalui e-Katalog LKPP, LPSE, maupun Purchase Order B2B.')}
               </p>
             </div>
 
             <div className="mt-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Spesifikasi Teknis</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('Spesifikasi Teknis')}</h4>
               <p className="text-xs sm:text-sm text-slate-700 mt-1.5 leading-relaxed">{produk.spesifikasi}</p>
             </div>
 
             {produk.poinJual && produk.poinJual.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Keunggulan Utama</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('Keunggulan Utama')}</h4>
                 <ul className="mt-2 space-y-1.5">
                   {produk.poinJual.map((poin) => (
                     <li key={poin} className="text-xs text-slate-700 flex items-start gap-2">
@@ -1242,7 +1267,7 @@ function ModalDetailProduk({
 
             {produk.tanyaJawabTeknis && produk.tanyaJawabTeknis.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-200">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanya Jawab Teknis</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('Tanya Jawab Teknis')}</h4>
                 <div className="mt-2 space-y-2.5">
                   {produk.tanyaJawabTeknis.map((tj) => (
                     <div key={tj.pertanyaan} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
@@ -1258,12 +1283,12 @@ function ModalDetailProduk({
             <div className="mt-auto pt-5 border-t border-slate-200">
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <span>Estimasi Kebutuhan:</span>
+                  <span>{t('Estimasi Kebutuhan:')}</span>
                   <span className="inline-flex items-center rounded-xl border border-slate-300 bg-slate-50">
                     <button
                       type="button"
                       onClick={() => setJumlah((j) => Math.max(1, j - 1))}
-                      aria-label="Kurangi jumlah unit"
+                      aria-label={t('Kurangi jumlah unit')}
                       className="p-2 text-slate-600 hover:text-slate-900 cursor-pointer"
                     >
                       <Minus className="w-3.5 h-3.5" />
@@ -1273,13 +1298,13 @@ function ModalDetailProduk({
                       min={1}
                       value={jumlah}
                       onChange={(e) => setJumlah(Math.max(1, Number(e.target.value) || 1))}
-                      aria-label="Jumlah unit"
+                      aria-label={t('Jumlah unit')}
                       className="w-14 text-center bg-transparent text-xs font-bold text-slate-900 tabular-nums outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setJumlah((j) => j + 1)}
-                      aria-label="Tambah jumlah unit"
+                      aria-label={t('Tambah jumlah unit')}
                       className="p-2 text-slate-600 hover:text-slate-900 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -1298,12 +1323,12 @@ function ModalDetailProduk({
                   {ditambahkan ? (
                     <>
                       <Check className="w-4 h-4" />
-                      Tersimpan di Daftar RFQ
+                      {t('Tersimpan di Daftar RFQ')}
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4" />
-                      Masukkan ke Daftar RFQ
+                      {t('Masukkan ke Daftar RFQ')}
                     </>
                   )}
                 </button>
@@ -1313,7 +1338,7 @@ function ModalDetailProduk({
                   className="flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   <Handshake className="w-4 h-4" />
-                  Ajukan Penawaran Sekarang
+                  {t('Ajukan Penawaran Sekarang')}
                 </button>
               </div>
             </div>

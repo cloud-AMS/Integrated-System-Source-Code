@@ -33,11 +33,13 @@ import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite, ProspekAlkes, TautanWe
 import { db } from '../../../../services/pocketbase';
 import { cocokKategoriProduk, hrefTautan, selesaikanGambar } from '../../../../utils/website';
 import { SeksiProdukPublik, type ItemRfqPublik } from './PublicCatalogSection';
+import { translateWebsiteUi, useWebsiteLanguage } from './WebsiteLanguage';
 
 export type { ItemRfqPublik };
 
 export interface PropsSeksi {
   cfg: KonfigurasiSitus;
+  cfgAsli?: KonfigurasiSitus;
   ke: (halaman: HalamanWebsite, kategoriKey?: string) => void;
   /** jumlah kartu produk maksimal (dibatasi di beranda, penuh di halaman Produk) */
   batasProduk?: number;
@@ -100,7 +102,8 @@ export function TombolSitus({
   varian?: 'isi' | 'garis' | 'terang';
   kecil?: boolean;
 }) {
-  const label = teks || tautan?.nilai || 'Selengkapnya';
+  const bahasa = useWebsiteLanguage();
+  const label = teks || tautan?.nilai || translateWebsiteUi('Selengkapnya', bahasa);
   const kelas = {
     isi: 'bg-[var(--brand)] text-white hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] border border-[var(--brand)]',
     garis: 'bg-white text-slate-800 hover:bg-slate-100 border border-slate-300',
@@ -214,6 +217,8 @@ export function SeksiHero({ cfg, ke }: PropsSeksi) {
 }
 
 export function SeksiSlide({ cfg, ke }: PropsSeksi) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
   const daftar = cfg.slide.item.filter((s) => s.isActive);
   const [indeks, setIndeks] = useState(0);
 
@@ -259,7 +264,7 @@ export function SeksiSlide({ cfg, ke }: PropsSeksi) {
               <button
                 key={s.id}
                 type="button"
-                aria-label={`Tampilkan banner ${i + 1}`}
+                aria-label={`${t('Tampilkan banner')} ${i + 1}`}
                 onClick={() => setIndeks(i)}
                 className={`h-2 rounded-full transition-all cursor-pointer ${i === indeks ? 'w-6 bg-[var(--brand)]' : 'w-2 bg-slate-300'}`}
               />
@@ -297,6 +302,8 @@ export function SeksiKepercayaan({ cfg }: { cfg: KonfigurasiSitus }) {
 }
 
 export function SeksiSolusi({ cfg, ke }: PropsSeksi) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
   const daftar = cfg.solusi.item.filter((s) => s.isActive);
   const produkAktif = useMemo(() => cfg.produk.item.filter((p) => p.isActive), [cfg.produk.item]);
   if (!cfg.solusi.isActive || daftar.length === 0) return null;
@@ -330,7 +337,7 @@ export function SeksiSolusi({ cfg, ke }: PropsSeksi) {
                 <div className="flex items-center justify-between gap-2">
                   <Sparkles className="w-5 h-5 text-[var(--brand)] shrink-0" />
                   <span className="text-2xs font-semibold tabular-nums text-slate-500">
-                    {hitunganProduk} produk
+                    {hitunganProduk} {t('produk')}
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-900 group-hover:text-[var(--brand)] transition-colors mt-3">
@@ -338,7 +345,7 @@ export function SeksiSolusi({ cfg, ke }: PropsSeksi) {
                 </h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed flex-1">{s.deskripsi}</p>
                 <span className="mt-4 pt-3 border-t border-slate-100 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand)]">
-                  Telusuri grup ini
+                  {t('Telusuri grup ini')}
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </button>
@@ -770,6 +777,8 @@ export function SeksiKontak({
   onHapusRfq,
   onKosongkanRfq
 }: PropsSeksi) {
+  const bahasa = useWebsiteLanguage();
+  const t = (text: string) => translateWebsiteUi(text, bahasa);
   const kontak = cfg.kontak;
   const [namaInstansi, setNamaInstansi] = useState('');
   const [tipeInstansi, setTipeInstansi] = useState<TipeFasyankes>('RS Swasta');
@@ -893,17 +902,17 @@ export function SeksiKontak({
     <section className="bg-slate-50 border-b border-slate-200" id="formulir-rfq-publik">
       <div className={`${WADAH} py-12 grid lg:grid-cols-[0.88fr_1.12fr] gap-8 items-start`}>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand)]">HUBUNGI KAMI</p>
-          <h2 className="text-2xl font-bold text-slate-900 mt-1">Mari Bahas Kebutuhan Instansi Anda</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand)]">{t('HUBUNGI KAMI')}</p>
+          <h2 className="text-2xl font-bold text-slate-900 mt-1">{t('Mari Bahas Kebutuhan Instansi Anda')}</h2>
           <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-            Tim komersial bersama Penanggung Jawab Teknis (PJT) siap menyiapkan penawaran resmi, kelengkapan nomor izin edar Kemenkes RI, serta dukungan pengadaan e-Katalog LKPP maupun LPSE.
+            {t('Tim komersial bersama Penanggung Jawab Teknis (PJT) siap menyiapkan penawaran resmi, kelengkapan nomor izin edar Kemenkes RI, serta dukungan pengadaan e-Katalog LKPP maupun LPSE.')}
           </p>
           <div className="mt-6 space-y-3">
-            <BarisKontak ikon={<Phone className="w-4 h-4" />} label="Telepon Kantor" nilai={kontak.telepon} />
-            <BarisKontak ikon={<Mail className="w-4 h-4" />} label="Surel Resmi" nilai={kontak.email} />
+            <BarisKontak ikon={<Phone className="w-4 h-4" />} label={t('Telepon Kantor')} nilai={kontak.telepon} />
+            <BarisKontak ikon={<Mail className="w-4 h-4" />} label={t('Surel Resmi')} nilai={kontak.email} />
             {kontak.whatsapp && <BarisKontak ikon={<Phone className="w-4 h-4" />} label="WhatsApp" nilai={kontak.whatsapp} />}
             {kontak.jamOperasional && (
-              <BarisKontak ikon={<CalendarDays className="w-4 h-4" />} label="Jam Operasional" nilai={kontak.jamOperasional} />
+              <BarisKontak ikon={<CalendarDays className="w-4 h-4" />} label={t('Jam Operasional')} nilai={kontak.jamOperasional} />
             )}
             <BarisKontak ikon={<MapPin className="w-4 h-4" />} label="Alamat" nilai={kontak.alamatKantor} />
             {kontak.tautanPeta && (
@@ -913,7 +922,7 @@ export function SeksiKontak({
                 rel="noopener noreferrer"
                 className="text-xs font-semibold text-[var(--brand)] hover:text-[var(--brand)] inline-block"
               >
-                Buka lokasi di peta
+                {t('Buka lokasi di peta')}
               </a>
             )}
           </div>
@@ -922,9 +931,9 @@ export function SeksiKontak({
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Formulir Permintaan Penawaran (RFQ)</h3>
+              <h3 className="text-base font-bold text-slate-900">{t('Formulir Permintaan Penawaran (RFQ)')}</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Catat permintaan ke antrean tim penjualan atau teruskan langsung melalui surel resmi maupun WhatsApp.
+                {t('Catat permintaan ke antrean tim penjualan atau teruskan langsung melalui surel resmi maupun WhatsApp.')}
               </p>
             </div>
             <button
@@ -932,7 +941,7 @@ export function SeksiKontak({
               onClick={() => ke('produk')}
               className="whitespace-nowrap px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 hover:bg-slate-100 text-2xs font-semibold text-slate-700 cursor-pointer"
             >
-              + Pilih Produk dari Katalog
+              {t('+ Pilih Produk dari Katalog')}
             </button>
           </div>
 
@@ -941,7 +950,7 @@ export function SeksiKontak({
             <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-bold text-slate-800">
-                  Alat Kesehatan Dipilih ({daftarRfq.length} item)
+                  {t('Alat Kesehatan Dipilih')} ({daftarRfq.length} {t('item')})
                 </p>
                 {onKosongkanRfq && (
                   <button
@@ -949,7 +958,7 @@ export function SeksiKontak({
                     onClick={onKosongkanRfq}
                     className="text-2xs font-semibold text-slate-500 hover:text-rose-600 cursor-pointer"
                   >
-                    Kosongkan daftar
+                    {t('Kosongkan daftar')}
                   </button>
                 )}
               </div>
@@ -971,7 +980,7 @@ export function SeksiKontak({
                           <button
                             type="button"
                             onClick={() => onUbahJumlahRfq(item.produkId, Math.max(1, item.jumlah - 1))}
-                            aria-label="Kurangi jumlah"
+                            aria-label={t('Kurangi jumlah')}
                             className="p-1 text-slate-600 hover:text-slate-900 cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
@@ -982,7 +991,7 @@ export function SeksiKontak({
                           <button
                             type="button"
                             onClick={() => onUbahJumlahRfq(item.produkId, item.jumlah + 1)}
-                            aria-label="Tambah jumlah"
+                            aria-label={t('Tambah jumlah')}
                             className="p-1 text-slate-600 hover:text-slate-900 cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
@@ -1015,11 +1024,11 @@ export function SeksiKontak({
               <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
               <div className="text-xs text-emerald-950">
                 <p className="font-bold">
-                  Permintaan penawaran tercatat dengan nomor referensi{' '}
+                  {t('Permintaan penawaran tercatat dengan nomor referensi')}{' '}
                   <span className="font-mono">{nomorTercatat}</span>
                 </p>
                 <p className="text-emerald-800 mt-0.5 leading-relaxed">
-                  Data kebutuhan Anda telah masuk ke antrean prospek komersial untuk diverifikasi PJT. Anda juga dapat langsung meneruskan salinan ke surel atau WhatsApp tim penjualan di bawah.
+                  {t('Data kebutuhan Anda telah masuk ke antrean prospek komersial untuk diverifikasi PJT. Anda juga dapat langsung meneruskan salinan ke surel atau WhatsApp tim penjualan di bawah.')}
                 </p>
               </div>
             </div>
@@ -1035,7 +1044,7 @@ export function SeksiKontak({
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-instansi">
-                  Nama Instansi / Fasyankes
+                  {t('Nama Instansi / Fasyankes')}
                 </label>
                 <input
                   id="web-instansi"
@@ -1044,13 +1053,13 @@ export function SeksiKontak({
                     setNamaInstansi(e.target.value);
                     setGalatForm('');
                   }}
-                  placeholder="Contoh: RSUD Pasar Minggu / Klinik Utama"
+                  placeholder={t('Contoh: RSUD Pasar Minggu / Klinik Utama')}
                   className={kelasBidang}
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-tipe-instansi">
-                  Jenis Instansi
+                  {t('Jenis Instansi')}
                 </label>
                 <select
                   id="web-tipe-instansi"
@@ -1060,7 +1069,7 @@ export function SeksiKontak({
                 >
                   {OPSI_TIPE_INSTANSI.map((opsi) => (
                     <option key={opsi} value={opsi}>
-                      {opsi}
+                      {t(opsi)}
                     </option>
                   ))}
                 </select>
@@ -1070,19 +1079,19 @@ export function SeksiKontak({
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-pemohon">
-                  Nama & Jabatan Pemohon
+                  {t('Nama & Jabatan Pemohon')}
                 </label>
                 <input
                   id="web-pemohon"
                   value={namaPemohon}
                   onChange={(e) => setNamaPemohon(e.target.value)}
-                  placeholder="Contoh: apt. Rina, S.Farm (Instalasi Farmasi)"
+                  placeholder={t('Contoh: apt. Rina, S.Farm (Instalasi Farmasi)')}
                   className={kelasBidang}
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-kontak-pemohon">
-                  Surel atau No. Telepon / WhatsApp
+                  {t('Surel atau No. Telepon / WhatsApp')}
                 </label>
                 <input
                   id="web-kontak-pemohon"
@@ -1100,7 +1109,7 @@ export function SeksiKontak({
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-jalur">
-                  Jalur Pengadaan
+                  {t('Jalur Pengadaan')}
                 </label>
                 <select
                   id="web-jalur"
@@ -1110,14 +1119,14 @@ export function SeksiKontak({
                 >
                   {OPSI_JALUR_PENGADAAN.map((opsi) => (
                     <option key={opsi} value={opsi}>
-                      {opsi}
+                      {t(opsi)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-subjek">
-                  Subjek Penawaran
+                  {t('Subjek Penawaran')}
                 </label>
                 <input
                   id="web-subjek"
@@ -1131,7 +1140,7 @@ export function SeksiKontak({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1" htmlFor="web-pesan">
-                Spesifikasi Tambahan / Jadwal Pengiriman
+                {t('Spesifikasi Tambahan / Jadwal Pengiriman')}
               </label>
               <textarea
                 id="web-pesan"
@@ -1141,7 +1150,7 @@ export function SeksiKontak({
                   setGalatForm('');
                 }}
                 rows={4}
-                placeholder="Tuliskan kebutuhan aksesori, jadwal instalasi/uji fungsi, syarat TKDN, atau provinsi pengiriman."
+                placeholder={t('Tuliskan kebutuhan aksesori, jadwal instalasi/uji fungsi, syarat TKDN, atau provinsi pengiriman.')}
                 className={kelasBidang}
               />
             </div>
@@ -1153,14 +1162,14 @@ export function SeksiKontak({
                 className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-full bg-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_85%,black)] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                Kirim Permintaan Penawaran
+                {t('Kirim Permintaan Penawaran')}
               </button>
               <a
                 href={tautanMailto}
                 className="inline-flex items-center gap-2 whitespace-nowrap px-3.5 py-2.5 rounded-full border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold transition-colors"
               >
                 <Mail className="w-3.5 h-3.5" />
-                Buka di Surel
+                {t('Buka di Surel')}
               </a>
               {kontak.whatsapp && (
                 <a
@@ -1170,7 +1179,7 @@ export function SeksiKontak({
                   className="inline-flex items-center gap-2 whitespace-nowrap px-3.5 py-2.5 rounded-full border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  WhatsApp Tim Sales
+                  {t('WhatsApp Tim Sales')}
                 </a>
               )}
               <button
@@ -1179,7 +1188,7 @@ export function SeksiKontak({
                 className="inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 {tersalin ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {tersalin ? 'Tersalin' : 'Salin Teks RFQ'}
+                {tersalin ? t('Tersalin') : t('Salin Teks RFQ')}
               </button>
             </div>
           </div>

@@ -13,8 +13,13 @@ import { ArrowLeft, ArrowRight, ChevronDown, ClipboardList, Globe, LogIn, Mail, 
 import { HalamanWebsite, KonfigurasiSitus, ProdukWebsite } from '../../../../types';
 import { PETA_HALAMAN, TampilkanSeksi, TombolSitus, type ItemRfqPublik, type PropsSeksi } from './SiteSections';
 import { SorotanKatalog } from './SorotanKatalog';
-import { hrefTautan, selesaikanGambar } from '../../../../utils/website';
+import { hrefTautan, selesaikanGambar, slugifyWebsite } from '../../../../utils/website';
 import { tampilanEfektif, tumpukanFont } from '../../../../utils/tampilan';
+import {
+  translateWebsiteUi,
+  WebsiteLanguageProvider,
+  type WebsiteLanguage
+} from './WebsiteLanguage';
 
 interface Rute {
   halaman: HalamanWebsite;
@@ -43,6 +48,31 @@ const LABEL_HALAMAN: Record<HalamanWebsite, string> = {
 };
 
 const KUNCI_SESI_RFQ = 'ams_web_rfq_v1';
+const KUNCI_BAHASA_SITUS = 'ams_web_language';
+
+function bacaBahasaSitus(): WebsiteLanguage {
+  if (typeof window === 'undefined') return 'id';
+  try {
+    return window.localStorage.getItem(KUNCI_BAHASA_SITUS) === 'en' ? 'en' : 'id';
+  } catch {
+    return 'id';
+  }
+}
+
+function ubahKategori(
+  kategori: string | undefined,
+  sumber: KonfigurasiSitus,
+  tujuan: KonfigurasiSitus
+): string | undefined {
+  if (!kategori) return kategori;
+  const produkSumber = sumber.produk.item.find(
+    (produk) =>
+      produk.kategori.toLowerCase() === kategori.trim().toLowerCase() ||
+      slugifyWebsite(produk.kategori) === slugifyWebsite(kategori)
+  );
+  if (!produkSumber) return kategori;
+  return tujuan.produk.item.find((produk) => produk.id === produkSumber.id)?.kategori ?? kategori;
+}
 
 /** Kelas dasar tombol pil header: CTA utama dan tombol Masuk harus terlihat sama ukurannya. */
 const gayaTombolHeader =
@@ -122,7 +152,78 @@ export default function PublicWebsite({
   const [menuTerbuka, setMenuTerbuka] = useState(false);
   const [megaAktif, setMegaAktif] = useState<string | null>(null);
   const [daftarRfq, setDaftarRfq] = useState<ItemRfqPublik[]>(bacaSesiRfq);
+  const [bahasa, setBahasa] = useState<WebsiteLanguage>(bacaBahasaSitus);
+  const [konfigurasiInggris, setKonfigurasiInggris] = useState<KonfigurasiSitus | null>(null);
+  const [versiTerjemahan, setVersiTerjemahan] = useState<number | null>(null);
+  const [bahasaMemuat, setBahasaMemuat] = useState(false);
+  const [galatBahasa, setGalatBahasa] = useState('');
   const atasRef = useRef<HTMLDivElement>(null);
+  const versiSumber = konfigurasi.lastModifiedAt;
+
+  const muatTerjemahan = useCallback(async () => {
+    setBahasaMemuat(true);
+    setGalatBahasa('');
+    try {
+      const response = await fetch('/api/website/translation/en', { cache: 'no-store' });
+      let result: { config?: unknown; sourceVersion?: unknown; message?: unknown };
+      try {
+        result = (await response.json()) as typeof result;
+      } catch {
+        throw new Error('Layanan terjemahan tidak tersedia pada hosting ini.');
+      }
+      if (!response.ok) {
+        throw new Error(typeof result.message === 'string' ? result.message : 'Terjemahan situs tidak dapat dimuat.');
+      }
+      if (!adalahKonfigurasiSitus(result.config) || result.sourceVersion !== versiSumber) {
+        throw new Error('Konten terbit telah berubah. Muat ulang halaman, lalu coba bahasa Inggris lagi.');
+      }
+      setKonfigurasiInggris(result.config);
+      setVersiTerjemahan(versiSumber);
+    } catch (error) {
+      setBahasa('id');
+      setKonfigurasiInggris(null);
+      setVersiTerjemahan(null);
+      setGalatBahasa(error instanceof Error ? error.message : 'Terjemahan situs tidak dapat dimuat.');
+      try {
+        window.localStorage.setItem(KUNCI_BAHASA_SITUS, 'id');
+      } catch {
+        setGalatBahasa((pesan) => `${pesan} Pilihan bahasa tidak dapat disimpan di browser ini.`);
+      }
+    } finally {
+      setBahasaMemuat(false);
+    }
+  }, [versiSumber]);
+
+  useEffect(() => {
+    if (bahasa === 'en' && (!konfigurasiInggris || versiTerjemahan !== versiSumber) && !bahasaMemuat) {
+      void muatTerjemahan();
+    }
+  }, [bahasa, konfigurasiInggris, versiTerjemahan, versiSumber, bahasaMemuat, muatTerjemahan]);
+
+  const pilihBahasa = (bahasaBaru: WebsiteLanguage) => {
+    setGalatBahasa('');
+    if (bahasaBaru === 'id') {
+      setBahasa('id');
+      setBahasaMemuat(false);
+      try {
+        window.localStorage.setItem(KUNCI_BAHASA_SITUS, 'id');
+      } catch {
+        setGalatBahasa('Pilihan bahasa tidak dapat disimpan di browser ini.');
+      }
+      return;
+    }
+    setBahasa('en');
+    try {
+      window.localStorage.setItem(KUNCI_BAHASA_SITUS, 'en');
+    } catch {
+      setGalatBahasa('Pilihan bahasa tidak dapat disimpan di browser ini.');
+    }
+  };
+
+  const bahasaTampil: WebsiteLanguage =
+    bahasa === 'en' && konfigurasiInggris && versiTerjemahan === versiSumber ? 'en' : 'id';
+  const konfigurasiTampil = bahasaTampil === 'en' ? konfigurasiInggris ?? konfigurasi : konfigurasi;
+  const t = (text: string) => translateWebsiteUi(text, bahasaTampil);
 
   useEffect(() => {
     try {
@@ -173,23 +274,36 @@ export default function PublicWebsite({
     [pratinjau, landasan]
   );
 
+  const kategoriRuteTampil =
+    bahasaTampil === 'en' && konfigurasiInggris
+      ? ubahKategori(rute.kategoriKey, konfigurasi, konfigurasiInggris)
+      : rute.kategoriKey;
+
   const ke = useCallback(
     (halaman: HalamanWebsite, kategoriKey?: string) => {
-      setRute({ halaman, kategoriKey });
+      const kategoriAsli =
+        bahasaTampil === 'en' && konfigurasiInggris
+          ? ubahKategori(kategoriKey, konfigurasiInggris, konfigurasi)
+          : kategoriKey;
+      setRute({ halaman, kategoriKey: kategoriAsli });
       setMenuTerbuka(false);
       setMegaAktif(null);
-      tulisUrlRute(halaman, kategoriKey);
+      tulisUrlRute(halaman, kategoriAsli);
       atasRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
-    [tulisUrlRute]
+    [bahasaTampil, konfigurasi, konfigurasiInggris, tulisUrlRute]
   );
 
   const aturKategoriKatalog = useCallback(
     (kategoriKey?: string) => {
-      setRute((lama) => ({ ...lama, kategoriKey }));
-      tulisUrlRute('produk', kategoriKey);
+      const kategoriAsli =
+        bahasaTampil === 'en' && konfigurasiInggris
+          ? ubahKategori(kategoriKey, konfigurasiInggris, konfigurasi)
+          : kategoriKey;
+      setRute((lama) => ({ ...lama, kategoriKey: kategoriAsli }));
+      tulisUrlRute('produk', kategoriAsli);
     },
-    [tulisUrlRute]
+    [bahasaTampil, konfigurasi, konfigurasiInggris, tulisUrlRute]
   );
 
   const tambahKeRfq = useCallback((produk: ProdukWebsite, jumlah = 1) => {
@@ -243,7 +357,7 @@ export default function PublicWebsite({
   );
 
   useEffect(() => {
-    document.title = konfigurasi.identitas.judulSitus || konfigurasi.identitas.nama;
+    document.title = konfigurasiTampil.identitas.judulSitus || konfigurasiTampil.identitas.nama;
     const meta =
       document.querySelector('meta[name="description"]') ??
       (() => {
@@ -252,7 +366,7 @@ export default function PublicWebsite({
         document.head.appendChild(baru);
         return baru;
       })();
-    meta.setAttribute('content', konfigurasi.identitas.metaDeskripsi || '');
+    meta.setAttribute('content', konfigurasiTampil.identitas.metaDeskripsi || '');
     const og =
       document.querySelector('meta[property="og:title"]') ??
       (() => {
@@ -261,22 +375,22 @@ export default function PublicWebsite({
         document.head.appendChild(baru);
         return baru;
       })();
-    og.setAttribute('content', konfigurasi.identitas.judulSitus || konfigurasi.identitas.nama);
+    og.setAttribute('content', konfigurasiTampil.identitas.judulSitus || konfigurasiTampil.identitas.nama);
+  }, [konfigurasiTampil.identitas]);
 
-  }, [konfigurasi.identitas]);
-
-  const tema = tampilanEfektif(konfigurasi);
+  const tema = tampilanEfektif(konfigurasiTampil);
   const seksi =
     rute.halaman === 'beranda'
       ? tema.berandaUrutan
       : PETA_HALAMAN[rute.halaman] ?? PETA_HALAMAN.beranda;
-  const labelBeranda = konfigurasi.menu.find((m) => m.halaman === 'beranda')?.label || 'Beranda';
+  const labelBeranda = konfigurasiTampil.menu.find((m) => m.halaman === 'beranda')?.label || 'Beranda';
   const propsSeksi: PropsSeksi = useMemo(
     () => ({
-      cfg: konfigurasi,
+      cfg: konfigurasiTampil,
+      cfgAsli: konfigurasi,
       ke,
       batasProduk: rute.halaman === 'beranda' ? 6 : undefined,
-      kategoriAktif: rute.kategoriKey,
+      kategoriAktif: kategoriRuteTampil,
       kataKunciAwal: rute.cari,
       onPilihKategori: aturKategoriKatalog,
       daftarRfq,
@@ -287,10 +401,10 @@ export default function PublicWebsite({
       onAjukanPenawaranLangsung: ajukanPenawaranLangsung
     }),
     [
-      konfigurasi,
+      konfigurasiTampil,
       ke,
       rute.halaman,
-      rute.kategoriKey,
+      kategoriRuteTampil,
       rute.cari,
       aturKategoriKatalog,
       daftarRfq,
@@ -302,9 +416,10 @@ export default function PublicWebsite({
     ]
   );
 
-  const menu = konfigurasi.menu.filter((m) => m.isActive);
+  const menu = konfigurasiTampil.menu.filter((m) => m.isActive);
 
   return (
+    <WebsiteLanguageProvider language={bahasaTampil}>
     <div
       className={`template-${tema.templateId} min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-[var(--brand)] selection:text-white`}
       style={{
@@ -319,23 +434,23 @@ export default function PublicWebsite({
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6">
           <div className="flex items-center gap-4 py-3">
             <button type="button" onClick={() => ke('beranda')} className="flex items-center gap-3 cursor-pointer">
-              {selesaikanGambar(konfigurasi.identitas.logoUrl) ? (
+              {selesaikanGambar(konfigurasiTampil.identitas.logoUrl) ? (
                 <img
-                  src={selesaikanGambar(konfigurasi.identitas.logoUrl)}
-                  alt={konfigurasi.identitas.nama}
+                  src={selesaikanGambar(konfigurasiTampil.identitas.logoUrl)}
+                  alt={konfigurasiTampil.identitas.nama}
                   className="h-10 w-auto object-contain"
                 />
               ) : (
                 <span className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white flex items-center justify-center text-base font-bold">
-                  {inisialLogo(konfigurasi.identitas.nama)}
+                  {inisialLogo(konfigurasiTampil.identitas.nama)}
                 </span>
               )}
               <span className="text-left">
                 <span className="block text-sm sm:text-base font-bold text-slate-900 leading-tight">
-                  {konfigurasi.identitas.nama}
+                  {konfigurasiTampil.identitas.nama}
                 </span>
                 <span className="block text-2xs sm:text-xs text-slate-500 leading-tight">
-                  {konfigurasi.identitas.tagline}
+                  {konfigurasiTampil.identitas.tagline}
                 </span>
               </span>
             </button>
@@ -386,14 +501,14 @@ export default function PublicWebsite({
                           </div>
                           <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between">
                             <span className="text-xs text-slate-500">
-                              Cari berdasarkan merek prinsipal, nomor izin edar, dan stok gudang
+                              {t('Cari berdasarkan merek prinsipal, nomor izin edar, dan stok gudang')}
                             </span>
                             <button
                               type="button"
                               onClick={() => ke('produk')}
                               className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--brand)] hover:text-[var(--brand)] whitespace-nowrap cursor-pointer"
                             >
-                              Buka Seluruh Katalog
+                              {t('Buka Seluruh Katalog')}
                               <ArrowRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -417,14 +532,14 @@ export default function PublicWebsite({
             </nav>
 
             <div className="hidden lg:flex items-center gap-2 ml-2">
-              {konfigurasi.header.portalTeks && konfigurasi.header.portalUrl && (
+              {konfigurasiTampil.header.portalTeks && konfigurasiTampil.header.portalUrl && (
                 <a
-                  href={konfigurasi.header.portalUrl}
+                  href={konfigurasiTampil.header.portalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-semibold text-slate-600 hover:text-slate-900 px-2 whitespace-nowrap"
                 >
-                  {konfigurasi.header.portalTeks}
+                  {konfigurasiTampil.header.portalTeks}
                 </a>
               )}
               {daftarRfq.length > 0 && (
@@ -437,7 +552,8 @@ export default function PublicWebsite({
                   RFQ ({daftarRfq.length})
                 </button>
               )}
-              <HeaderAksi teks={konfigurasi.header.utamaTeks} cfg={konfigurasi} ke={ke} varian="isi" />
+              <HeaderAksi teks={konfigurasiTampil.header.utamaTeks} cfg={konfigurasiTampil} ke={ke} varian="isi" />
+              <LanguageToggle language={bahasa} loading={bahasaMemuat} onChange={pilihBahasa} />
               {padaMasuk && (
                 <button
                   type="button"
@@ -445,7 +561,7 @@ export default function PublicWebsite({
                   className={gayaTombolMasuk}
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  Masuk
+                  {t('Masuk')}
                 </button>
               )}
             </div>
@@ -454,7 +570,7 @@ export default function PublicWebsite({
               type="button"
               onClick={() => setMenuTerbuka((b) => !b)}
               className="ml-auto lg:hidden p-2 rounded-lg border border-slate-300 text-slate-700 cursor-pointer"
-              aria-label="Buka navigasi"
+              aria-label={t('Buka menu')}
             >
               {menuTerbuka ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -485,7 +601,8 @@ export default function PublicWebsite({
                 </div>
               ))}
               <div className="flex gap-2 pt-2">
-                <HeaderAksi teks={konfigurasi.header.utamaTeks} cfg={konfigurasi} ke={ke} varian="isi" />
+                <HeaderAksi teks={konfigurasiTampil.header.utamaTeks} cfg={konfigurasiTampil} ke={ke} varian="isi" />
+                <LanguageToggle language={bahasa} loading={bahasaMemuat} onChange={pilihBahasa} />
                 {padaMasuk && (
                   <button
                     type="button"
@@ -493,7 +610,7 @@ export default function PublicWebsite({
                     className={gayaTombolMasuk}
                   >
                     <LogIn className="w-3.5 h-3.5" />
-                    Masuk
+                    {t('Masuk')}
                   </button>
                 )}
               </div>
@@ -501,6 +618,12 @@ export default function PublicWebsite({
           )}
         </div>
       </header>
+
+      {galatBahasa && (
+        <p role="alert" className="mx-auto max-w-[1440px] px-4 sm:px-6 py-2 text-xs text-rose-700 bg-rose-50 border-b border-rose-200">
+          {galatBahasa}
+        </p>
+      )}
 
       {/* Isi halaman */}
       <main>
@@ -521,7 +644,7 @@ export default function PublicWebsite({
                 onClick={() => ke(rute.halaman)}
                 className="text-xs font-bold text-slate-800 uppercase tracking-wider hover:text-[var(--brand)] cursor-pointer"
               >
-                {LABEL_HALAMAN[rute.halaman] ?? rute.halaman}
+                {t(LABEL_HALAMAN[rute.halaman] ?? rute.halaman)}
               </button>
               {rute.kategoriKey && (
                 <button
@@ -530,7 +653,7 @@ export default function PublicWebsite({
                   title="Hapus filter grup katalog"
                   className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,white)] border border-[color-mix(in_srgb,var(--brand)_35%,white)] hover:bg-[color-mix(in_srgb,var(--brand)_14%,white)] rounded-full px-2.5 py-0.5 cursor-pointer"
                 >
-                  <span>Grup: {rute.kategoriKey}</span>
+                  <span>{t('Grup:')} {rute.kategoriKey}</span>
                   <X className="w-3 h-3" />
                 </button>
               )}
@@ -539,12 +662,12 @@ export default function PublicWebsite({
         )}
         {seksi.map((kunci) =>
           kunci === 'hero' && tema.templateId === 'remedi-vscode' && rute.halaman === 'beranda' ? (
-            <SorotanKatalog key={kunci} cfg={konfigurasi} ke={ke} />
+            <SorotanKatalog key={kunci} cfg={konfigurasiTampil} ke={ke} />
           ) : (
             <TampilkanSeksi key={kunci} kunci={kunci} propsSeksi={propsSeksi} />
           )
         )}
-        {(rute.halaman === 'kontak' || rute.halaman === 'beranda') && <SeksiSosial cfg={konfigurasi} ke={ke} />}
+        {(rute.halaman === 'kontak' || rute.halaman === 'beranda') && <SeksiSosial cfg={konfigurasiTampil} ke={ke} />}
       </main>
 
       {/* Footer multi-kolom */}
@@ -552,20 +675,20 @@ export default function PublicWebsite({
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 py-12">
           <div className="grid lg:grid-cols-[1.3fr_repeat(3,0.9fr)] gap-8">
             <div>
-              <p className="text-base font-bold text-white">{konfigurasi.identitas.nama}</p>
-              <p className="text-xs text-slate-400 mt-1">{konfigurasi.identitas.tagline}</p>
+              <p className="text-base font-bold text-white">{konfigurasiTampil.identitas.nama}</p>
+              <p className="text-xs text-slate-400 mt-1">{konfigurasiTampil.identitas.tagline}</p>
               <div className="mt-4 space-y-2 text-xs text-slate-400">
                 <p className="flex items-start gap-2">
                   <Phone className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {konfigurasi.kontak.telepon}
+                  {konfigurasiTampil.kontak.telepon}
                 </p>
                 <p className="flex items-start gap-2">
                   <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {konfigurasi.kontak.email}
+                  {konfigurasiTampil.kontak.email}
                 </p>
                 <p className="flex items-start gap-2">
                   <Globe className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  {konfigurasi.kontak.alamatKantor}
+                  {konfigurasiTampil.kontak.alamatKantor}
                 </p>
               </div>
               {adaAksesDashboard && (
@@ -573,11 +696,11 @@ export default function PublicWebsite({
                   href="/"
                   className="inline-flex items-center gap-1.5 mt-4 text-xs font-semibold text-slate-400 hover:text-white"
                 >
-                  Kelola konten lewat dashboard Website
+                  {t('Kelola konten lewat dashboard Website')}
                 </a>
               )}
             </div>
-            {konfigurasi.footerKolom.map((kolom) => (
+            {konfigurasiTampil.footerKolom.map((kolom) => (
               <div key={kolom.id}>
                 <p className="text-xs font-bold uppercase tracking-wider text-white">{kolom.judul}</p>
                 <ul className="mt-3 space-y-1.5">
@@ -598,10 +721,11 @@ export default function PublicWebsite({
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-500 mt-8 border-t border-slate-800 pt-4">{konfigurasi.footerCatatan}</p>
+          <p className="text-xs text-slate-500 mt-8 border-t border-slate-800 pt-4">{konfigurasiTampil.footerCatatan}</p>
         </div>
       </footer>
     </div>
+    </WebsiteLanguageProvider>
   );
 }
 
@@ -650,6 +774,40 @@ function HeaderAksi({
     >
       {teks}
     </a>
+  );
+}
+
+function LanguageToggle({
+  language,
+  loading,
+  onChange
+}: {
+  language: WebsiteLanguage;
+  loading: boolean;
+  onChange: (language: WebsiteLanguage) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={language === 'en' ? 'Website language' : 'Bahasa situs'}
+      className="inline-flex items-center rounded-full border border-slate-300 p-0.5 text-2xs font-bold"
+    >
+      {(['id', 'en'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          disabled={loading && option === 'en'}
+          aria-pressed={language === option}
+          aria-label={option === 'en' ? 'Switch to English' : 'Beralih ke bahasa Indonesia'}
+          className={`min-w-8 rounded-full px-2 py-1 transition-colors cursor-pointer disabled:cursor-wait ${
+            language === option ? 'bg-[var(--brand)] text-white' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          {loading && option === 'en' ? '…' : option.toUpperCase()}
+        </button>
+      ))}
+    </div>
   );
 }
 
