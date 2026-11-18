@@ -76,11 +76,11 @@ if (-not $SkipGitUpdate) {
   if ($branchAktif -ne $Branch) {
     throw "Branch aktif '$branchAktif' berbeda dari '$Branch'. Pindah branch secara eksplisit sebelum deploy."
   }
-  & git -C $AppDir diff --quiet
+  & git -C $AppDir diff --quiet -- . ":(exclude)public/website-published.json"
   if ($LASTEXITCODE -ne 0) {
     throw "Ada perubahan tracked yang belum di-commit di '$AppDir'. Commit atau simpan perubahan sebelum deploy."
   }
-  & git -C $AppDir diff --cached --quiet
+  & git -C $AppDir diff --cached --quiet -- . ":(exclude)public/website-published.json"
   if ($LASTEXITCODE -ne 0) {
     throw "Ada perubahan staged yang belum di-commit di '$AppDir'. Commit atau simpan perubahan sebelum deploy."
   }

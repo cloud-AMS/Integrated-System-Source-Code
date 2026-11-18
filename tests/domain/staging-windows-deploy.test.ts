@@ -92,6 +92,7 @@ describe('Staging Firebase & Deployment Windows Server VPS', () => {
     expect(deployScript).toContain('"pull"');
     expect(deployScript).toContain('"--ff-only"');
     expect(deployScript).toContain('"build:staging"');
+    expect(deployScript).toContain(':(exclude)public/website-published.json');
   });
 
   it('mengizinkan admin Firebase staging (cloud.ams2026@gmail.com) login tanpa menimpa email developer utama', () => {
