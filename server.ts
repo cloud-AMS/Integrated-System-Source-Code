@@ -1419,6 +1419,20 @@ async function startServer() {
 
   // ================= SITUS PUBLIK (konten diatur dari menu Website di dashboard) =================
   // Snapshot terbit dibaca halaman /web lintas perangkat; hanya konfigurasi valid yang diterima.
+  app.get('/api/website/media/:id', (req, res) => {
+    const media = dataSyncStore.getPublicWebsiteMedia(req.params.id, bacaSnapshot());
+    if (!media) {
+      return res.status(404).json({ pesan: 'Media situs tidak ditemukan atau belum diterbitkan.' });
+    }
+    res
+      .set({
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+        'X-Content-Type-Options': 'nosniff'
+      })
+      .type(media.contentType)
+      .send(media.bytes);
+  });
+
   app.get('/api/website/published', (req, res) => {
     const snapshot = bacaSnapshot();
     if (!snapshot) return res.status(404).json({ pesan: 'Belum ada konten situs yang diterbitkan.' });

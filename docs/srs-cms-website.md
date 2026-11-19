@@ -87,6 +87,8 @@ Setiap FR ditandai dengan status implementasi per 2026-11-09.
 - CMS katalog menerima beberapa foto untuk satu produk; urutan foto dapat diubah, foto pertama dipakai pada kartu, dan seluruh foto dapat dijelajahi pada detail produk. Data lama dengan `imageUrl` tunggal tetap ditampilkan.
 - CMS Hero Utama menerima daftar banner berurutan. Jika daftar berisi banner bergambar, area hero menampilkan carousel otomatis dengan tombol/dots navigasi; jika kosong, gambar hero lama tetap digunakan.
 - Admin dapat memilih gambar hero berbingkai atau tanpa bingkai. Unggahan PNG banner mempertahankan transparansi agar dapat menyatu dengan latar.
+- Situs publik mengambil hanya snapshot terbit saat awal buka; draf CMS dan seluruh media tidak ikut dikirim sebagai payload awal. Media `media:<id>` diminta per gambar, hanya jika dipakai snapshot terbit, dan disimpan pada cache browser.
+- Route dan modul aplikasi dimuat sesuai halaman/modul yang dibuka. Konten situs dirender dari snapshot lebih dulu sambil sinkronisasi publik berjalan di latar.
 
 ---
 

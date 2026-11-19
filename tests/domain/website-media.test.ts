@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fotoProdukSitus } from '../../src/utils/website';
+import { fotoProdukSitus, selesaikanGambar } from '../../src/utils/website';
 
 describe('Website product photos', () => {
   it('uses the legacy single image when no gallery has been saved yet', () => {
@@ -14,5 +14,9 @@ describe('Website product photos', () => {
       })
     ).toEqual(['/produk/depan.png', '/produk/samping.png']);
     expect(fotoProdukSitus({ imageUrl: '/produk/lama.png', imageUrls: [] })).toEqual([]);
+  });
+
+  it('resolves server-backed media references without downloading the full media gallery', () => {
+    expect(selesaikanGambar('media:remote-banner-1')).toBe('/api/website/media/remote-banner-1');
   });
 });

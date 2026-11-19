@@ -49,11 +49,12 @@ export default function HalamanDepan({ onMasuk }: { onMasuk: (sesi: SesiLogin) =
       }
     });
 
-    void db.hydratePublicSettingsFromServer().finally(() => {
+    muat();
+    void db.hydratePublicSettingsFromServer().then(() => {
       if (!batal) muat();
     });
     db.connectRealtimeSync(null);
-    const berhentiTerbit = db.subscribeKoleksi(['website_published', 'website_media_v1'], muat);
+    const berhentiTerbit = db.subscribeKoleksi(['website_published'], muat);
     return () => {
       batal = true;
       berhentiTerbit();

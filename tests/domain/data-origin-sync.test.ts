@@ -411,7 +411,9 @@ describe('ServerDataSyncStore & otorisasi kunci sinkronisasi server', () => {
     const res1 = store.setBatch(
       {
         izin_edar: [{ id: 'NIE-1' }],
-        website_published: { heroTitle: 'Resmi' },
+        website_published: { isPublished: true, hero: { imageUrl: 'media:hero-1' } },
+        website_draft: { heroTitle: 'Draf privat' },
+        website_media_v1: [{ id: 'hero-1', dataUrl: 'data:image/png;base64,abc' }],
         'kunci tidak valid!': { ignored: true }
       },
       [],
@@ -419,14 +421,30 @@ describe('ServerDataSyncStore & otorisasi kunci sinkronisasi server', () => {
     );
 
     expect(res1.revision).toBe(1);
-    expect(Object.keys(res1.updated)).toEqual(['izin_edar', 'website_published']);
+    expect(Object.keys(res1.updated)).toEqual([
+      'izin_edar',
+      'website_published',
+      'website_draft',
+      'website_media_v1'
+    ]);
     expect(res1.updated.izin_edar.version).toBe(1);
     expect(res1.updated.izin_edar.updatedBy).toBe('pjt.admin');
 
-    // Publik state hanya mengembalikan PUBLIC_SYNC_KEYS
+    // Endpoint publik hanya mengembalikan konten terbit; draf dan galeri diambil secara privat/on-demand.
     const publicState = store.getPublicState();
     expect(Object.keys(publicState.entries)).toEqual(['website_published']);
     expect(PUBLIC_SYNC_KEYS.has('izin_edar')).toBe(false);
+    expect(publicState.entries.website_draft).toBeUndefined();
+    expect(publicState.entries.website_media_v1).toBeUndefined();
+    expect(store.getEntry('website_media_v1')?.value).toEqual([
+      { id: 'hero-1', dataUrl: 'data:image/png;base64,abc' }
+    ]);
+    expect(store.getPublicWebsiteMedia('hero-1', publicState.entries.website_published.value)).toMatchObject({
+      contentType: 'image/png',
+      bytes: Buffer.from('abc', 'base64')
+    });
+    expect(store.getPublicWebsiteMedia('hero-1', { isPublished: false, hero: { imageUrl: 'media:hero-1' } })).toBeNull();
+    expect(store.getPublicWebsiteMedia('unpublished', publicState.entries.website_published.value)).toBeNull();
 
     // Delta query dengan sinceVersionMap hanya mengembalikan entri yang lebih baru
     const res2 = store.setBatch(
@@ -438,7 +456,7 @@ describe('ServerDataSyncStore & otorisasi kunci sinkronisasi server', () => {
     expect(res2.updated.izin_edar.version).toBe(2);
     expect(res2.deleted).toEqual(['website_published']);
 
-    const delta = store.getAllState({ izin_edar: 1 });
+    const delta = store.getAllState({ izin_edar: 1, website_draft: 1, website_media_v1: 1 });
     expect(Object.keys(delta.entries)).toEqual(['izin_edar']);
     expect(delta.entries.izin_edar.version).toBe(2);
 

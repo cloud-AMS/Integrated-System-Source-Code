@@ -4,29 +4,12 @@
  * coded by Langgo Bramandityo
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import Navbar, { type NavId } from './components/layout/Navbar';
-import ExecutiveOverview from './components/dashboard/ExecutiveOverview';
-import TraceabilityModal from './components/traceability/TraceabilityModal';
-import PrintModal from './components/common/PrintModal';
 import { terapkanFaviconAplikasi, useIdentitasVisualAplikasi } from './components/common/LogoAplikasi';
-import HalamanDepan from './components/modules/website/site/HalamanDepan';
-
-// Module components
-import RegulatoryModule from './components/modules/regulatory/RegulatoryModule';
-import QAModule from './components/modules/regulatory/QAModule';
-import QCModule from './components/modules/regulatory/QCModule';
-import WarehouseModule from './components/modules/operations/WarehouseModule';
+import type { SalesTab } from './components/modules/commercial/SalesModule';
+import type { ITSubTabId } from './components/modules/supporting/ITModule';
 import type { GudangTabId } from './components/modules/operations/gudang/ui';
-import ServiceModule from './components/modules/operations/ServiceModule';
-import ProductionModule from './components/modules/operations/ProductionModule';
-import ProcurementModule from './components/modules/operations/ProcurementModule';
-import SalesModule, { type SalesTab } from './components/modules/commercial/SalesModule';
-import PMSModule from './components/modules/commercial/PMSModule';
-import HRDModule from './components/modules/supporting/HRDModule';
-import FinanceModule from './components/modules/supporting/FinanceModule';
-import ITModule, { type ITSubTabId } from './components/modules/supporting/ITModule';
-import WebsiteModule from './components/modules/website/WebsiteModule';
 
 import type { AksesEfektif, ModuleNavId, RbacResourceId, UserRole } from './types';
 import { Lock, RefreshCw, ShieldCheck, X } from 'lucide-react';
@@ -41,6 +24,39 @@ import {
 } from './utils/autentikasi';
 import { SEMUA_ID_MODUL, bolehAksesModul } from './utils/hakAkses';
 import { db } from './services/pocketbase';
+
+const ExecutiveOverview = lazy(() => import('./components/dashboard/ExecutiveOverview'));
+const TraceabilityModal = lazy(() => import('./components/traceability/TraceabilityModal'));
+const PrintModal = lazy(() => import('./components/common/PrintModal'));
+const HalamanDepan = lazy(() => import('./components/modules/website/site/HalamanDepan'));
+const RegulatoryModule = lazy(() => import('./components/modules/regulatory/RegulatoryModule'));
+const QAModule = lazy(() => import('./components/modules/regulatory/QAModule'));
+const QCModule = lazy(() => import('./components/modules/regulatory/QCModule'));
+const WarehouseModule = lazy(() => import('./components/modules/operations/WarehouseModule'));
+const ServiceModule = lazy(() => import('./components/modules/operations/ServiceModule'));
+const ProductionModule = lazy(() => import('./components/modules/operations/ProductionModule'));
+const ProcurementModule = lazy(() => import('./components/modules/operations/ProcurementModule'));
+const SalesModule = lazy(() => import('./components/modules/commercial/SalesModule'));
+const PMSModule = lazy(() => import('./components/modules/commercial/PMSModule'));
+const HRDModule = lazy(() => import('./components/modules/supporting/HRDModule'));
+const FinanceModule = lazy(() => import('./components/modules/supporting/FinanceModule'));
+const ITModule = lazy(() => import('./components/modules/supporting/ITModule'));
+const WebsiteModule = lazy(() => import('./components/modules/website/WebsiteModule'));
+
+function PemuatModul({ layarPenuh = false }: { layarPenuh?: boolean }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`flex items-center justify-center gap-2 text-sm font-medium text-slate-500 ${
+        layarPenuh ? 'min-h-screen bg-slate-50' : 'min-h-[40vh]'
+      }`}
+    >
+      <RefreshCw className="h-4 w-4 animate-spin" />
+      Memuat modul…
+    </div>
+  );
+}
 
 function modulUntukKunciSync(key: string): RbacResourceId | 'all' {
   if (key === 'all') return 'all';
@@ -91,7 +107,6 @@ export default function App() {
     let aktif = true;
     const cekServer = async () => {
       if (!bacaSesi()) {
-        await db.hydratePublicSettingsFromServer();
         if (aktif) setMemeriksaSesi(false);
         return;
       }
@@ -164,7 +179,13 @@ export default function App() {
     );
   }
 
-  if (!sesi) return <HalamanDepan onMasuk={(s) => void tanganiMasuk(s)} />;
+  if (!sesi) {
+    return (
+      <Suspense fallback={<PemuatModul layarPenuh />}>
+        <HalamanDepan onMasuk={(s) => void tanganiMasuk(s)} />
+      </Suspense>
+    );
+  }
 
   return (
     <Dasbor
@@ -339,6 +360,7 @@ function Dasbor({
             )}
           </div>
         ) : (
+          <Suspense fallback={<PemuatModul />}>
           <div key={`${activeTab}-${remoteModuleVersion}`}>
             {activeTab === 'overview' && (
               <ExecutiveOverview
@@ -401,6 +423,7 @@ function Dasbor({
               />
             )}
           </div>
+          </Suspense>
         )}
       </main>
 
@@ -419,16 +442,18 @@ function Dasbor({
       </footer>
 
       {/* Universal Batch / Lot Traceability Dialog Modal */}
-      <TraceabilityModal
-        isOpen={isTraceabilityOpen}
-        onClose={() => setIsTraceabilityOpen(false)}
-      />
+      {isTraceabilityOpen && (
+        <Suspense fallback={null}>
+          <TraceabilityModal isOpen onClose={() => setIsTraceabilityOpen(false)} />
+        </Suspense>
+      )}
 
       {/* Official Regulatory Printable Document Modal */}
-      <PrintModal
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-      />
+      {isPrintModalOpen && (
+        <Suspense fallback={null}>
+          <PrintModal isOpen onClose={() => setIsPrintModalOpen(false)} />
+        </Suspense>
+      )}
 
     </div>
   );

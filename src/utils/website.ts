@@ -1266,14 +1266,26 @@ export interface MediaWebsite {
   ukuran: number;
 }
 
+let cacheMediaWebsite: MediaWebsite[] | null = null;
+
 export function daftarMediaWebsite(): MediaWebsite[] {
+  if (cacheMediaWebsite) return cacheMediaWebsite;
   try {
     if (typeof localStorage === 'undefined') return [];
     const tersimpan = localStorage.getItem(WEBSITE_MEDIA_KEY);
-    return tersimpan ? (JSON.parse(tersimpan) as MediaWebsite[]) : [];
+    const hasil = tersimpan ? (JSON.parse(tersimpan) as MediaWebsite[]) : [];
+    cacheMediaWebsite = Array.isArray(hasil) ? hasil : [];
+    return cacheMediaWebsite;
   } catch {
-    return [];
+    cacheMediaWebsite = [];
+    return cacheMediaWebsite;
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === WEBSITE_MEDIA_KEY) cacheMediaWebsite = null;
+  });
 }
 
 /** Simpan gambar terkompresi di luar konfigurasi agar draf situs tidak membengkak. */
@@ -1284,6 +1296,7 @@ export function simpanMediaWebsite(media: MediaWebsite): MediaWebsite[] {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(WEBSITE_MEDIA_KEY, JSON.stringify(baru));
     }
+    cacheMediaWebsite = baru;
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('ams:local-setting-write', {
@@ -1303,6 +1316,7 @@ export function hapusMediaWebsite(id: string): MediaWebsite[] {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(WEBSITE_MEDIA_KEY, JSON.stringify(baru));
     }
+    cacheMediaWebsite = baru;
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('ams:local-setting-write', {
@@ -1320,8 +1334,9 @@ export function hapusMediaWebsite(id: string): MediaWebsite[] {
 export function selesaikanGambar(referensi?: string): string | undefined {
   if (!referensi) return undefined;
   if (!referensi.startsWith('media:')) return referensi;
-  const media = daftarMediaWebsite().find((m) => m.id === referensi.slice('media:'.length));
-  return media?.dataUrl;
+  const id = referensi.slice('media:'.length);
+  const media = daftarMediaWebsite().find((m) => m.id === id);
+  return media?.dataUrl ?? `/api/website/media/${encodeURIComponent(id)}`;
 }
 
 /** Kompres ke lebar maksimal agar muat di penyimpanan browser. */
@@ -1351,7 +1366,8 @@ export async function kompresGambarWebsite(
   if (!konteks) return asal;
   konteks.drawImage(gambar, 0, 0, kanvas.width, kanvas.height);
   if (pertahankanTransparansi && (file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/svg+xml')) {
-    return kanvas.toDataURL('image/png');
+    const webp = kanvas.toDataURL('image/webp', kualitas);
+    return webp.startsWith('data:image/webp;') ? webp : kanvas.toDataURL('image/png');
   }
   return kanvas.toDataURL('image/jpeg', kualitas);
 }

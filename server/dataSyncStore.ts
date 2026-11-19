@@ -9,6 +9,11 @@ export interface SyncEntry {
   updatedBy: string;
 }
 
+export interface PublicWebsiteMedia {
+  contentType: string;
+  bytes: Buffer;
+}
+
 interface AppStateDatabase {
   version: number;
   revision: number;
@@ -16,10 +21,7 @@ interface AppStateDatabase {
 }
 
 export const PUBLIC_SYNC_KEYS = new Set<string>([
-  'website_published',
-  'website_draft',
-  'website_content_v',
-  'website_media_v1'
+  'website_published'
 ]);
 
 export const LEGACY_RBAC_SYNC_KEYS = new Set(['rb_akun', 'rb_role']);
@@ -146,6 +148,39 @@ export class ServerDataSyncStore {
   public hasKey(key: string): boolean {
     if (isLegacyRbacSyncKey(key)) return false;
     return Object.prototype.hasOwnProperty.call(this.state.entries, key);
+  }
+
+  public getEntry(key: string): SyncEntry | undefined {
+    if (isLegacyRbacSyncKey(key)) return undefined;
+    return this.state.entries[key];
+  }
+
+  public getPublicWebsiteMedia(id: string, snapshot: unknown): PublicWebsiteMedia | null {
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return null;
+    if (!snapshot || typeof snapshot !== 'object' || (snapshot as { isPublished?: unknown }).isPublished !== true) {
+      return null;
+    }
+
+    const containsPublishedReference = (value: unknown): boolean => {
+      if (value === `media:${id}`) return true;
+      if (Array.isArray(value)) return value.some(containsPublishedReference);
+      if (value && typeof value === 'object') return Object.values(value).some(containsPublishedReference);
+      return false;
+    };
+    if (!containsPublishedReference(snapshot)) return null;
+
+    const daftar = this.state.entries.website_media_v1?.value;
+    if (!Array.isArray(daftar)) return null;
+    const media = daftar.find((item) => item && typeof item === 'object' && (item as { id?: unknown }).id === id) as
+      | { dataUrl?: unknown }
+      | undefined;
+    if (typeof media?.dataUrl !== 'string') return null;
+
+    const cocok = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(media.dataUrl);
+    if (!cocok) return null;
+    const bytes = Buffer.from(cocok[2], 'base64');
+    if (bytes.length === 0 || bytes.length > 8 * 1024 * 1024) return null;
+    return { contentType: cocok[1].toLowerCase(), bytes };
   }
 
   public getPublicState(): { revision: number; entries: Record<string, SyncEntry> } {

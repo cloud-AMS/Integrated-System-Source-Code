@@ -115,11 +115,12 @@ export default function PublicWebsiteApp() {
       });
     };
 
-    void db.hydratePublicSettingsFromServer().finally(() => {
+    muatKonten();
+    void db.hydratePublicSettingsFromServer().then(() => {
       if (!batal) muatKonten();
     });
     db.connectRealtimeSync();
-    const berhentiTerbit = db.subscribeKoleksi(['website_published', 'website_media_v1'], muatKonten);
+    const berhentiTerbit = db.subscribeKoleksi(['website_published'], muatKonten);
 
     return () => {
       batal = true;

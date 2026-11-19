@@ -159,8 +159,10 @@ function GambarSitus({
   prioritas?: boolean;
 }) {
   const url = selesaikanGambar(rujukan);
+  const [gagalMuat, setGagalMuat] = useState(false);
   const gaya = rasio ? { aspectRatio: rasio } : undefined;
-  if (!url) {
+  useEffect(() => setGagalMuat(false), [url]);
+  if (!url || gagalMuat) {
     return (
       <div style={gaya} className={`${kelas} ${latar} border border-slate-200 flex items-center justify-center`}>
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 px-3 text-center">{alt}</span>
@@ -175,6 +177,7 @@ function GambarSitus({
         loading={prioritas ? 'eager' : 'lazy'}
         fetchPriority={prioritas ? 'high' : 'auto'}
         className={`w-full h-full object-contain ${kelasGambar ?? ''}`}
+        onError={() => setGagalMuat(true)}
       />
     </div>
   );
